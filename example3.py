@@ -6,4 +6,3 @@ if '__main__' == __name__:
   pyc = CrysPy(qe_fname='SnTe.scf.in', spec_col=specD)
   pyc.draw_cell(nx=3, ny=3, nz=1, boundary=False)
   pyc.draw_bonds(dist={'Sn_Te':8.})
-

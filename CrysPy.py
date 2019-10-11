@@ -1,4 +1,4 @@
-from ReadQE import read_qe_file,qe_lattice
+from ReadQE import read_qe_file,qe_lattice,crystal_conversion
 from Atom import Atom
 import vpython as vp
 import numpy as np
@@ -36,7 +36,10 @@ class CrysPy:
       self.lattice = np.array(lattice)
     else:
       read_qe_file(self,qe_fname)
-      self.lattice = qe_lattice(self,self.ibrav)
+      self.lattice = qe_lattice(self.ibrav, self.cell_param)
+      if self.coord_type == 'angstrom':
+        self.atoms = crystal_conversion(self.atoms, self.lattice, self.coord_type)
+      
 
     if spec_col is None:
       self.spec = [i for i in range(self.natoms)]
