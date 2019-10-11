@@ -5,7 +5,7 @@ import numpy as np
 
 class CrysPy:
 
-  def __init__ ( self, qe_fname=None, lattice=None, basis=None, A=1, B=1, C=1, AB=0, AC=0, BC=0, ibrav=0, orig=[0,0,0], species=None, spec_col=None ):
+  def __init__ ( self, qe_fname=None, lattice=None, basis=None, origin=[0,0,0], species=None, spec_col=None, w_width=1000, w_height=700 ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -13,13 +13,16 @@ class CrysPy:
       qe_fname (str): Filename of a quantum espresso inputfile
       lattice (list): List of 3 3d vectors, representing the lattice parameters
       basis (list): List of N 3d vectors, representing the positions of each of N atoms
-      ibrav (int): Quantum Espresso ibrav number
+      origin (list): List of 3 points, representing the x,y,z position of the grid's center
       species (list): List of N species strings corresponding to atoms in 'basis' (e.g. ['Si','Si'])
       sepc_col (dict): Dictionary linking atom identfiers (e.g. 'Si' or 'He') to color tuples (R,G,B)
+      w_width (int): Vpython window width
+      w_height (int): Vpython window height
     '''
 
-    self.canvas = vp.canvas(title='CrysPy', width=600, height=600, background=vp.color.black)
+    self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=vp.color.black)
     self.dist_button = vp.button(text='Distance (Disabled)', bind=lambda:self.toggle_dist())
+    self.text_button = vp.button(text='0.000000 angstroms', bind=lambda:0)
     self.canvas.bind('click', self.click)
 
     self.canvas.forward = vp.vector(0,+1,0)
@@ -28,11 +31,9 @@ class CrysPy:
 
     self.spec = None
     if qe_fname is None:
-      self.ibrav = ibrav
       self.atoms = basis
       self.natoms = len(basis)
-      self.celldm = [A,B,C,AB,AC,BC]
-      self.lattice = self.quantum_espresso_coords(np.array(lattice))
+      self.lattice = np.array(lattice)
     else:
       read_qe_file(self,qe_fname)
       self.lattice = qe_lattice(self,self.ibrav)
@@ -50,7 +51,7 @@ class CrysPy:
     self.eval_dist = False
     self.selected_atoms = []
     self.selected_colors = []
-    self.origin = np.array(orig)
+    self.origin = np.array(origin)
 
     # Construct Recip Lattice
     self.rlattice = []
@@ -64,7 +65,9 @@ class CrysPy:
         b (Atom or vpython.sphere): Second atom
       '''
       dist = b.pos - a.pos
-      print('Distance: %f'%dist.mag)
+      text = '%f angstroms'%dist.mag
+      print(text)
+      self.text_button.text = text
 
   def toggle_dist ( self ):
     '''
@@ -101,24 +104,27 @@ class CrysPy:
     '''
     Handle mouse click events. Used to select atoms for distance calculation
     '''
-    new_select = self.canvas.mouse.pick
+    new_atom = self.canvas.mouse.pick
     is_sphere = lambda v : isinstance(v, vp.sphere)
     if self.eval_dist:
-      if is_sphere(new_select):
+      if is_sphere(new_atom):
         if len(self.selected_atoms) == 2:
           self.reset_selection()
-          self.select_atom(new_select)
+          self.select_atom(new_atom)
         elif len(self.selected_atoms) == 1:
-          if new_select != self.selected_atoms[0]:
-            self.select_atom(new_select)
+          if new_atom == self.selected_atoms[0]:
+            old_atom = self.selected_atoms.pop()
+            old_atom.color = self.selected_colors.pop()
+          else:
+            self.select_atom(new_atom)
             self.calc_dist(self.selected_atoms[0], self.selected_atoms[1])
         else:
-          self.select_atom(new_select)
+          self.select_atom(new_atom)
     else:
         if len(self.selected_atoms) > 0:
           self.reset_selection()
-        if is_sphere(new_select):
-          self.select_atom(new_select)
+        if is_sphere(new_atom):
+          self.select_atom(new_atom)
 
   def figure_cell_params ( self, ibrav ):
     pass
@@ -172,7 +178,7 @@ class CrysPy:
       raise ValueError('Not enough Atoms have been drawn')
 
     if not isinstance(dist, dict):
-      self.bonds = [vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}) for i,a in enumerate(self.vAtoms) for j,b in enumerate(self.vAtoms) if i!=j and (a.pos-b.pos).mag<dist]
+      self.bonds = [vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}) for i,a in enumerate(self.vAtoms) for j,b in enumerate(self.vAtoms) if i!=j and (a.pos-b.pos).mag<=dist]
     else:
       self.bonds = []
       for i,a in enumerate(self.vAtoms):
@@ -186,7 +192,7 @@ class CrysPy:
             if tk in dist:
               key = tk
             if key is not None:
-              if (a.pos-b.pos).mag < dist[key]:
+              if (a.pos-b.pos).mag <= dist[key]:
                 self.bonds.append(vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}))
 
 
@@ -201,11 +207,6 @@ class CrysPy:
       boundary (bool): Draw cell boundaries
     '''
 
-    f = .8
-    maxC = [nx,ny,nz] * np.sum(self.lattice, axis=0)/2
-    apos = [-f*maxC[0],0,0]
-    vpa = lambda a : vp.arrow(pos=self.vector(apos),axis=self.vector(a))
-    coord = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
 
     if boundary:
       lines = []
@@ -227,15 +228,20 @@ class CrysPy:
         for iz in range(nz):
           c_pos = self.vector(self.origin) + self.get_cell_pos(ix,iy,iz)
           for i,a in enumerate(self.atoms):
-            a_pos = c_pos + self.vector(self.crystal_to_atomic(a))
+            a_pos = c_pos + self.vector(self.atomic_position(a))
             color = self.vector(self.specD[self.spec[i]])
             self.vAtoms.append(Atom(a_pos,col=color,species=self.spec[i]))
 
+    apos = [np.min([v.pos.x for v in self.vAtoms])-5, 0, 0]
+    vpa = lambda a : vp.arrow(pos=self.vector(apos),axis=self.vector(a))
+    coord = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
 
-  def quantum_espresso_coords ( self, v ):
-    A,B,C = self.celldm[0],self.celldm[1],self.celldm[2]
-    return [A*v[0],B*v[1],C*v[2]]
+  def atomic_position ( self, v ):
+    '''
+    Calculate the atom's position within the unit cell
 
-  def crystal_to_atomic ( self, v ):
-    return self.quantum_espresso_coords(v)
+    Arguments:
+      v (list or ndarray): List of 3 values, each to weight one of the 3 lattice vectors
+    '''
+    return np.sum(v*self.lattice, axis=1)

@@ -30,7 +30,7 @@ def read_qe_file ( self, fname, ftype='scf.in' ):
             self.natoms = natoms = strip_int(l)
           elif 'ATOMIC_POSITIONS' in l:
             ls = l.split()
-            self.coord_type = ls[1][1:-1]
+            self.coord_type = ls[1][1:-1] if len(ls)>1 else 'alat'
             while natoms > 0:
               ls = f.readline().split()
               if len(ls) == 4:
@@ -52,16 +52,30 @@ def qe_lattice ( self, ibrav ):
 
   if ibrav == 1:
     A = self.cell_param[0]
-    self.celldm = [A,A,A,0,0,0]
+    self.celldm = [A,0,0,0,0,0]
     coords = A * np.array([[1,0,0],[0,1,0],[0,0,0]])
-  if ibrav == 2:
+  elif ibrav == 2:
     A = self.cell_param[0]
-    self.celldm = [A,A,A,0,0,0]
+    self.celldm = [A,0,0,0,0,0]
     coords = A/2 * np.array([[-1,0,1],[0,1,1],[-1,1,0]])
-  if ibrav == 8:
+  elif ibrav == 3:
+    A = self.cell_param[0]
+    self.celldm = [A,0,0,0,0,0]
+    coords = A/2 * np.array([[1,1,1],[-1,1,1],[-1,-1,1]])
+  elif ibrav == -3:
+    A = self.cell_param[0]
+    self.celldm = [A,0,0,0,0,0]
+    coords = A/2 * np.array([[-1,1,1],[1,-1,1],[1,1,-1]])
+  elif ibrav == 4:
+    A,C = self.cell_param[0],self.cell_param[2]
+    self.celldm = [A,0,C,0,0,0]
+    coords = A * np.array([[1,0,0],[-.5,-np.sqrt(3)/2,0],[0,0,C/A]])
+  elif ibrav == 8:
     A,B,C = self.cell_param[0],self.cell_param[1],self.cell_param[2]
     self.celldm = [A,B,C,0,0,0]
     coords = np.array([[A,0,0],[0,B,0],[0,0,C]])
+  else:
+    raise ValueError('Lattice not defined for ibrav %d'%ibrav)
 
   if self.coord_type == 'angstrom':
     for a in self.atoms:
