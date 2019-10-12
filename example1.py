@@ -3,7 +3,7 @@ from CrysPy import CrysPy
 if '__main__' == __name__:
 
   # Define params
-  a = 5.
+  a = 5.65
 
   # Unit origin
   origin = [0,0,0]
@@ -15,8 +15,8 @@ if '__main__' == __name__:
   atoms = [[0,0,0], [.5,.5,.5]]
 
   # Label for each atom and colors
-  spec = ['Sn', 'Te']
-  spec_col = {'Sn':(1,0,0), 'Te':(0,0,1)}
+  spec = ['Ga', 'As']
+  spec_col = {'Ga':(1,0,0), 'As':(0,0,1)}
 
 
   pyc = CrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin)

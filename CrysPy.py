@@ -1,4 +1,4 @@
-from ReadQE import read_qe_file,qe_lattice,crystal_conversion
+from ToolsQE import read_qe_file,qe_lattice,crystal_conversion
 from Atom import Atom
 import vpython as vp
 import numpy as np
@@ -40,7 +40,6 @@ class CrysPy:
       if self.coord_type == 'angstrom':
         self.atoms = crystal_conversion(self.atoms, self.lattice, self.coord_type)
       
-
     if spec_col is None:
       self.spec = [i for i in range(self.natoms)]
       self.specD = {v:(1,1,1) for v in self.spec}
@@ -51,13 +50,14 @@ class CrysPy:
       assert(len(self.spec) == self.natoms)
 
     self.vAtoms = None
+    self.BZ_bound = None
     self.eval_dist = False
     self.selected_atoms = []
     self.selected_colors = []
     self.origin = np.array(origin)
 
-    # Construct Recip Lattice
-    self.rlattice = []
+    # Construct reciprocal lattice vectors
+    self.rlattice = 2*np.pi*np.linalg.inv(self.lattice).T
 
   def calc_dist ( self, a, b ):
       '''
@@ -161,11 +161,14 @@ class CrysPy:
     '''
     return self.vector(np.sum([v*self.lattice[i] for i,v in enumerate([ix,iy,iz])],axis=0))
 
-  def draw_brillouin_zone ( self ):
-    planes = []
-    poss = []
-    planes.append(vp.box(length=.01,height=4,width=4,pos=vp.vector(0,0,0),axis=vp.vector(1,0,0)))
-    quit()
+  def atomic_position ( self, v ):
+    '''
+    Calculate the atom's position within the unit cell
+
+    Arguments:
+      v (list or ndarray): List of 3 values, each to weight one of the 3 lattice vectors
+    '''
+    return np.sum(v*self.lattice, axis=1)
 
   def draw_bonds ( self, dist=1. ):
     '''
@@ -198,7 +201,6 @@ class CrysPy:
               if (a.pos-b.pos).mag <= dist[key]:
                 self.bonds.append(vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}))
 
-
   def draw_cell ( self, nx=1, ny=1, nz=1, boundary=False ):
     '''
     Create the cell simulation in the vpython environment
@@ -209,7 +211,6 @@ class CrysPy:
       nz (int): Number of cells to draw in z direction
       boundary (bool): Draw cell boundaries
     '''
-
 
     if boundary:
       lines = []
@@ -240,11 +241,69 @@ class CrysPy:
     coord = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
 
-  def atomic_position ( self, v ):
-    '''
-    Calculate the atom's position within the unit cell
 
-    Arguments:
-      v (list or ndarray): List of 3 values, each to weight one of the 3 lattice vectors
+  def draw_brillouin_zone ( self ):
     '''
-    return np.sum(v*self.lattice, axis=1)
+    Create the Brillouin Zone boundary in the vpython window
+    '''
+    from numpy.linalg import det,norm,solve
+
+    b_vec = self.rlattice
+    indices = [[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[0,1,1],[0,-1,-1],[1,0,0],[-1,0,0],[1,0,1],[-1,0,-1],[1,1,0],[-1,-1,0],[1,1,1],[-1,-1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[-1,1,0],[1,-1,0],[1,0,-1],[-1,0,1],[0,1,-1],[0,-1,1]]
+    G = [np.sum([[i[0]],[i[1]],[i[2]]]*b_vec,axis=0) for i in indices]
+    incl_G = np.ones(len(G))
+
+    # Determine which G vectors lie on BZ boundary
+    #   If G/2 is closer to Gamma than to another reciprocal lattice vector
+    for i,g1 in enumerate(G):
+      half_G = g1/2
+      for j,g2 in enumerate(G[:len(G)//2]):
+        if i != j and norm(half_G) >= norm(half_G-g2):
+          incl_G[i] = 0
+    planes = np.array([g for i,g in enumerate(G) if incl_G[i]])
+
+    corners = []
+    lp = len(planes)
+    # Search combinations of planes and save intersections as corners
+    for i,p1 in enumerate(planes):
+      for j,p2 in enumerate(planes[i+1:]):
+        for k,p3 in enumerate(planes[j+1:]):
+          M = np.array([p1,p2,p3])
+          sqr = lambda v : np.sum(v*v)
+          magG = .5 * np.array([sqr(p1),sqr(p2),sqr(p3)])
+          if not np.isclose(det(M),0.):
+            c = solve(M,magG)
+            corners.append(c)
+
+    # Set near zero vlues to zero explicitly
+    for i,c in enumerate(corners):
+      for j,v in enumerate(c):
+        if np.isclose(v,0):
+          corners[i][j] = 0.
+
+    # Select corners closer to Gamma than to another reciprocal lattice vector
+    # Then, eliminate any repeated corners
+    incl_C = np.ones(len(corners))
+    for i,c in enumerate(corners):
+      for g in G:
+        if norm(c) > norm(c-g)+1e-10:
+          incl_C[i] = 0
+
+    # Eliminate duplicate corners
+    corners = np.unique(np.array([t for i,t in enumerate(corners) if incl_C[i]]), axis=0)
+
+    pairs = []
+
+    # Compute pairs of points which share two planes
+    for ci,c1 in enumerate(corners):
+      for c2 in corners[ci+1:]:
+        for pi,p1 in enumerate(planes):
+          for p2 in planes[pi+1:]:
+            dists = [np.abs(np.sum(p*c)-np.sum(p*p)/2) for p in [p1,p2] for c in [c1,c2]]
+            if all(np.isclose(d,0.) for d in dists):
+              pairs.append((c1,c2))
+
+    self.BZ_bound = []
+    # Draw the boundary
+    for p in pairs:
+      self.BZ_bound.append(vp.curve(self.vector(p[0]), self.vector(p[1])))
