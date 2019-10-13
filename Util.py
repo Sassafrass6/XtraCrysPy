@@ -44,7 +44,6 @@ def read_qe_file ( self, fname, ftype='scf.in' ):
 def read_bxsf ( fname ):
   '''
   '''
-
   bands = None
   b_vec = None
   with open(fname) as f:
@@ -77,7 +76,6 @@ def crystal_conversion ( atoms, coords, coord_type ):
   coord (list or ndarray): List of 3 3d lattice vectors
   coord_type (str): String - 'angstrom'
   '''
-
   if coord_type == 'angstrom':
     conv =  0.529177210
     return np.array([[a[i]/(conv*np.linalg.norm(coords[i])) for i in range(3)] for a in atoms])
@@ -91,34 +89,80 @@ def qe_lattice ( ibrav, cell_param ):
 
   Arguments:
     ibrav (int): Quantum Espresso ibrav number
-    cell_param (list): The 6 Quantum Espresso cell parameters
+    cell_param (list): The 6 Quantum Espresso cell parameters (A,B,C,Cos(AB),Cos(AC),Cos(BC))
   '''
-
   if ibrav == 1:
     A = cell_param[0]
     coords = A * np.array([[1,0,0],[0,1,0],[0,0,0]])
   elif ibrav == 2:
     A = cell_param[0]
     coords = A/2 * np.array([[-1,0,1],[0,1,1],[-1,1,0]])
-  elif ibrav == 3:
+  elif ibrav == (3 or -3):
     A = cell_param[0]
-    coords = A/2 * np.array([[1,1,1],[-1,1,1],[-1,-1,1]])
-  elif ibrav == -3:
-    A = cell_param[0]
-    coords = A/2 * np.array([[-1,1,1],[1,-1,1],[1,1,-1]])
+    sgn = np.sign(ibrav)
+    coords = A/2 * np.array([[sgn,1,1],[-sgn,sgn,1],[-sgn,-sgn,sgn]])
   elif ibrav == 4:
     A,C = cell_param[0],cell_param[2]
     coords = A * np.array([[1,0,0],[-.5,-np.sqrt(3)/2,0],[0,0,C/A]])
+  elif ibrav == (5 or -5):
+    A,CG = cell_param[0],cell_param[3]
+    tx,ty,tz = np.sqrt((1-c)/2),np.sqrt((1-c)/6),np.sqrt((1+2*c)/3)
+    if ibrav == 5:
+      coords = A * np.array([[tx,-ty,tz],[0,2*ty,tz],[-tx,-ty,tz]])
+    else:
+      u = tz + 2*np.sqrt(2)*ty
+      v = tz - np.sqrt(2)*ty
+      coords = A/np.sqrt(3) * np.array([[u,v,v],[v,u,v],[v,v,u]])
+  elif ibrav == 6:
+    A,C = cell_param[0],cell_param[2]
+    coords = np.array([[A,0,0],[0,A,0],[0,0,C]])
+  elif ibrav == 7:
+    A,C = cell_param[0],cell_param[2]
+    coords = A/2 * np.array([1,-1,C/A],[1,1,C/A],[-1,-1,C/A])
   elif ibrav == 8:
     A,B,C = cell_param[0],cell_param[1],cell_param[2]
     coords = np.array([[A,0,0],[0,B,0],[0,0,C]])
+  elif ibrav == (9 or -9):
+    A,B,C = cell_param[0],cell_param[1],cell_param[2]
+    sng = np.sign(ibrav)
+    coords = .5 * np.array([[A,sng*B,0],[-sgn*A,B,0],[0,0,2*C]])
+  elif ibrav == 91:
+    A,B,C = cell_param[0],cell_param[1],cell_param[2]
+    coords = .5 * np.array([[2*A,0,0],[0,B,-C],[0,B,C]])
+  elif ibrav == 10:
+    A,B,C = cell_param[0],cell_param[1],cell_param[2]
+    coords = .5 * np.array([[A,0,C],[A,B,0],[0,B,C]])
+  elif ibrav == 11:
+    A,B,C = cell_param[0],cell_param[1],cell_param[2]
+    coords = .5 * np.array([[A,B,C],[-A,B,C],[-A,-B,C]])
+  elif ibrav == (12 or -12):
+    A,B,C = cell_param[0],cell_param[1],cell_param[2]
+    if ibrav == 12:
+      G = np.arccos(cell_param[3])
+      coords = np.array([A,0,0],[B*np.cos(G),B*np.sin(G),0],[0,0,C])
+    else:
+      G = np.arccos(cell_param[4])
+      coords = np.array([A,0,0],[0,B,0],[C*np.cos(G),0,C*np.sin(G)])
+  elif ibrav == (13 or -13):
+    A,B,C = cell_param[0],cell_param[1],cell_param[2]
+    if ibrav == 13:
+      G = np.arccos(cell_param[3])
+      coords = np.array([A/2,0,-C/2],[B*np.cos(G),B*np.sin(G),0],[A/2,0,C/2])
+    else:
+      G = np.arccos(cell_param[4])
+      coords = np.array([A/2,-B/2,0],[A/2,B/2,0],[C*np.cos(G),0,C*np.sin(G)])
+  elif ibrav == 14:
+    A,B,C,AB,AC,BC = tuple([cell_param[i] for i in range(6)])
+    G0,G1,G2 = np.arccos(AB),np.arccos(AC),np.arccos(BC)
+    v1,v2 = [A,0,0],[B*np.cos(G0),B*np.sin(G0),0]
+    v3 = [C*np.cos(G1),C*(np.cos(G2)-np.cos(G1)*np.cos(G0))/np.sin(G0),C*np.sqrt(1+2*np.cos(G2)*np.cos(G1)*np.cos(G0)-np.cos(G2)**2-np.cos(G1)**2-np.cos(G0)**2)/np.sin(G0)]
+    coords = np.array([v1,v2,v3])
   else:
     raise ValueError('Lattice not defined for ibrav %d'%ibrav)
 
   return coords
 
 def bravais_boundaries ( b_vec ):
-
     '''
     Create the Brillouin Zone boundary in the vpython window
 
@@ -174,7 +218,6 @@ def bravais_boundaries ( b_vec ):
     corners = np.unique(np.array([t for i,t in enumerate(corners) if incl_C[i]]), axis=0)
 
     pairs = []
-
     # Compute pairs of points which share two planes
     for ci,c1 in enumerate(corners):
       for c2 in corners[ci+1:]:

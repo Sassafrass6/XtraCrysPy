@@ -1,5 +1,3 @@
-from ToolsQE import read_qe_file,qe_lattice,crystal_conversion,read_bxsf,bravais_boundaries
-from Atom import Atom
 import vpython as vp
 import numpy as np
 
@@ -19,6 +17,7 @@ class CrysPy:
       w_width (int): Vpython window width
       w_height (int): Vpython window height
     '''
+    from Util import qe_lattice,read_qe_file,crystal_conversion
     self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=vp.color.black)
     self.dist_text = 'Distance (Disabled)'
     self.angle_text = 'Angle (Disabled)'
@@ -101,7 +100,8 @@ class CrysPy:
     '''
     self.reset_selection()
     self.eval_dist = not self.eval_dist
-    self.eval_angle = False
+    if self.eval_angle:
+      self.toggle_angle()
     self.dist_button.text = 'Distance (%s)'%('Enabled' if self.eval_dist else 'Disabled')
 
   def toggle_angle ( self ):
@@ -109,7 +109,8 @@ class CrysPy:
     Toggle the calculation of angle between atoms upon successive selection of two atoms
     '''
     self.reset_selection()
-    self.eval_dist = False
+    if self.eval_dist:
+      self.toggle_dist()
     self.eval_angle = not self.eval_angle
     self.angle_button.text = 'Angle (%s)'%('Enabled' if self.eval_angle else 'Disabled')
 
@@ -141,9 +142,8 @@ class CrysPy:
     Handle mouse click events. Used to select atoms for distance calculation
     '''
     new_atom = self.canvas.mouse.pick
-    is_sphere = lambda v : isinstance(v, vp.sphere)
     if self.eval_dist:
-      if is_sphere(new_atom):
+      if isinstance(new_atom, vp.sphere):
         if len(self.selected_atoms) == 2:
           self.reset_selection()
           self.select_atom(new_atom)
@@ -157,7 +157,7 @@ class CrysPy:
         else:
           self.select_atom(new_atom)
     elif self.eval_angle:
-      if is_sphere(new_atom):
+      if isinstance(new_atom, vp.sphere):
         if len(self.selected_atoms) == 3:
           self.reset_selection()
           self.select_atom(new_atom)
@@ -168,12 +168,15 @@ class CrysPy:
           else:
             self.select_atom(new_atom)
             self.calc_angle(self.selected_atoms)
+        elif len(self.selected_atoms) == 1 and self.selected_atoms[0] == new_atom:
+          old_atom = self.selected_atoms.pop()
+          old_atom.color = self.selected_colors.pop()
         else:
           self.select_atom(new_atom)
     else:
         if len(self.selected_atoms) > 0:
           self.reset_selection()
-        if is_sphere(new_atom):
+        if isinstance(new_atom, vp.sphere):
           self.select_atom(new_atom)
 
   def figure_cell_params ( self, ibrav ):
@@ -218,6 +221,9 @@ class CrysPy:
     return np.sum(v*lattice, axis=1)
 
   def clear_canvas ( self ):
+    '''
+    Resets the canvas to its default state
+    '''
     self.reset_selection()
     self.dist_obutton.text = self.dist_otext
 
@@ -230,7 +236,6 @@ class CrysPy:
 
     if self.vAtoms is not None:
       self.vAtoms = vpobject_destructor([a.vpy_sph for a in self.vAtoms])
-
     self.bonds = vpobject_destructor(self.bonds)
     self.BZ_bound = vpobject_destructor(self.BZ_bound)
     self.coord_axes = vpobject_destructor(self.coord_axes)
@@ -251,17 +256,12 @@ class CrysPy:
       self.bonds = [vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}) for i,a in enumerate(self.vAtoms) for j,b in enumerate(self.vAtoms) if i!=j and (a.pos-b.pos).mag<=dist]
     else:
       self.bonds = []
+      dist = {'%s_%s'%tuple(sorted(k.split('_'))):dist[k] for k in dist.keys()}
       for i,a in enumerate(self.vAtoms):
         for j,b in enumerate(self.vAtoms):
           if i != j:
-            key = None
-            tk = '%s_%s'%(a.species,b.species)
-            if tk in dist:
-              key = tk
-            tk = '%s_%s'%(b.species,a.species)
-            if tk in dist:
-              key = tk
-            if key is not None:
+            key = '%s_%s'%tuple(sorted([a.species,b.species]))
+            if key in dist:
               if (a.pos-b.pos).mag <= dist[key]:
                 self.bonds.append(vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}))
 
@@ -275,6 +275,7 @@ class CrysPy:
       nz (int): Number of cells to draw in z direction
       boundary (bool): Draw cell boundaries
     '''
+    from Atom import Atom
     if boundary:
       lines = []
       lat = self.lattice
@@ -311,7 +312,7 @@ class CrysPy:
     Arguments:
       b_vec (list or ndarray): 3 3-d vectors representing the reciprocal lattice vectors
     '''
-
+    from Util import bravais_boundaries
     if b_vec is None:
       b_vec = self.rlattice
 
@@ -359,6 +360,7 @@ class CrysPy:
     '''
     from numpy.linalg import det,norm,solve
     from scipy.fftpack import fftshift
+    from Util import read_bxsf
 
     b_vec,data = read_bxsf(fname)
     nx,ny,nz,nbnd = data.shape
