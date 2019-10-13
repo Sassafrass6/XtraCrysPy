@@ -17,7 +17,7 @@ class XCrysPy:
       w_width (int): Vpython window width
       w_height (int): Vpython window height
     '''
-    from Util import qe_lattice,read_qe_file,crystal_conversion
+    from .Util import qe_lattice,read_qe_file,crystal_conversion
     self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=vp.color.black)
     self.dist_text = 'Distance (Disabled)'
     self.angle_text = 'Angle (Disabled)'
@@ -99,9 +99,9 @@ class XCrysPy:
     Toggle the calculation of distance between atoms upon successive selection of two atoms
     '''
     self.reset_selection()
-    self.eval_dist = not self.eval_dist
     if self.eval_angle:
       self.toggle_angle()
+    self.eval_dist = not self.eval_dist
     self.dist_button.text = 'Distance (%s)'%('Enabled' if self.eval_dist else 'Disabled')
 
   def toggle_angle ( self ):
@@ -174,10 +174,17 @@ class XCrysPy:
         else:
           self.select_atom(new_atom)
     else:
-        if len(self.selected_atoms) > 0:
-          self.reset_selection()
         if isinstance(new_atom, vp.sphere):
-          self.select_atom(new_atom)
+          if len(self.selected_atoms) == 0:
+            self.select_atom(new_atom)
+          else:
+            old_atom = self.selected_atoms.pop()
+            old_atom.color = self.selected_colors.pop()
+            if old_atom != new_atom:
+              self.select_atom(new_atom)
+        else:
+          if len(self.selected_atoms) > 0:
+            self.reset_selection()
 
   def figure_cell_params ( self, ibrav ):
     pass
@@ -275,7 +282,7 @@ class XCrysPy:
       nz (int): Number of cells to draw in z direction
       boundary (bool): Draw cell boundaries
     '''
-    from Atom import Atom
+    from .Atom import Atom
     if boundary:
       lines = []
       lat = self.lattice
@@ -312,7 +319,7 @@ class XCrysPy:
     Arguments:
       b_vec (list or ndarray): 3 3-d vectors representing the reciprocal lattice vectors
     '''
-    from Util import bravais_boundaries
+    from .Util import bravais_boundaries
     if b_vec is None:
       b_vec = self.rlattice
 
@@ -360,7 +367,7 @@ class XCrysPy:
     '''
     from numpy.linalg import det,norm,solve
     from scipy.fftpack import fftshift
-    from Util import read_bxsf
+    from .Util import read_bxsf
 
     b_vec,data = read_bxsf(fname)
     nx,ny,nz,nbnd = data.shape

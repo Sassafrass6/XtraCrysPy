@@ -1,5 +1,4 @@
 import numpy as np
-import re
 
 def read_qe_file ( self, fname, ftype='scf.in' ):
   '''
@@ -9,6 +8,7 @@ def read_qe_file ( self, fname, ftype='scf.in' ):
     fname (str): Quantum Espresso inputfile name
     ftype (str): Type of QE file
   '''
+  import re
   if ftype == 'scf.in':
     with open(fname) as f:
       strip_int = lambda s : int(re.search(r'\d+',s).group())
@@ -188,7 +188,6 @@ def bravais_boundaries ( b_vec ):
     planes = np.array([g for i,g in enumerate(G) if incl_G[i]])
 
     corners = []
-    lp = len(planes)
     # Search combinations of planes and save intersections as corners
     for i,p1 in enumerate(planes):
       for j,p2 in enumerate(planes[i+1:]):
