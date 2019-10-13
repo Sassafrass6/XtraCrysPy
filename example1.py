@@ -18,7 +18,7 @@ if '__main__' == __name__:
   spec = ['Ga', 'As']
   spec_col = {'Ga':(1,0,0), 'As':(0,0,1)}
 
-
+  # Plot with CrysPy
   pyc = CrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin)
   pyc.draw_cell(nx=4, ny=4, nz=4)
   pyc.draw_bonds(dist=3)

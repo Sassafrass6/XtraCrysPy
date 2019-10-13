@@ -2,10 +2,8 @@ from CrysPy import CrysPy
 
 if '__main__' == __name__:
 
-  # Define params
-  a = 5.65
-  fcc_vecs = [[a/2.,a/2.,0], [0,a/2.,a/2.], [a/2.,0,a/2.]]
-  atoms = [[0,0,0]]
-
-  pyc = CrysPy(lattice=fcc_vecs, basis=atoms)
-  pyc.draw_brillouin_zone()
+  # Spin texture plotted in reciprocal space
+  # Arrow direction represents spin expectation and color represents energy.
+  prefix = 'SnTe_data/'
+  cpy = CrysPy(qe_fname=prefix+'SnTe.scf.in')
+  cpy.plot_spin_texture(prefix+'Fermi_surf_band_4_0.npz', prefix+'spin_text_band_5.npz')

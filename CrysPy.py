@@ -1,4 +1,4 @@
-from ToolsQE import read_qe_file,qe_lattice,crystal_conversion
+from ToolsQE import read_qe_file,qe_lattice,crystal_conversion,read_bxsf,bravais_boundaries
 from Atom import Atom
 import vpython as vp
 import numpy as np
@@ -19,10 +19,15 @@ class CrysPy:
       w_width (int): Vpython window width
       w_height (int): Vpython window height
     '''
-
     self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=vp.color.black)
-    self.dist_button = vp.button(text='Distance (Disabled)', bind=lambda:self.toggle_dist())
-    self.text_button = vp.button(text='0.000000 angstroms', bind=lambda:0)
+    self.dist_text = 'Distance (Disabled)'
+    self.angle_text = 'Angle (Disabled)'
+    self.dist_otext = '0.000000 angstroms'
+    self.angle_otext = '0.000000 degrees'
+    self.dist_button = vp.button(text=self.dist_text, bind=lambda:self.toggle_dist())
+    self.dist_obutton = vp.button(text=self.dist_otext, bind=lambda:0)
+    self.angle_button = vp.button(text = self.angle_text, bind=lambda:self.toggle_angle())
+    self.angle_obutton = vp.button(text = self.angle_otext, bind=lambda:0)
     self.canvas.bind('click', self.click)
 
     self.canvas.forward = vp.vector(0,+1,0)
@@ -49,9 +54,13 @@ class CrysPy:
       self.specD = spec_col
       assert(len(self.spec) == self.natoms)
 
+    self.bonds = None
     self.vAtoms = None
+    self.arrows = None
     self.BZ_bound = None
+    self.coord_axes = None
     self.eval_dist = False
+    self.eval_angle = False
     self.selected_atoms = []
     self.selected_colors = []
     self.origin = np.array(origin)
@@ -69,8 +78,22 @@ class CrysPy:
       '''
       dist = b.pos - a.pos
       text = '%f angstroms'%dist.mag
-      print(text)
-      self.text_button.text = text
+      print('Distance = %s'%text)
+      self.dist_obutton.text = text
+
+  def calc_angle ( self, atoms ):
+    '''
+    Calculate the angle between three atoms. Angle between vectors created from indices 0-1 and 2-1
+
+    Arguments:
+      atoms (list): list of 3 vpython spheres
+    '''
+    v1 = atoms[0].pos - atoms[1].pos
+    v2 = atoms[2].pos - atoms[1].pos
+    angle = np.arccos(v1.dot(v2)/(v1.mag*v2.mag))
+    text = '%f degrees'%np.degrees(angle)
+    print('Angle = %s (%f radians)'%(text,angle))
+    self.angle_obutton.text = text
 
   def toggle_dist ( self ):
     '''
@@ -78,7 +101,17 @@ class CrysPy:
     '''
     self.reset_selection()
     self.eval_dist = not self.eval_dist
+    self.eval_angle = False
     self.dist_button.text = 'Distance (%s)'%('Enabled' if self.eval_dist else 'Disabled')
+
+  def toggle_angle ( self ):
+    '''
+    Toggle the calculation of angle between atoms upon successive selection of two atoms
+    '''
+    self.reset_selection()
+    self.eval_dist = False
+    self.eval_angle = not self.eval_angle
+    self.angle_button.text = 'Angle (%s)'%('Enabled' if self.eval_angle else 'Disabled')
 
   def select_atom ( self, atom ):
     '''
@@ -115,12 +148,26 @@ class CrysPy:
           self.reset_selection()
           self.select_atom(new_atom)
         elif len(self.selected_atoms) == 1:
-          if new_atom == self.selected_atoms[0]:
+          if new_atom in self.selected_atoms:
             old_atom = self.selected_atoms.pop()
             old_atom.color = self.selected_colors.pop()
           else:
             self.select_atom(new_atom)
             self.calc_dist(self.selected_atoms[0], self.selected_atoms[1])
+        else:
+          self.select_atom(new_atom)
+    elif self.eval_angle:
+      if is_sphere(new_atom):
+        if len(self.selected_atoms) == 3:
+          self.reset_selection()
+          self.select_atom(new_atom)
+        elif len(self.selected_atoms) == 2:
+          if new_atom in self.selected_atoms:
+            old_atom = self.selected_atoms.pop()
+            old_atom.color = self.selected_colors.pop()
+          else:
+            self.select_atom(new_atom)
+            self.calc_angle(self.selected_atoms)
         else:
           self.select_atom(new_atom)
     else:
@@ -161,14 +208,32 @@ class CrysPy:
     '''
     return self.vector(np.sum([v*self.lattice[i] for i,v in enumerate([ix,iy,iz])],axis=0))
 
-  def atomic_position ( self, v ):
+  def atomic_position ( self, v, lattice ):
     '''
     Calculate the atom's position within the unit cell
 
     Arguments:
       v (list or ndarray): List of 3 values, each to weight one of the 3 lattice vectors
     '''
-    return np.sum(v*self.lattice, axis=1)
+    return np.sum(v*lattice, axis=1)
+
+  def clear_canvas ( self ):
+    self.reset_selection()
+    self.dist_obutton.text = self.dist_otext
+
+    def vpobject_destructor ( obj ):
+      if obj is not None:
+        for o in obj:
+          o.visible = False
+          del o
+      return None
+
+    if self.vAtoms is not None:
+      self.vAtoms = vpobject_destructor([a.vpy_sph for a in self.vAtoms])
+
+    self.bonds = vpobject_destructor(self.bonds)
+    self.BZ_bound = vpobject_destructor(self.BZ_bound)
+    self.coord_axes = vpobject_destructor(self.coord_axes)
 
   def draw_bonds ( self, dist=1. ):
     '''
@@ -179,7 +244,6 @@ class CrysPy:
     Arguments:
       dits (float or dict): A float describes global bond distance, while a dictionary can specify distances for various pairs of atoms
     '''
-
     if self.vAtoms is None or len(self.vAtoms) == 1:
       raise ValueError('Not enough Atoms have been drawn')
 
@@ -211,7 +275,6 @@ class CrysPy:
       nz (int): Number of cells to draw in z direction
       boundary (bool): Draw cell boundaries
     '''
-
     if boundary:
       lines = []
       lat = self.lattice
@@ -232,78 +295,89 @@ class CrysPy:
         for iz in range(nz):
           c_pos = self.vector(self.origin) + self.get_cell_pos(ix,iy,iz)
           for i,a in enumerate(self.atoms):
-            a_pos = c_pos + self.vector(self.atomic_position(a))
+            a_pos = c_pos + self.vector(self.atomic_position(a,self.lattice))
             color = self.vector(self.specD[self.spec[i]])
             self.vAtoms.append(Atom(a_pos,col=color,species=self.spec[i]))
 
     apos = [np.min([v.pos.x for v in self.vAtoms])-5, 0, 0]
     vpa = lambda a : vp.arrow(pos=self.vector(apos),axis=self.vector(a))
-    coord = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
+    self.coord_axes = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
 
-
-  def draw_brillouin_zone ( self ):
+  def draw_BZ_boundary ( self, b_vec=None ):
     '''
-    Create the Brillouin Zone boundary in the vpython window
+    Draw the Brillouin Zone boundary in the vpython window
+
+    Arguments:
+      b_vec (list or ndarray): 3 3-d vectors representing the reciprocal lattice vectors
+    '''
+
+    if b_vec is None:
+      b_vec = self.rlattice
+
+    boundary = bravais_boundaries(b_vec)
+    self.BZ_bound = []
+    for b in boundary:
+      self.BZ_bound.append(vp.curve(self.vector(b[0]), self.vector(b[1])))
+
+  def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=10, e_dw=-10 ):
+    '''
+    Plots the spin texture read from the format output by PAOFLOW
+
+    Arguments:
+      fermi_fname (str): Name for Fermi surface file, representing energy eigenvalues in BZ for such band
+      spin_fname (str): Name for spin texture file, representing spin direction in BZ for such band
+      e_up (float): BZ points with energies higher than e_up wont be plotted
+      e_dw (float): BZ points with energies lower than e_dw wont be plotted 
+    '''
+    from scipy.fftpack import fftshift
+
+    fdata, sdata = np.load(fermi_fname), np.load(spin_fname)
+    eig, spin = fdata['nameband'], sdata['spinband']
+    nx,ny,nz,_ = spin.shape
+
+    eig = fftshift(eig,axes=(0,1,2))
+    S = np.moveaxis(np.real(spin[:,:,:,:]),spin.ndim-1,0)
+
+    self.draw_BZ_boundary(self.rlattice)
+
+    self.arrows = []
+    colscale = np.mean(eig)
+    vp_shift = .5 * np.array([1,1,0])
+    for x in range(nx):
+      for y in range(ny):
+        for z in range(nz):
+          bv = eig[x,y,z]
+          if bv > e_dw and bv < e_up:
+            point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, self.rlattice)
+            self.arrows.append(vp.arrow(pos=self.vector(point),axis=self.vector(S[:,x,y,z]), length=.01, color=self.vector([bv/colscale,.5,.1])))
+
+
+  def plot_bxsf ( self, fname, bands=[0], fermiup=1., fermidw=-1. ):
+    '''
+    Create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
     '''
     from numpy.linalg import det,norm,solve
+    from scipy.fftpack import fftshift
 
-    b_vec = self.rlattice
-    indices = [[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[0,1,1],[0,-1,-1],[1,0,0],[-1,0,0],[1,0,1],[-1,0,-1],[1,1,0],[-1,-1,0],[1,1,1],[-1,-1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[-1,1,0],[1,-1,0],[1,0,-1],[-1,0,1],[0,1,-1],[0,-1,1]]
-    G = [np.sum([[i[0]],[i[1]],[i[2]]]*b_vec,axis=0) for i in indices]
-    incl_G = np.ones(len(G))
+    b_vec,data = read_bxsf(fname)
+    nx,ny,nz,nbnd = data.shape
 
-    # Determine which G vectors lie on BZ boundary
-    #   If G/2 is closer to Gamma than to another reciprocal lattice vector
-    for i,g1 in enumerate(G):
-      half_G = g1/2
-      for j,g2 in enumerate(G[:len(G)//2]):
-        if i != j and norm(half_G) >= norm(half_G-g2):
-          incl_G[i] = 0
-    planes = np.array([g for i,g in enumerate(G) if incl_G[i]])
+    self.draw_BZ_boundary(b_vec)
 
-    corners = []
-    lp = len(planes)
-    # Search combinations of planes and save intersections as corners
-    for i,p1 in enumerate(planes):
-      for j,p2 in enumerate(planes[i+1:]):
-        for k,p3 in enumerate(planes[j+1:]):
-          M = np.array([p1,p2,p3])
-          sqr = lambda v : np.sum(v*v)
-          magG = .5 * np.array([sqr(p1),sqr(p2),sqr(p3)])
-          if not np.isclose(det(M),0.):
-            c = solve(M,magG)
-            corners.append(c)
+    poss = []
+    data = fftshift(data,axes=(0,1,2))
+    vp_shift = .5 * np.array([1,1,0])
+    for x in range(nx):
+      for y in range(ny):
+        for z in range(nz):
+          for b in bands:
+            bv = data[x,y,z,b]
+            if bv > fermidw and bv < fermiup:
+              point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, b_vec)
+              poss.append(self.vector(point))
 
-    # Set near zero vlues to zero explicitly
-    for i,c in enumerate(corners):
-      for j,v in enumerate(c):
-        if np.isclose(v,0):
-          corners[i][j] = 0.
-
-    # Select corners closer to Gamma than to another reciprocal lattice vector
-    # Then, eliminate any repeated corners
-    incl_C = np.ones(len(corners))
-    for i,c in enumerate(corners):
-      for g in G:
-        if norm(c) > norm(c-g)+1e-10:
-          incl_C[i] = 0
-
-    # Eliminate duplicate corners
-    corners = np.unique(np.array([t for i,t in enumerate(corners) if incl_C[i]]), axis=0)
-
-    pairs = []
-
-    # Compute pairs of points which share two planes
-    for ci,c1 in enumerate(corners):
-      for c2 in corners[ci+1:]:
-        for pi,p1 in enumerate(planes):
-          for p2 in planes[pi+1:]:
-            dists = [np.abs(np.sum(p*c)-np.sum(p*p)/2) for p in [p1,p2] for c in [c1,c2]]
-            if all(np.isclose(d,0.) for d in dists):
-              pairs.append((c1,c2))
-
-    self.BZ_bound = []
-    # Draw the boundary
-    for p in pairs:
-      self.BZ_bound.append(vp.curve(self.vector(p[0]), self.vector(p[1])))
+    self.vAtoms = None
+    srad = np.min([1/n for n in (nx,ny,nz)])
+    for p in poss:
+      self.vAtoms.append(vp.sphere(pos=p,radius=srad))
