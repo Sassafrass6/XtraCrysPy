@@ -1,7 +1,7 @@
-from CrysPy import CrysPy
+from XCrysPy import XCrysPy
 
 if '__main__' == __name__:
 
   # Draw the unit cell for Iron
-  crystal = CrysPy(qe_fname='Fe.scf.in')
+  crystal = XCrysPy(qe_fname='Fe.scf.in')
   crystal.draw_cell(boundary=True)

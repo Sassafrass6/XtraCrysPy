@@ -1,7 +1,7 @@
 import vpython as vp
 import numpy as np
 
-class CrysPy:
+class XCrysPy:
 
   def __init__ ( self, qe_fname=None, lattice=None, basis=None, origin=[0,0,0], species=None, spec_col=None, w_width=1000, w_height=700 ):
     '''
