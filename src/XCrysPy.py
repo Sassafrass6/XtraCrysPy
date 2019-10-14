@@ -3,7 +3,7 @@ import numpy as np
 
 class XCrysPy:
 
-  def __init__ ( self, qe_fname=None, lattice=None, basis=None, origin=[0,0,0], species=None, spec_col=None, w_width=1000, w_height=700 ):
+  def __init__ ( self, qe_fname=None, lattice=None, basis=None, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700 ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -29,6 +29,8 @@ class XCrysPy:
     self.angle_obutton = vp.button(text = self.angle_otext, bind=lambda:0)
     self.canvas.bind('click', self.click)
 
+    if not perspective:
+      self.canvas.fov = 0.01
     self.canvas.forward = vp.vector(0,+1,0)
     self.canvas.up = vp.vector(0,0,1)
     self.orient_lights()
@@ -403,7 +405,7 @@ class XCrysPy:
               point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, b_vec)
               poss.append(self.vector(point))
 
-    self.vAtoms = None
+    self.vAtoms = []
     srad = np.min([1/n for n in (nx,ny,nz)])
     for p in poss:
       self.vAtoms.append(vp.sphere(pos=p,radius=srad))
