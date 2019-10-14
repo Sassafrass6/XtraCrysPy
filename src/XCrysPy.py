@@ -61,6 +61,7 @@ class XCrysPy:
     self.eval_dist = False
     self.eval_angle = False
     self.selected_atoms = []
+    self.selected_bonds = []
     self.selected_colors = []
     self.origin = np.array(origin)
 
@@ -123,9 +124,25 @@ class XCrysPy:
     '''
     select_col = vp.vector(0,1,1)
     col = atom.color
+    if len(self.selected_atoms) > 0:
+      bpos1 = self.selected_atoms[-1].pos
+      bpos2 = atom.pos
+      self.selected_bonds.append(vp.curve({'pos':bpos1,'color':select_col},{'pos':bpos2,'color':select_col}))
     self.selected_atoms.append(atom)
     self.selected_colors.append(vp.vector(col.x, col.y, col.z))
     atom.color = select_col
+
+  def pop_prev_atom ( self ):
+    '''
+    Deselect the most recently selected atom
+    '''
+    old_atom = self.selected_atoms.pop()
+    old_atom.color = self.selected_colors.pop()
+    if len(self.selected_bonds) > 0:
+      bond = self.selected_bonds.pop()
+      bond.visible = False
+      del bond
+    return old_atom
 
   def reset_selection ( self ):
     '''
@@ -134,7 +151,11 @@ class XCrysPy:
     if len(self.selected_atoms) != 0:
       for i,a in enumerate(self.selected_atoms):
         a.color = self.selected_colors[i]
+      for b in self.selected_bonds:
+        b.visible = False
+        del b
       self.selected_atoms = []
+      self.selected_bonds = []
       self.selected_colors = []
 
   def click ( self ):
@@ -149,8 +170,7 @@ class XCrysPy:
           self.select_atom(new_atom)
         elif len(self.selected_atoms) == 1:
           if new_atom in self.selected_atoms:
-            old_atom = self.selected_atoms.pop()
-            old_atom.color = self.selected_colors.pop()
+            self.pop_prev_atom()
           else:
             self.select_atom(new_atom)
             self.calc_dist(self.selected_atoms[0], self.selected_atoms[1])
@@ -163,14 +183,12 @@ class XCrysPy:
           self.select_atom(new_atom)
         elif len(self.selected_atoms) == 2:
           if new_atom in self.selected_atoms:
-            old_atom = self.selected_atoms.pop()
-            old_atom.color = self.selected_colors.pop()
+            self.pop_prev_atom()
           else:
             self.select_atom(new_atom)
             self.calc_angle(self.selected_atoms)
         elif len(self.selected_atoms) == 1 and self.selected_atoms[0] == new_atom:
-          old_atom = self.selected_atoms.pop()
-          old_atom.color = self.selected_colors.pop()
+          self.pop_prev_atom()
         else:
           self.select_atom(new_atom)
     else:
@@ -178,8 +196,7 @@ class XCrysPy:
           if len(self.selected_atoms) == 0:
             self.select_atom(new_atom)
           else:
-            old_atom = self.selected_atoms.pop()
-            old_atom.color = self.selected_colors.pop()
+            old_atom = self.pop_prev_atom()
             if old_atom != new_atom:
               self.select_atom(new_atom)
         else:
