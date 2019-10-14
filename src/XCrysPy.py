@@ -33,26 +33,6 @@ class XCrysPy:
     self.canvas.up = vp.vector(0,0,1)
     self.orient_lights()
 
-    self.spec = None
-    if qe_fname is None:
-      self.atoms = basis
-      self.natoms = len(basis)
-      self.lattice = np.array(lattice)
-    else:
-      read_qe_file(self,qe_fname)
-      self.lattice = qe_lattice(self.ibrav, self.cell_param)
-      if self.coord_type == 'angstrom':
-        self.atoms = crystal_conversion(self.atoms, self.lattice, self.coord_type)
-      
-    if spec_col is None:
-      self.spec = [i for i in range(self.natoms)]
-      self.specD = {v:(1,1,1) for v in self.spec}
-    else:
-      if self.spec is None:
-        self.spec = species
-      self.specD = spec_col
-      assert(len(self.spec) == self.natoms)
-
     self.bonds = None
     self.vAtoms = None
     self.arrows = None
@@ -64,8 +44,31 @@ class XCrysPy:
     self.selected_colors = []
     self.origin = np.array(origin)
 
+    if qe_fname is None:
+      if (lattice or basis) is None:
+        print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
+        return
+      self.atoms = basis
+      self.natoms = len(basis)
+      self.lattice = np.array(lattice)
+    else:
+      read_qe_file(self,qe_fname)
+      self.lattice = qe_lattice(self.ibrav, self.cell_param)
+      if self.coord_type == 'angstrom':
+        self.atoms = crystal_conversion(self.atoms, self.lattice, self.coord_type)
+
     # Construct reciprocal lattice vectors
     self.rlattice = 2*np.pi*np.linalg.inv(self.lattice).T
+      
+    self.spec = None
+    if spec_col is None:
+      self.spec = [i for i in range(self.natoms)]
+      self.specD = {v:(1,1,1) for v in self.spec}
+    else:
+      if self.spec is None:
+        self.spec = species
+      self.specD = spec_col
+      assert(len(self.spec) == self.natoms)
 
   def calc_dist ( self, a, b ):
       '''
@@ -386,7 +389,7 @@ class XCrysPy:
               point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, b_vec)
               poss.append(self.vector(point))
 
-    self.vAtoms = None
+    self.vAtoms = []
     srad = np.min([1/n for n in (nx,ny,nz)])
     for p in poss:
       self.vAtoms.append(vp.sphere(pos=p,radius=srad))

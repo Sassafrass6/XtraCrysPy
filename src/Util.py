@@ -55,8 +55,6 @@ def read_bxsf ( fname ):
         nx,ny,nz = (int(v) for v in f.readline().split()); f.readline()
         b_vec = np.array([[float(v) for v in f.readline().split()] for _ in range(3)])
         bands = np.zeros((nx,ny,nz,nbnd), dtype=float)
-        print(nbnd,nx,ny,nz)
-        print(b_vec)
         for n in range(nbnd):
           f.readline()
           for i in range(nx):
