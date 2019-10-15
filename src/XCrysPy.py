@@ -320,7 +320,7 @@ class XCrysPy:
               if (a.pos-b.pos).mag <= dist[key]:
                 self.bonds.append(vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}))
 
-  def draw_cell ( self, nx=1, ny=1, nz=1, boundary=False ):
+  def draw_cell ( self, nx=1, ny=1, nz=1, coord_axes=True, boundary=False ):
     '''
     Create the cell simulation in the vpython environment
 
@@ -356,7 +356,8 @@ class XCrysPy:
             self.vAtoms.append(Atom(a_pos,col=color,species=self.spec[i]))
 
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
-    self.draw_coord_axis()
+    if coord_axes:
+      self.draw_coord_axis()
 
   def draw_BZ_boundary ( self, b_vec=None ):
     '''
