@@ -19,7 +19,7 @@ class XCrysPy:
       bg_col (tuple): Background color (R,G,B)
       bnd_col (tuple): Brillouin Zone boundary color (R,G,B)
     '''
-    from .Util import qe_lattice,read_qe_file,crystal_conversion
+    from .Util import qe_lattice,read_scf_file,crystal_conversion
     self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=self.vector(bg_col))
     self.dist_text = 'Distance (Disabled)'
     self.angle_text = 'Angle (Disabled)'
@@ -41,6 +41,7 @@ class XCrysPy:
     self.bonds = None
     self.vAtoms = None
     self.arrows = None
+    self.relax_index = 0
     self.BZ_corners = None
     self.coord_axes = None
     self.eval_dist = False
@@ -61,7 +62,11 @@ class XCrysPy:
       self.natoms = len(basis)
       self.lattice = np.array(lattice)
     else:
-      read_qe_file(self,qe_fname)
+      if 'relax' in qe_fname:
+        print('I Want to Relax!\nRelax Index: %d'%self.relax_index)
+        quit()
+      else:
+        read_scf_file(self,qe_fname)
       self.lattice = qe_lattice(self.ibrav, self.cell_param)
       if self.coord_type == 'angstrom':
         self.atoms = crystal_conversion(self.atoms, self.lattice, self.coord_type)

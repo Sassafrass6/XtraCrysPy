@@ -1,6 +1,6 @@
 import numpy as np
 
-def read_qe_file ( self, fname, ftype='scf.in' ):
+def read_scf_file ( self, fname ):
   '''
   Read necessary information from QE file. (Currently only input files are readable)
 
@@ -9,37 +9,36 @@ def read_qe_file ( self, fname, ftype='scf.in' ):
     ftype (str): Type of QE file
   '''
   import re
-  if ftype == 'scf.in':
-    with open(fname) as f:
-      strip_int = lambda s : int(re.search(r'\d+',s).group())
-      strip_float = lambda s : float(re.search(r'\d+.\d+',s).group())
-      natoms = 0
-      self.spec = []
-      self.atoms = []
-      self.cell_param= 6*[0]
+  with open(fname) as f:
+    strip_int = lambda s : int(re.search(r'\d+',s).group())
+    strip_float = lambda s : float(re.search(r'\d+.\d+',s).group())
+    natoms = 0
+    self.spec = []
+    self.atoms = []
+    self.cell_param= 6*[0]
 
+    line = f.readline()
+    while line != '':
+      for l in line.split(','):
+        if 'ibrav' in l:
+          self.ibrav = strip_int(l)
+        elif 'celldm' in l:
+          dm = strip_int(l) - 1
+          self.cell_param[dm] = strip_float(l)
+        elif 'nat' in l:
+          self.natoms = natoms = strip_int(l)
+        elif 'ATOMIC_POSITIONS' in l:
+          ls = l.split()
+          self.coord_type = ls[1][1:-1] if len(ls)>1 else 'alat'
+          while natoms > 0:
+            ls = f.readline().split()
+            if len(ls) == 4:
+              natoms -= 1
+              self.spec.append(ls[0])
+              self.atoms.append([float(v) for v in ls[1:]])
       line = f.readline()
-      while line != '':
-        for l in line.split(','):
-          if 'ibrav' in l:
-            self.ibrav = strip_int(l)
-          elif 'celldm' in l:
-            dm = strip_int(l) - 1
-            self.cell_param[dm] = strip_float(l)
-          elif 'nat' in l:
-            self.natoms = natoms = strip_int(l)
-          elif 'ATOMIC_POSITIONS' in l:
-            ls = l.split()
-            self.coord_type = ls[1][1:-1] if len(ls)>1 else 'alat'
-            while natoms > 0:
-              ls = f.readline().split()
-              if len(ls) == 4:
-                natoms -= 1
-                self.spec.append(ls[0])
-                self.atoms.append([float(v) for v in ls[1:]])
-        line = f.readline()
-      self.cell_param[1] *= self.cell_param[0]
-      self.cell_param[2] *= self.cell_param[0]
+    self.cell_param[1] *= self.cell_param[0]
+    self.cell_param[2] *= self.cell_param[0]
 
 def read_bxsf ( fname ):
   '''
