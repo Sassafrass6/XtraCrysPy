@@ -3,7 +3,7 @@ import numpy as np
 
 class XCrysPy:
 
-  def __init__ ( self, qe_fname=None, lattice=None, basis=None, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700 ):
+  def __init__ ( self, qe_fname=None, lattice=None, basis=None, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1200, w_height=750, bg_col=(0,0,0), bnd_col=(1,1,1) ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -16,9 +16,11 @@ class XCrysPy:
       sepc_col (dict): Dictionary linking atom identfiers (e.g. 'Si' or 'He') to color tuples (R,G,B)
       w_width (int): Vpython window width
       w_height (int): Vpython window height
+      bg_col (tuple): Background color (R,G,B)
+      bnd_col (tuple): Brillouin Zone boundary color (R,G,B)
     '''
     from .Util import qe_lattice,read_qe_file,crystal_conversion
-    self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=vp.color.black)
+    self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=self.vector(bg_col))
     self.dist_text = 'Distance (Disabled)'
     self.angle_text = 'Angle (Disabled)'
     self.dist_otext = '0.000000 angstroms'
@@ -35,6 +37,7 @@ class XCrysPy:
     self.canvas.up = vp.vector(0,0,1)
     self.orient_lights()
 
+    self.spec = None
     self.bonds = None
     self.vAtoms = None
     self.arrows = None
@@ -43,14 +46,18 @@ class XCrysPy:
     self.eval_dist = False
     self.eval_angle = False
     self.selected_atoms = []
+    self.selected_bonds = []
     self.selected_colors = []
     self.origin = np.array(origin)
 
+    self.bnd_col = self.vector(bnd_col) if bnd_col is not None else vp.vector(1,1,1)
+
     if qe_fname is None:
-      if (lattice or basis) is None:
+      if (lattice or basis or species) is None:
         print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
         return
       self.atoms = basis
+      self.spec = species
       self.natoms = len(basis)
       self.lattice = np.array(lattice)
     else:
@@ -61,16 +68,13 @@ class XCrysPy:
 
     # Construct reciprocal lattice vectors
     self.rlattice = 2*np.pi*np.linalg.inv(self.lattice).T
-      
-    self.spec = None
-    if spec_col is None:
+
+    if species is None and self.spec is None:
       self.spec = [i for i in range(self.natoms)]
+    if spec_col is None:
       self.specD = {v:(1,1,1) for v in self.spec}
     else:
-      if self.spec is None:
-        self.spec = species
       self.specD = spec_col
-      assert(len(self.spec) == self.natoms)
 
   def calc_dist ( self, a, b ):
       '''
@@ -270,6 +274,17 @@ class XCrysPy:
     self.BZ_corners = vpobject_destructor(self.BZ_corners)
     self.coord_axes = vpobject_destructor(self.coord_axes)
 
+  def draw_coord_axis ( self, offset=[-10,0,0], length=1. ):
+    '''
+    Draw the Coordinate Axes
+
+    Arguments:
+      length (int): Length of the coordiniate axis arrows
+    '''
+    apos = np.array(offset)
+    vpa = lambda a : vp.arrow(pos=self.vector(apos),axis=self.vector(length*np.array(a)))
+    self.coord_axes = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
+
   def draw_bonds ( self, dist=1. ):
     '''
     Draw the bonds if atoms are closer than 'dist' together.
@@ -318,7 +333,7 @@ class XCrysPy:
             alines += [[lat[k],lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
             orig = self.get_cell_pos(ix,iy,iz)
             lines += [[orig+self.vector(al[0]),orig+self.vector(al[1])] for al in alines]
-      lines = [vp.curve(l[0],l[1]) for l in lines]
+      lines = [vp.curve(l[0],l[1],color=self.bnd_col) for l in lines]
 
     self.vAtoms = []
     for ix in range(nx):
@@ -330,10 +345,8 @@ class XCrysPy:
             color = self.vector(self.specD[self.spec[i]])
             self.vAtoms.append(Atom(a_pos,col=color,species=self.spec[i]))
 
-    apos = [np.min([v.pos.x for v in self.vAtoms])-5, 0, 0]
-    vpa = lambda a : vp.arrow(pos=self.vector(apos),axis=self.vector(a))
-    self.coord_axes = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
+    self.draw_coord_axis()
 
   def draw_BZ_boundary ( self, b_vec=None ):
     '''
@@ -346,10 +359,10 @@ class XCrysPy:
     if b_vec is None:
       b_vec = self.rlattice
 
-    self.BZ_planes,corners = bravais_boundaries(b_vec)
     self.BZ_curves = []
+    self.BZ_planes,corners = bravais_boundaries(b_vec)
     for c in corners:
-      self.BZ_curves.append(vp.curve(self.vector(c[0]), self.vector(c[1])))
+      self.BZ_curves.append(vp.curve(self.vector(c[0]), self.vector(c[1]), color=self.bnd_col))
 
   def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=10, e_dw=-10 ):
     '''
@@ -450,6 +463,8 @@ class XCrysPy:
     for i,p in enumerate(poss):
       col = colors[0] if static_color else colors[i]
       self.vAtoms.append(vp.points(pos=p,color=self.vector(col)))
+
+    self.draw_coord_axis(length=.1*np.linalg.norm(b_vec[0]),offset=[-1,0,0])
 
     draw_flag.visible = False
     del draw_flag

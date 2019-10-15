@@ -20,5 +20,5 @@ if '__main__' == __name__:
 
   # Plot with CrysPy
   cpy = XCP.XCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin)
-  cpy.draw_cell(nx=4, ny=4, nz=4)
+  cpy.draw_cell(nx=3, ny=3, nz=3)
   cpy.draw_bonds(dist=3)
