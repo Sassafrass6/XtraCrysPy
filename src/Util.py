@@ -224,4 +224,6 @@ def bravais_boundaries ( b_vec ):
             if all(np.isclose(d,0.) for d in dists):
               pairs.append((c1,c2))
 
-    return pairs
+    # Adjust planes to represent midpoints between reciprocal lattice points
+    planes = [p/2 for p in planes]
+    return planes,pairs

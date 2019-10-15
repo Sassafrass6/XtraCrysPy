@@ -30,7 +30,7 @@ class XCrysPy:
     self.canvas.bind('click', self.click)
 
     if not perspective:
-      self.canvas.fov = 0.01
+      self.canvas.fov = .01
     self.canvas.forward = vp.vector(0,+1,0)
     self.canvas.up = vp.vector(0,0,1)
     self.orient_lights()
@@ -38,7 +38,7 @@ class XCrysPy:
     self.bonds = None
     self.vAtoms = None
     self.arrows = None
-    self.BZ_bound = None
+    self.BZ_corners = None
     self.coord_axes = None
     self.eval_dist = False
     self.eval_angle = False
@@ -239,13 +239,15 @@ class XCrysPy:
     '''
     return self.vector(np.sum([v*self.lattice[i] for i,v in enumerate([ix,iy,iz])],axis=0))
 
-  def atomic_position ( self, v, lattice ):
+  def atomic_position ( self, v, lattice=None ):
     '''
     Calculate the atom's position within the unit cell
 
     Arguments:
       v (list or ndarray): List of 3 values, each to weight one of the 3 lattice vectors
     '''
+    if lattice is None:
+      lattice = self.lattice
     return np.sum(v*lattice, axis=1)
 
   def clear_canvas ( self ):
@@ -265,7 +267,7 @@ class XCrysPy:
     if self.vAtoms is not None:
       self.vAtoms = vpobject_destructor([a.vpy_sph for a in self.vAtoms])
     self.bonds = vpobject_destructor(self.bonds)
-    self.BZ_bound = vpobject_destructor(self.BZ_bound)
+    self.BZ_corners = vpobject_destructor(self.BZ_corners)
     self.coord_axes = vpobject_destructor(self.coord_axes)
 
   def draw_bonds ( self, dist=1. ):
@@ -324,7 +326,7 @@ class XCrysPy:
         for iz in range(nz):
           c_pos = self.vector(self.origin) + self.get_cell_pos(ix,iy,iz)
           for i,a in enumerate(self.atoms):
-            a_pos = c_pos + self.vector(self.atomic_position(a,self.lattice))
+            a_pos = c_pos + self.vector(self.atomic_position(a))
             color = self.vector(self.specD[self.spec[i]])
             self.vAtoms.append(Atom(a_pos,col=color,species=self.spec[i]))
 
@@ -344,10 +346,10 @@ class XCrysPy:
     if b_vec is None:
       b_vec = self.rlattice
 
-    boundary = bravais_boundaries(b_vec)
-    self.BZ_bound = []
-    for b in boundary:
-      self.BZ_bound.append(vp.curve(self.vector(b[0]), self.vector(b[1])))
+    self.BZ_planes,corners = bravais_boundaries(b_vec)
+    self.BZ_curves = []
+    for c in corners:
+      self.BZ_curves.append(vp.curve(self.vector(c[0]), self.vector(c[1])))
 
   def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=10, e_dw=-10 ):
     '''
@@ -378,36 +380,76 @@ class XCrysPy:
         for z in range(nz):
           bv = eig[x,y,z]
           if bv > e_dw and bv < e_up:
-            point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, self.rlattice)
+            point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, lattice=self.rlattice)
             self.arrows.append(vp.arrow(pos=self.vector(point),axis=self.vector(S[:,x,y,z]), length=.01, color=self.vector([bv/colscale,.5,.1])))
 
 
-  def plot_bxsf ( self, fname, bands=[0], fermiup=1., fermidw=-1. ):
+  def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]] ):
     '''
     Create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
+
+    Arguemnts:
+      fname (str): Name of bxsf file
+      iso (list): List of floats corresponding to the isosurface values for each respective band in 'bands'
+      bands (list): List of integers representing the index of the band to plot
+      colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
     '''
     from numpy.linalg import det,norm,solve
     from scipy.fftpack import fftshift
     from .Util import read_bxsf
 
+    if len(iso) != len(bands):
+      raise ValueError("Each band in 'bands' should have one corresponding isosurface in 'iso'")
+
     b_vec,data = read_bxsf(fname)
     nx,ny,nz,nbnd = data.shape
+
+    if np.max(bands) > nbnd:
+      raise ValueError("'nbnd' too large to plot all bands in 'bands'")
+
+    draw_flag = vp.text(text='Drawing...', align='center', color=vp.vector(1,0,0))
+    draw_flag.up = self.canvas.up
 
     self.draw_BZ_boundary(b_vec)
 
     poss = []
     data = fftshift(data,axes=(0,1,2))
-    vp_shift = .5 * np.array([1,1,0])
-    for x in range(nx):
-      for y in range(ny):
-        for z in range(nz):
-          for b in bands:
-            bv = data[x,y,z,b]
-            if bv > fermidw and bv < fermiup:
-              point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, b_vec)
-              poss.append(self.vector(point))
+    vp_shift = .5 * (np.array([1,1,1]) - [1/nx,1/ny,1/nz])
+
+    def inside_BZ ( pnt ):
+      # Helper function to test whether points lie within the BZ
+      pmag = np.linalg.norm(pnt)
+      for p in self.BZ_planes:
+        if pmag > np.linalg.norm(p):
+          return False
+      return True
+
+    # Test points between x & x+1 to see whether they house an 'iso' point
+    for i,b in enumerate(bands):
+      bpos = []
+      for x in range(nx-1):
+        for y in range(ny-1):
+          for z in range(nz-1):
+            dA = data[x,y,z][b]
+            dBL = [data[x+v[0],y+v[1],z+v[2]][b] for v in [(1,0,0),(0,1,0),(0,0,1)]]
+            point = [x/nx,y/ny,z/nz] - vp_shift
+            point = np.sum([[v] for v in point]*b_vec,axis=0)
+            if dA == iso[i]:
+              if inside_BZ(point):
+                bpos.append(self.vector(point))
+            for dB in dBL:
+              if (dA > iso[i] and dB < iso[i]) or (dA < iso[i] and dB > iso[i]):
+                if inside_BZ(point):
+                  bpos.append(self.vector(point))
+      if len(bpos) > 0:
+        poss.append(bpos)
 
     self.vAtoms = []
-    srad = np.min([1/n for n in (nx,ny,nz)])
-    for p in poss:
-      self.vAtoms.append(vp.sphere(pos=p,radius=srad))
+    static_color = len(colors) < len(bands)
+    srad = np.min([.5/n for n in (nx,ny,nz)])
+    for i,p in enumerate(poss):
+      col = colors[0] if static_color else colors[i]
+      self.vAtoms.append(vp.points(pos=p,color=self.vector(col)))
+
+    draw_flag.visible = False
+    del draw_flag
