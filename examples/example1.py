@@ -12,7 +12,7 @@ if '__main__' == __name__:
   fcc_vecs = [[a/2,a/2,0], [0,a/2,a/2], [a/2,0,a/2]]
 
   # Atomic basis
-  atoms = [[0,0,0], [.5,.5,.5]]
+  atoms = [[0,0,0], [a/4,a/4,a/4]]
 
   # Label for each atom and colors
   spec = ['Ga', 'As']

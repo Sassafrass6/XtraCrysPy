@@ -19,7 +19,7 @@ class XCrysPy:
       bg_col (tuple): Background color (R,G,B)
       bnd_col (tuple): Brillouin Zone boundary color (R,G,B)
     '''
-    from .Util import qe_lattice,read_scf_file,crystal_conversion
+    from .Util import qe_lattice,read_scf_file,read_relax_file
     self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=self.vector(bg_col))
     self.dist_text = 'Distance (Disabled)'
     self.angle_text = 'Angle (Disabled)'
@@ -44,8 +44,10 @@ class XCrysPy:
     self.relax_index = 0
     self.BZ_corners = None
     self.coord_axes = None
+    self.coord_type = None
     self.eval_dist = False
     self.eval_angle = False
+    self.relax_coords = None
     self.selected_atoms = []
     self.selected_bonds = []
     self.selected_colors = []
@@ -63,13 +65,16 @@ class XCrysPy:
       self.lattice = np.array(lattice)
     else:
       if 'relax' in qe_fname:
-        print('I Want to Relax!\nRelax Index: %d'%self.relax_index)
-        quit()
+        self.ibrav,self.spec,self.atoms,self.natoms,self.coord_type,self.relax_coords,self.cell_param = read_relax_file(self,qe_fname)
       else:
         read_scf_file(self,qe_fname)
       self.lattice = qe_lattice(self.ibrav, self.cell_param)
       if self.coord_type == 'angstrom':
-        self.atoms = crystal_conversion(self.atoms, self.lattice, self.coord_type)
+        conv = 0.529177210
+        self.atoms = np.array(self.atoms) / conv
+      elif 'crystal' in self.coord_type:
+        self.atoms = [a*self.cell_param[0] for a in self.atoms]
+        print('Crystal coordinate types require more testing')
 
     # Construct reciprocal lattice vectors
     self.rlattice = 2*np.pi*np.linalg.inv(self.lattice).T
@@ -246,7 +251,7 @@ class XCrysPy:
       iy (int): y index
       iz (int): z index
     '''
-    return self.vector(np.sum([v*self.lattice[i] for i,v in enumerate([ix,iy,iz])],axis=0))
+    return self.vector(np.sum([ix,iy,iz]*self.lattice, axis=1))
 
   def atomic_position ( self, v, lattice=None ):
     '''
@@ -346,7 +351,7 @@ class XCrysPy:
         for iz in range(nz):
           c_pos = self.vector(self.origin) + self.get_cell_pos(ix,iy,iz)
           for i,a in enumerate(self.atoms):
-            a_pos = c_pos + self.vector(self.atomic_position(a))
+            a_pos = c_pos + self.vector(a)
             color = self.vector(self.specD[self.spec[i]])
             self.vAtoms.append(Atom(a_pos,col=color,species=self.spec[i]))
 

@@ -40,6 +40,52 @@ def read_scf_file ( self, fname ):
     self.cell_param[1] *= self.cell_param[0]
     self.cell_param[2] *= self.cell_param[0]
 
+def read_relax_file ( self, fname ):
+  '''
+  '''
+  import re
+  spec = []
+  basis = None
+  natoms = None
+  relax_poss = []
+  coord_type = None
+  cell_param = np.zeros((6), dtype=float)
+  strip_int = lambda s : int(re.search(r'\d+',s).group())
+  strip_float = lambda s : float(re.search(r'\d+.\d+',s).group())
+  with open(fname) as f:
+    l = f.readline()
+    while l != '':
+      if 'atoms/cell' in l:
+        natoms = int(l.split()[-1])
+      elif 'bravais' in l:
+        ibrav = int(l.split()[3])
+      elif 'celldm' in l:
+        ls = l.split()
+        for i in range(0,len(ls),2):
+          ip = strip_int(ls[i])-1
+          cell_param[ip] = strip_float(ls[i+1])
+      elif 'site n.' in l:
+        basis = np.zeros((natoms,3), dtype=float)
+        for i in range(natoms):
+          ls = f.readline().split()
+          for j in range(3):
+            basis[i,j] = ls[j-4]
+      if 'ATOMIC_POSITIONS' in l:
+        if natoms is None:
+          raise ValueError('natoms not found in relax file. Are you sure that a QE relax output file was provided?')
+        ls = l.split()
+        coord_type = ls[1][1:-1] if len(ls)>1 else 'alat'
+        apos = np.zeros((natoms,3), dtype=float)
+        for i in range(natoms):
+          ls = f.readline().split()
+          spec.append(ls[0])
+          apos[i,:] = np.array([float(v) for v in ls[1:]])
+        relax_poss.append(apos)
+      l = f.readline()
+  cell_param[1] *= cell_param[0]
+  cell_param[2] *= cell_param[0]
+  return ibrav,spec,basis,natoms,coord_type,relax_poss,cell_param
+
 def read_bxsf ( fname ):
   '''
   '''
@@ -64,21 +110,6 @@ def read_bxsf ( fname ):
         break
       l = f.readline()
   return b_vec,bands
-
-def crystal_conversion ( atoms, coords, coord_type ):
-  '''
-  Convert positions of 'atoms' from 'coord_type' to crystal coordinates
-
-  pos (list or ndarray): List of atoms, each with 3 positions to convert to crystal
-  coord (list or ndarray): List of 3 3d lattice vectors
-  coord_type (str): String - 'angstrom'
-  '''
-  if coord_type == 'angstrom':
-    conv =  0.529177210
-    return np.array([[a[i]/(conv*np.linalg.norm(coords[i])) for i in range(3)] for a in atoms])
-  else:
-    raise ValueError('coord_type %s not implemented'%coord_type)
-
 
 def qe_lattice ( ibrav, cell_param ):
   '''
@@ -115,7 +146,7 @@ def qe_lattice ( ibrav, cell_param ):
     coords = np.array([[A,0,0],[0,A,0],[0,0,C]])
   elif ibrav == 7:
     A,C = cell_param[0],cell_param[2]
-    coords = A/2 * np.array([1,-1,C/A],[1,1,C/A],[-1,-1,C/A])
+    coords = .5 * np.array([A,-A,C],[A,A,C],[-A,-A,C])
   elif ibrav == 8:
     A,B,C = cell_param[0],cell_param[1],cell_param[2]
     coords = np.array([[A,0,0],[0,B,0],[0,0,C]])
