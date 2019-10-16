@@ -6,7 +6,6 @@ def read_scf_file ( self, fname ):
 
   Arguments:
     fname (str): Quantum Espresso inputfile name
-    ftype (str): Type of QE file
   '''
   import re
   with open(fname) as f:
@@ -29,7 +28,7 @@ def read_scf_file ( self, fname ):
           self.natoms = natoms = strip_int(l)
         elif 'ATOMIC_POSITIONS' in l:
           ls = l.split()
-          self.coord_type = ls[1][1:-1] if len(ls)>1 else 'alat'
+          self.coord_type = ls[1] if len(ls)>1 else 'alat'
           while natoms > 0:
             ls = f.readline().split()
             if len(ls) == 4:
@@ -42,52 +41,54 @@ def read_scf_file ( self, fname ):
 
 def read_relax_file ( self, fname ):
   '''
+  Read relax inputfile
+
+  Arguments:
+    fname (str): Quantum Espresso inputfile name
   '''
   import re
-  spec = []
-  basis = None
-  natoms = None
-  relax_poss = []
-  coord_type = None
-  cell_param = np.zeros((6), dtype=float)
+  self.relax_poss = []
+  self.cell_param = 6*[0]
+  self.relax_lattices = []
+  self.coord_type = 'relax'
   strip_int = lambda s : int(re.search(r'\d+',s).group())
   strip_float = lambda s : float(re.search(r'\d+.\d+',s).group())
   with open(fname) as f:
     l = f.readline()
     while l != '':
       if 'atoms/cell' in l:
-        natoms = int(l.split()[-1])
+        self.natoms = int(l.split()[-1])
       elif 'bravais' in l:
-        ibrav = int(l.split()[3])
+        self.ibrav = int(l.split()[3])
       elif 'celldm' in l:
         ls = l.split()
         for i in range(0,len(ls),2):
           ip = strip_int(ls[i])-1
-          cell_param[ip] = strip_float(ls[i+1])
-      elif 'site n.' in l:
-        basis = np.zeros((natoms,3), dtype=float)
-        for i in range(natoms):
+          self.cell_param[ip] = strip_float(ls[i+1])
+      elif 'CELL_PARAMETERS' in l:
+        alat = strip_float(l)
+        avec = np.zeros((3,3), dtype=float)
+        for i in range(3):
           ls = f.readline().split()
-          for j in range(3):
-            basis[i,j] = ls[j-4]
+          avec[i] = np.array([alat*float(s) for s in ls])
+        self.relax_lattices.append(avec)
       if 'ATOMIC_POSITIONS' in l:
-        if natoms is None:
+        if self.natoms is None:
           raise ValueError('natoms not found in relax file. Are you sure that a QE relax output file was provided?')
-        ls = l.split()
-        coord_type = ls[1][1:-1] if len(ls)>1 else 'alat'
-        apos = np.zeros((natoms,3), dtype=float)
-        for i in range(natoms):
+        self.spec = []
+        apos = np.zeros((self.natoms,3), dtype=float)
+        for i in range(self.natoms):
           ls = f.readline().split()
-          spec.append(ls[0])
+          self.spec.append(ls[0])
           apos[i,:] = np.array([float(v) for v in ls[1:]])
-        relax_poss.append(apos)
+        self.relax_poss.append(apos)
       l = f.readline()
-  cell_param[1] *= cell_param[0]
-  cell_param[2] *= cell_param[0]
-  return ibrav,spec,basis,natoms,coord_type,relax_poss,cell_param
+  self.cell_param[1] *= self.cell_param[0]
+  self.cell_param[2] *= self.cell_param[0]
 
 def read_bxsf ( fname ):
   '''
+  Read BXSF file, originally formatted for XCrysDen
   '''
   bands = None
   b_vec = None
@@ -134,7 +135,7 @@ def qe_lattice ( ibrav, cell_param ):
     coords = A * np.array([[1,0,0],[-.5,-np.sqrt(3)/2,0],[0,0,C/A]])
   elif ibrav == (5 or -5):
     A,CG = cell_param[0],cell_param[3]
-    tx,ty,tz = np.sqrt((1-c)/2),np.sqrt((1-c)/6),np.sqrt((1+2*c)/3)
+    tx,ty,tz = np.sqrt((1-CG)/2),np.sqrt((1-CG)/6),np.sqrt((1+2*CG)/3)
     if ibrav == 5:
       coords = A * np.array([[tx,-ty,tz],[0,2*ty,tz],[-tx,-ty,tz]])
     else:

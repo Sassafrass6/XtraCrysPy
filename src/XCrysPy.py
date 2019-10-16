@@ -21,14 +21,8 @@ class XCrysPy:
     '''
     from .Util import qe_lattice,read_scf_file,read_relax_file
     self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=self.vector(bg_col))
-    self.dist_text = 'Distance (Disabled)'
-    self.angle_text = 'Angle (Disabled)'
-    self.dist_otext = '0.000000 angstroms'
-    self.angle_otext = '0.000000 degrees'
-    self.dist_button = vp.button(text=self.dist_text, bind=lambda:self.toggle_dist())
-    self.dist_obutton = vp.button(text=self.dist_otext, bind=lambda:0)
-    self.angle_button = vp.button(text = self.angle_text, bind=lambda:self.toggle_angle())
-    self.angle_obutton = vp.button(text = self.angle_otext, bind=lambda:0)
+    self.menu = vp.menu(choices=['Select', 'Distance', 'Angle'], bind=self.menu_select)
+    self.menu_text = vp.wtext()
     self.canvas.bind('click', self.click)
 
     if not perspective:
@@ -65,16 +59,23 @@ class XCrysPy:
       self.lattice = np.array(lattice)
     else:
       if 'relax' in qe_fname:
-        self.ibrav,self.spec,self.atoms,self.natoms,self.coord_type,self.relax_coords,self.cell_param = read_relax_file(self,qe_fname)
+        read_relax_file(self,qe_fname)
       else:
         read_scf_file(self,qe_fname)
       self.lattice = qe_lattice(self.ibrav, self.cell_param)
-      if self.coord_type == 'angstrom':
-        conv = 0.529177210
+
+      if 'angstrom' in self.coord_type:
+        conv = .529177210 # Reciprocal of (Bohr to Anstrom)
         self.atoms = np.array(self.atoms) / conv
       elif 'crystal' in self.coord_type:
-        self.atoms = [a*self.cell_param[0] for a in self.atoms]
+        self.atoms = [self.atomic_position(a) for a in self.atoms]
         print('Crystal coordinate types require more testing')
+      elif 'relax' in self.coord_type:
+        if len(self.relax_lattices) > 0:
+          self.lattice = self.relax_lattices[0]
+        for i in range(len(self.relax_poss)):
+          self.relax_poss[i][:,:] = np.array([self.atomic_position(a) for a in self.relax_poss[i]])
+        self.atoms = self.relax_poss[0]
 
     # Construct reciprocal lattice vectors
     self.rlattice = 2*np.pi*np.linalg.inv(self.lattice).T
@@ -97,7 +98,7 @@ class XCrysPy:
       dist = b.pos - a.pos
       text = '%f angstroms'%dist.mag
       print('Distance = %s'%text)
-      self.dist_obutton.text = text
+      self.menu_text.text = text
 
   def calc_angle ( self, atoms ):
     '''
@@ -111,27 +112,47 @@ class XCrysPy:
     angle = np.arccos(v1.dot(v2)/(v1.mag*v2.mag))
     text = '%f degrees'%np.degrees(angle)
     print('Angle = %s (%f radians)'%(text,angle))
-    self.angle_obutton.text = text
+    self.menu_text.text = text
 
-  def toggle_dist ( self ):
+  def menu_select ( self, m ):
     '''
-    Toggle the calculation of distance between atoms upon successive selection of two atoms
+    React to the menu selction changing
+
+    Arguments:
+      m (vpython widget): Menu widget
+    '''
+    if m.selected == 'Select':
+      self.atom_select()
+    elif m.selected == 'Distance':
+      self.atom_dist()
+    elif m.selected == 'Angle':
+      self.atom_angle()
+    else:
+      raise ValueError('No such selection.')
+
+  def atom_select ( self ):
+    '''
+    Allow the selection of atoms
     '''
     self.reset_selection()
-    if self.eval_angle:
-      self.toggle_angle()
-    self.eval_dist = not self.eval_dist
-    self.dist_button.text = 'Distance (%s)'%('Enabled' if self.eval_dist else 'Disabled')
+    self.eval_dist = False
+    self.eval_angle = True
 
-  def toggle_angle ( self ):
+  def atom_dist ( self ):
     '''
-    Toggle the calculation of angle between atoms upon successive selection of two atoms
+    Allow the calculation of distance between atoms upon successive selection of two atoms
     '''
     self.reset_selection()
-    if self.eval_dist:
-      self.toggle_dist()
-    self.eval_angle = not self.eval_angle
-    self.angle_button.text = 'Angle (%s)'%('Enabled' if self.eval_angle else 'Disabled')
+    self.eval_dist = True
+    self.eval_angle = False
+
+  def atom_angle ( self ):
+    '''
+    Allow the calculation of angle between atoms upon successive selection of three atoms
+    '''
+    self.reset_selection()
+    self.eval_dist = False
+    self.eval_angle = True
 
   def select_atom ( self, atom ):
     '''
@@ -221,8 +242,28 @@ class XCrysPy:
           if len(self.selected_atoms) > 0:
             self.reset_selection()
 
-  def figure_cell_params ( self, ibrav ):
-    pass
+  def relax_step ( self, sgn ):
+    '''
+    Make a step forward or backward in relaxation
+
+    Arguments:
+      sgn (int): +1 => forward, -1 => backward
+    '''
+    top = sgn > 0 and self.relax_index < len(self.relax_poss)-1
+    bot = sgn < 0 and self.relax_index > 0
+    if top or bot:
+      self.relax_index += sgn
+      self.relax_text.text = str(self.relax_index)
+      self.atoms = self.relax_poss[self.relax_index]
+      if len(self.relax_lattices) > 0:
+        self.lattice = self.relax_lattices[self.relax_index]
+      self.redraw_canvas()
+
+  def relax_step_forward ( self ):
+    self.relax_step(1)
+
+  def relax_step_backward ( self ):
+    self.relax_step(-1)
 
   def orient_lights ( self, direction=None ):
     '''
@@ -269,7 +310,6 @@ class XCrysPy:
     Resets the canvas to its default state
     '''
     self.reset_selection()
-    self.dist_obutton.text = self.dist_otext
 
     def vpobject_destructor ( obj ):
       if obj is not None:
@@ -283,6 +323,13 @@ class XCrysPy:
     self.bonds = vpobject_destructor(self.bonds)
     self.BZ_corners = vpobject_destructor(self.BZ_corners)
     self.coord_axes = vpobject_destructor(self.coord_axes)
+    self.boundary = vpobject_destructor(self.boundary)
+
+  def redraw_canvas ( self ):
+      self.clear_canvas()
+      nx,ny,nz = self.cell_dim
+      ca,bnd = self.draw_coord_axes,self.draw_boundary
+      self.draw_cell(nx=nx, ny=ny, nz=nz, coord_axes=ca, boundary=bnd)
 
   def draw_coord_axis ( self, offset=[-10,0,0], length=1. ):
     '''
@@ -320,6 +367,27 @@ class XCrysPy:
               if (a.pos-b.pos).mag <= dist[key]:
                 self.bonds.append(vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}))
 
+  def draw_relax ( self, nx=1, ny=1, nz=1, coord_axes=True, boundary=False ):
+    '''
+    Start a relaxation visualization. Saves argument information for future drawings
+    Creates Forward & Backward buttons & draws the first cell
+
+    Arguments:
+      nx (int): Number of cells to draw in x direction
+      ny (int): Number of cells to draw in y direction
+      nz (int): Number of cells to draw in z direction
+      coord_axes (bool): Draw the coordinate system
+      boundary (bool): Draw cell boundaries
+    '''
+    self.relax_backward = vp.button(text='<-', bind=self.relax_step_backward)
+    self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
+    self.relax_text = vp.wtext(text='0')
+
+    self.cell_dim = (nx,ny,nz)
+    self.draw_boundary = boundary
+    self.draw_coord_axes = coord_axes
+    self.draw_cell(nx=nx, ny=ny, nz=nz, coord_axes=coord_axes, boundary=boundary)
+  
   def draw_cell ( self, nx=1, ny=1, nz=1, coord_axes=True, boundary=False ):
     '''
     Create the cell simulation in the vpython environment
@@ -328,9 +396,11 @@ class XCrysPy:
       nx (int): Number of cells to draw in x direction
       ny (int): Number of cells to draw in y direction
       nz (int): Number of cells to draw in z direction
+      coord_axes (bool): Draw the coordinate system
       boundary (bool): Draw cell boundaries
     '''
     from .Atom import Atom
+
     if boundary:
       lines = []
       lat = self.lattice
@@ -343,7 +413,7 @@ class XCrysPy:
             alines += [[lat[k],lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
             orig = self.get_cell_pos(ix,iy,iz)
             lines += [[orig+self.vector(al[0]),orig+self.vector(al[1])] for al in alines]
-      lines = [vp.curve(l[0],l[1],color=self.bnd_col) for l in lines]
+      self.boundary = [vp.curve(l[0],l[1],color=self.bnd_col) for l in lines]
 
     self.vAtoms = []
     for ix in range(nx):
@@ -375,7 +445,7 @@ class XCrysPy:
     for c in corners:
       self.BZ_curves.append(vp.curve(self.vector(c[0]), self.vector(c[1]), color=self.bnd_col))
 
-  def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=10, e_dw=-10 ):
+  def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=1, e_dw=-1 ):
     '''
     Plots the spin texture read from the format output by PAOFLOW
 
@@ -386,6 +456,9 @@ class XCrysPy:
       e_dw (float): BZ points with energies lower than e_dw wont be plotted 
     '''
     from scipy.fftpack import fftshift
+
+    draw_flag = vp.text(text='Drawing...', align='center', color=vp.vector(1,0,0))
+    draw_flag.up = self.canvas.up
 
     fdata, sdata = np.load(fermi_fname), np.load(spin_fname)
     eig, spin = fdata['nameband'], sdata['spinband']
@@ -407,6 +480,8 @@ class XCrysPy:
             point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, lattice=self.rlattice)
             self.arrows.append(vp.arrow(pos=self.vector(point),axis=self.vector(S[:,x,y,z]), length=.01, color=self.vector([bv/colscale,.5,.1])))
 
+    draw_flag.visible = False
+    del draw_flag
 
   def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]] ):
     '''
