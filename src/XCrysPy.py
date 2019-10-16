@@ -415,11 +415,15 @@ class XCrysPy:
             lines += [[orig+self.vector(al[0]),orig+self.vector(al[1])] for al in alines]
       self.boundary = [vp.curve(l[0],l[1],color=self.bnd_col) for l in lines]
 
+    # DEV: Find optimal way to select correct corner to display atom on
+    # Determine which corner of BZ to display the atom on
+    cx,cy,cz = (-1 if v<0 else 0 for v in self.lattice[2])
+
     self.vAtoms = []
     for ix in range(nx):
       for iy in range(ny):
         for iz in range(nz):
-          c_pos = self.vector(self.origin) + self.get_cell_pos(ix,iy,iz)
+          c_pos = self.vector(self.origin) + self.get_cell_pos(cx,cy,cz) + self.get_cell_pos(ix,iy,iz)
           for i,a in enumerate(self.atoms):
             a_pos = c_pos + self.vector(a)
             color = self.vector(self.specD[self.spec[i]])
