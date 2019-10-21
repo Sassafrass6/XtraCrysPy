@@ -31,10 +31,10 @@ def read_scf_file ( self, fname ):
           self.coord_type = ls[1] if len(ls)>1 else 'alat'
           while natoms > 0:
             ls = f.readline().split()
-            if len(ls) == 4:
+            if len(ls) > 0:
               natoms -= 1
               self.spec.append(ls[0])
-              self.atoms.append([float(v) for v in ls[1:]])
+              self.atoms.append([float(v) for v in ls[1:4]])
       line = f.readline()
     self.cell_param[1] *= self.cell_param[0]
     self.cell_param[2] *= self.cell_param[0]
