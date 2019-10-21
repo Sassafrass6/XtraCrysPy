@@ -331,6 +331,20 @@ class View:
     for c in corners:
       self.bound_curve.append(vp.curve(self.vector(c[0]), self.vector(c[1]), color=self.bnd_col))
 
+  def draw_BZ_points ( self, points, color ):
+    '''
+    Draw points inside of the BZ
+
+    Arguments:
+      points (list or ndarray): List of points (x,y,z) to plot in the BZ, each between -Pi/2 and Pi/2
+      color (tuple): Tuple of (R,G,B) with each between 0 & 1
+    '''
+
+    col = vp.vector(1,1,1) if color is None else self.vector(color)
+    points = [self.vector(p) for p in points]
+    self.points_BZ = vp.points(pos=points, color=col)
+    
+
   def draw_arrows ( self, spins, eig, rlat, e_up, e_dw ):
     '''
     Draw the arrows for spin texture plots
