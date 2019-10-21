@@ -227,6 +227,12 @@ class XCrysPy:
 
     self.draw_cell(self.relax_lattices[0], self.relax_poss[0])
 
+  def draw_BZ ( self ):
+    '''
+    Function to force the BZ to be drawn
+    '''
+    self.view.draw_BZ_boundary(b_vec=self.reciprocal_lattice(self.lattice))
+
   def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=1, e_dw=-1 ):
     '''
     Plots the spin texture read from the format output by PAOFLOW
