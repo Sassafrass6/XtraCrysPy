@@ -227,21 +227,18 @@ class XCrysPy:
 
     self.draw_cell(self.relax_lattices[0], self.relax_poss[0])
 
-  def draw_BZ ( self ):
-    '''
-    Function to force the BZ to be drawn
-    '''
-    self.view.draw_BZ_boundary(b_vec=self.reciprocal_lattice(self.lattice))
-
-  def draw_BZ_points ( self, points, color=None ):
+  def draw_BZ_points ( self, points, color=None, rlat=None ):
     '''
     Draw points inside of the BZ
 
     Arguments:
       points (list or ndarray): List of points (x,y,z) to plot in the BZ, each between -Pi/2 and Pi/2
       color (tuple): Tuple of (R,G,B) with each between 0 & 1
+      rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice. If 'None' vectors will be computed from 'self.lattice'
     '''
-    self.view.draw_BZ_points(points, color)
+    if rlat is None:
+      rlat = self.rlattice = self.reciprocal_lattice(self.lattice)
+    self.view.draw_BZ_points(points, color, rlat)
 
   def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=1, e_dw=-1 ):
     '''

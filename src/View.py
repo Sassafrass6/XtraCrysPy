@@ -39,6 +39,7 @@ class View:
     self.bonds = None
     self.arrows = None
     self.vAtoms = None
+    self.BZ_planes = None
     self.coord_axis = None
     self.bound_curve = None
     self.bond_radius = None
@@ -331,14 +332,18 @@ class View:
     for c in corners:
       self.bound_curve.append(vp.curve(self.vector(c[0]), self.vector(c[1]), color=self.bnd_col))
 
-  def draw_BZ_points ( self, points, color ):
+  def draw_BZ_points ( self, points, color, rlat ):
     '''
     Draw points inside of the BZ
 
     Arguments:
       points (list or ndarray): List of points (x,y,z) to plot in the BZ, each between -Pi/2 and Pi/2
       color (tuple): Tuple of (R,G,B) with each between 0 & 1
+      rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice
     '''
+
+    if self.BZ_planes is None:
+      self.draw_BZ_boundary(b_vec=rlat)
 
     col = vp.vector(1,1,1) if color is None else self.vector(color)
     points = [self.vector(p) for p in points]
