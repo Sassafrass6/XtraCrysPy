@@ -19,6 +19,5 @@ if '__main__' == __name__:
   spec_col = {'Ga':(1,0,0), 'As':(0,0,1)}
 
   # Plot with CrysPy
-  cpy = XCP.XCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin)
-  cpy.draw_cell(nx=3, ny=3, nz=3)
-  cpy.draw_bonds(dist=3)
+  cpy = XCP.XCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin, nx=3, ny=3, nz=3, bond_dists=3., boundary=False)
+

@@ -3,7 +3,7 @@ import numpy as np
 
 class XCrysPy:
 
-  def __init__ ( self, qe_fname=None, lattice=None, basis=None, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1200, w_height=750, bg_col=(0,0,0), bnd_col=(1,1,1) ):
+  def __init__ ( self, qe_fname=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1200, w_height=750, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, bond_dists=0. ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -11,52 +11,42 @@ class XCrysPy:
       qe_fname (str): Filename of a quantum espresso inputfile
       lattice (list): List of 3 3d vectors, representing the lattice parameters
       basis (list): List of N 3d vectors, representing the positions of each of N atoms
+      draw_cell (bool): Draw the cell on creation of XCrysPy object
       origin (list): List of 3 points, representing the x,y,z position of the grid's center
       species (list): List of N species strings corresponding to atoms in 'basis' (e.g. ['Si','Si'])
       sepc_col (dict): Dictionary linking atom identfiers (e.g. 'Si' or 'He') to color tuples (R,G,B)
+      perspective (bool): True for perspective view (with fov set for the camera)
       w_width (int): Vpython window width
       w_height (int): Vpython window height
       bg_col (tuple): Background color (R,G,B)
       bnd_col (tuple): Brillouin Zone boundary color (R,G,B)
+      nx,ny,nz (int): Number of cells to draw in the x,y,z direction
+      coord_axes (bool): Draw the cartesian axes for reference
+      boundary (bool): True to draw the boundary of the lattice
+      bond_dists (int or dict): Maximum bond distance or dictionary of form {'species':max_bond_dist}
     '''
+    from .View import View
     from .Util import qe_lattice,read_scf_file,read_relax_file
-    self.canvas = vp.canvas(title='CrysPy', width=w_width, height=w_height, background=self.vector(bg_col))
-    self.menu = vp.menu(choices=['Select', 'Distance', 'Angle'], bind=self.menu_select)
-    self.menu_text = vp.wtext()
-    self.canvas.bind('click', self.click)
 
-    if not perspective:
-      self.canvas.fov = .01
-    self.canvas.forward = vp.vector(0,+1,0)
-    self.canvas.up = vp.vector(0,0,1)
-    self.orient_lights()
-
+    self.natoms = 0
     self.spec = None
-    self.bonds = None
-    self.vAtoms = None
-    self.arrows = None
+    self.lattice = None
     self.relax_index = 0
-    self.BZ_corners = None
-    self.coord_axes = None
     self.coord_type = None
     self.eval_dist = False
     self.eval_angle = False
     self.relax_coords = None
-    self.selected_atoms = []
-    self.selected_bonds = []
-    self.selected_colors = []
-    self.origin = np.array(origin)
-
-    self.bnd_col = self.vector(bnd_col) if bnd_col is not None else vp.vector(1,1,1)
 
     if qe_fname is None:
+      self.coord_type = 'manual'
       if (lattice or basis or species) is None:
         print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
-        return
-      self.atoms = basis
-      self.spec = species
-      self.natoms = len(basis)
-      self.lattice = np.array(lattice)
+      else:
+        self.atoms = basis
+        self.spec = species
+        self.natoms = len(basis)
+        self.lattice = np.array(lattice)
+        self.cell_param = [np.abs(np.mean([np.linalg.norm(v) for v in self.lattice]))]
     else:
       if 'relax' in qe_fname:
         read_relax_file(self,qe_fname)
@@ -77,46 +67,42 @@ class XCrysPy:
           self.relax_poss[i][:,:] = np.array([self.atomic_position(a) for a in self.relax_poss[i]])
         self.atoms = self.relax_poss[0]
 
-    # Construct reciprocal lattice vectors
-    self.rlattice = 2*np.pi*np.linalg.inv(self.lattice).T
-
     if species is None and self.spec is None:
       self.spec = [i for i in range(self.natoms)]
     if spec_col is None:
-      self.specD = {v:(1,1,1) for v in self.spec}
+      self.spec_col = {v:(1,1,1) for v in self.spec}
     else:
-      self.specD = spec_col
+      self.spec_col = spec_col
 
-  def calc_dist ( self, a, b ):
-      '''
-      Calculate the distance between two atoms
+    self.atom_radius,self.bond_radius = .7,.07
+    title = 'CrysPy' if qe_fname is None else qe_fname
 
-      Arguments:
-        a (Atom or vpython.sphere): First atom
-        b (Atom or vpython.sphere): Second atom
-      '''
-      dist = b.pos - a.pos
-      text = '%f angstroms'%dist.mag
-      print('Distance = %s'%text)
-      self.menu_text.text = text
+    self.canvas = vp.canvas(title=title+'\n', width=w_width, height=w_height, background=self.vector(bg_col))
+    self.disp_menu = vp.menu(choices=['Atoms', 'Bonds'], pos=self.canvas.title_anchor, bind=self.disp_menu_change)
+    self.sel_menu = vp.menu(choices=['Select', 'Distance', 'Angle'], pos=self.canvas.title_anchor, bind=self.sel_menu_change)
+    self.sel_menu_text = vp.wtext()
+    self.canvas.bind('click', self.click)
 
-  def calc_angle ( self, atoms ):
+    self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists)
+
+    if draw_cell and self.lattice is not None:
+      if 'relax' in self.coord_type:
+        self.draw_relax()
+      else:
+        self.draw_cell(self.lattice, self.atoms)
+
+  def disp_menu_change ( self, m ):
+    if m.selected == 'Atoms':
+      self.atom_radius = .7
+      self.bond_radius = .07
+    if m.selected == 'Bonds':
+      self.atom_radius = .25
+      self.bond_radius = .15
+    self.draw_cell(self.lattice, self.atoms)
+
+  def sel_menu_change ( self, m ):
     '''
-    Calculate the angle between three atoms. Angle between vectors created from indices 0-1 and 2-1
-
-    Arguments:
-      atoms (list): list of 3 vpython spheres
-    '''
-    v1 = atoms[0].pos - atoms[1].pos
-    v2 = atoms[2].pos - atoms[1].pos
-    angle = np.arccos(v1.dot(v2)/(v1.mag*v2.mag))
-    text = '%f degrees'%np.degrees(angle)
-    print('Angle = %s (%f radians)'%(text,angle))
-    self.menu_text.text = text
-
-  def menu_select ( self, m ):
-    '''
-    React to the menu selction changing
+    React to the atom selection menu selction changing
 
     Arguments:
       m (vpython widget): Menu widget
@@ -134,15 +120,15 @@ class XCrysPy:
     '''
     Allow the selection of atoms
     '''
-    self.reset_selection()
+    self.view.reset_selection()
     self.eval_dist = False
-    self.eval_angle = True
+    self.eval_angle = False
 
   def atom_dist ( self ):
     '''
     Allow the calculation of distance between atoms upon successive selection of two atoms
     '''
-    self.reset_selection()
+    self.view.reset_selection()
     self.eval_dist = True
     self.eval_angle = False
 
@@ -150,52 +136,9 @@ class XCrysPy:
     '''
     Allow the calculation of angle between atoms upon successive selection of three atoms
     '''
-    self.reset_selection()
+    self.view.reset_selection()
     self.eval_dist = False
     self.eval_angle = True
-
-  def select_atom ( self, atom ):
-    '''
-    Select and highlight atom
-
-    Arguments:
-      atom (vpython.sphere): Sphere object to select
-    '''
-    select_col = vp.vector(0,1,1)
-    col = atom.color
-    if len(self.selected_atoms) > 0:
-      bpos1 = self.selected_atoms[-1].pos
-      bpos2 = atom.pos
-      self.selected_bonds.append(vp.curve({'pos':bpos1,'color':select_col},{'pos':bpos2,'color':select_col}))
-    self.selected_atoms.append(atom)
-    self.selected_colors.append(vp.vector(col.x, col.y, col.z))
-    atom.color = select_col
-
-  def pop_prev_atom ( self ):
-    '''
-    Deselect the most recently selected atom
-    '''
-    old_atom = self.selected_atoms.pop()
-    old_atom.color = self.selected_colors.pop()
-    if len(self.selected_bonds) > 0:
-      bond = self.selected_bonds.pop()
-      bond.visible = False
-      del bond
-    return old_atom
-
-  def reset_selection ( self ):
-    '''
-    Unselect all selected atoms
-    '''
-    if len(self.selected_atoms) != 0:
-      for i,a in enumerate(self.selected_atoms):
-        a.color = self.selected_colors[i]
-      for b in self.selected_bonds:
-        b.visible = False
-        del b
-      self.selected_atoms = []
-      self.selected_bonds = []
-      self.selected_colors = []
 
   def click ( self ):
     '''
@@ -203,44 +146,13 @@ class XCrysPy:
     '''
     new_atom = self.canvas.mouse.pick
     if self.eval_dist:
-      if isinstance(new_atom, vp.sphere):
-        if len(self.selected_atoms) == 2:
-          self.reset_selection()
-          self.select_atom(new_atom)
-        elif len(self.selected_atoms) == 1:
-          if new_atom in self.selected_atoms:
-            self.pop_prev_atom()
-          else:
-            self.select_atom(new_atom)
-            self.calc_dist(self.selected_atoms[0], self.selected_atoms[1])
-        else:
-          self.select_atom(new_atom)
+      v = self.view.distance_selection(new_atom)
     elif self.eval_angle:
-      if isinstance(new_atom, vp.sphere):
-        if len(self.selected_atoms) == 3:
-          self.reset_selection()
-          self.select_atom(new_atom)
-        elif len(self.selected_atoms) == 2:
-          if new_atom in self.selected_atoms:
-            self.pop_prev_atom()
-          else:
-            self.select_atom(new_atom)
-            self.calc_angle(self.selected_atoms)
-        elif len(self.selected_atoms) == 1 and self.selected_atoms[0] == new_atom:
-          self.pop_prev_atom()
-        else:
-          self.select_atom(new_atom)
+      v = self.view.angle_selection(new_atom)
     else:
-        if isinstance(new_atom, vp.sphere):
-          if len(self.selected_atoms) == 0:
-            self.select_atom(new_atom)
-          else:
-            old_atom = self.pop_prev_atom()
-            if old_atom != new_atom:
-              self.select_atom(new_atom)
-        else:
-          if len(self.selected_atoms) > 0:
-            self.reset_selection()
+      v = self.view.single_selection(new_atom)
+    if v is not None:
+      self.sel_menu_text.text = v
 
   def relax_step ( self, sgn ):
     '''
@@ -249,30 +161,25 @@ class XCrysPy:
     Arguments:
       sgn (int): +1 => forward, -1 => backward
     '''
+
+    # Ensure that the new index still indexes a valid relaxation step
     top = sgn > 0 and self.relax_index < len(self.relax_poss)-1
     bot = sgn < 0 and self.relax_index > 0
+
     if top or bot:
       self.relax_index += sgn
       self.relax_text.text = str(self.relax_index)
       self.atoms = self.relax_poss[self.relax_index]
       if len(self.relax_lattices) > 0:
         self.lattice = self.relax_lattices[self.relax_index]
-      self.redraw_canvas()
+
+      self.draw_cell(self.lattice, self.atoms)
 
   def relax_step_forward ( self ):
     self.relax_step(1)
 
   def relax_step_backward ( self ):
     self.relax_step(-1)
-
-  def orient_lights ( self, direction=None ):
-    '''
-    Orient the lights to face the "front" of the sample
-    '''
-    if direction is None:
-      for l in self.canvas.lights:
-        cp = l.direction
-        l.direction = vp.vector(cp.x,-cp.y,cp.z)
 
   def vector ( self, a ):
     '''
@@ -283,16 +190,13 @@ class XCrysPy:
     '''
     return vp.vector(a[0],a[1],a[2])
 
-  def get_cell_pos ( self, ix, iy, iz ):
+  def reciprocal_lattice ( self, lattice ):
     '''
-    Return the cartesian origin of the unit cell at index [ix,iy,iz]
+    Construct reciprocal lattice vectors
 
-    Arguments:
-      ix (int): x index
-      iy (int): y index
-      iz (int): z index
+    lattice (list or ndarray): 3 3d vectors of the real space lattice
     '''
-    return self.vector(np.sum([ix,iy,iz]*self.lattice, axis=1))
+    return 2*np.pi*np.linalg.inv(lattice).T
 
   def atomic_position ( self, v, lattice=None ):
     '''
@@ -300,154 +204,28 @@ class XCrysPy:
 
     Arguments:
       v (list or ndarray): List of 3 values, each to weight one of the 3 lattice vectors
+      lattice (list or ndarray): 3 3d vectors of the real space lattice
     '''
     if lattice is None:
       lattice = self.lattice
     return np.sum(v*lattice, axis=1)
 
-  def clear_canvas ( self ):
+  def draw_cell ( self, lattice, atoms ):
     '''
-    Resets the canvas to its default state
+    Draw the cell by calling the View's draw_cell method with the current cell configurations
     '''
-    self.reset_selection()
+    self.view.draw_cell(lattice, atoms, self.spec, self.spec_col, self.atom_radius, self.bond_radius)
 
-    def vpobject_destructor ( obj ):
-      if obj is not None:
-        for o in obj:
-          o.visible = False
-          del o
-      return None
-
-    if self.vAtoms is not None:
-      self.vAtoms = vpobject_destructor([a.vpy_sph for a in self.vAtoms])
-    self.bonds = vpobject_destructor(self.bonds)
-    self.BZ_corners = vpobject_destructor(self.BZ_corners)
-    self.coord_axes = vpobject_destructor(self.coord_axes)
-    self.boundary = vpobject_destructor(self.boundary)
-
-  def redraw_canvas ( self ):
-      self.clear_canvas()
-      nx,ny,nz = self.cell_dim
-      ca,bnd = self.draw_coord_axes,self.draw_boundary
-      self.draw_cell(nx=nx, ny=ny, nz=nz, coord_axes=ca, boundary=bnd)
-
-  def draw_coord_axis ( self, offset=[-10,0,0], length=1. ):
-    '''
-    Draw the Coordinate Axes
-
-    Arguments:
-      length (int): Length of the coordiniate axis arrows
-    '''
-    apos = np.array(offset)
-    vpa = lambda a : vp.arrow(pos=self.vector(apos),axis=self.vector(length*np.array(a)))
-    self.coord_axes = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
-
-  def draw_bonds ( self, dist=1. ):
-    '''
-    Draw the bonds if atoms are closer than 'dist' together.
-    To specifiy bonds between two types of atoms pass a dictionary into dist with key/value
-    pairs '%s_%s':val, where %s are the respective species and val is the maximum bond distance.
-
-    Arguments:
-      dits (float or dict): A float describes global bond distance, while a dictionary can specify distances for various pairs of atoms
-    '''
-    if self.vAtoms is None or len(self.vAtoms) == 1:
-      raise ValueError('Not enough Atoms have been drawn')
-
-    if not isinstance(dist, dict):
-      self.bonds = [vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}) for i,a in enumerate(self.vAtoms) for j,b in enumerate(self.vAtoms) if i!=j and (a.pos-b.pos).mag<=dist]
-    else:
-      self.bonds = []
-      dist = {'%s_%s'%tuple(sorted(k.split('_'))):dist[k] for k in dist.keys()}
-      for i,a in enumerate(self.vAtoms):
-        for j,b in enumerate(self.vAtoms):
-          if i != j:
-            key = '%s_%s'%tuple(sorted([a.species,b.species]))
-            if key in dist:
-              if (a.pos-b.pos).mag <= dist[key]:
-                self.bonds.append(vp.curve({'pos':a.pos,'color':a.col},{'pos':b.pos,'color':b.col}))
-
-  def draw_relax ( self, nx=1, ny=1, nz=1, coord_axes=True, boundary=False ):
+  def draw_relax ( self ):
     '''
     Start a relaxation visualization. Saves argument information for future drawings
     Creates Forward & Backward buttons & draws the first cell
-
-    Arguments:
-      nx (int): Number of cells to draw in x direction
-      ny (int): Number of cells to draw in y direction
-      nz (int): Number of cells to draw in z direction
-      coord_axes (bool): Draw the coordinate system
-      boundary (bool): Draw cell boundaries
     '''
     self.relax_backward = vp.button(text='<-', bind=self.relax_step_backward)
     self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
     self.relax_text = vp.wtext(text='0')
 
-    self.cell_dim = (nx,ny,nz)
-    self.draw_boundary = boundary
-    self.draw_coord_axes = coord_axes
-    self.draw_cell(nx=nx, ny=ny, nz=nz, coord_axes=coord_axes, boundary=boundary)
-  
-  def draw_cell ( self, nx=1, ny=1, nz=1, coord_axes=True, boundary=False ):
-    '''
-    Create the cell simulation in the vpython environment
-
-    Arguments:
-      nx (int): Number of cells to draw in x direction
-      ny (int): Number of cells to draw in y direction
-      nz (int): Number of cells to draw in z direction
-      coord_axes (bool): Draw the coordinate system
-      boundary (bool): Draw cell boundaries
-    '''
-    from .Atom import Atom
-
-    if boundary:
-      lines = []
-      lat = self.lattice
-      for ix in range(nx):
-        for iy in range(ny):
-          for iz in range(nz):
-            corner = np.sum(lat, axis=0)
-            alines = [[3*[0],a] for a in lat]
-            alines += [[p,corner] for p in [lat[i]+lat[j] for i in range(3) for j in range(i+1,3)]]
-            alines += [[lat[k],lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
-            orig = self.get_cell_pos(ix,iy,iz)
-            lines += [[orig+self.vector(al[0]),orig+self.vector(al[1])] for al in alines]
-      self.boundary = [vp.curve(l[0],l[1],color=self.bnd_col) for l in lines]
-
-    # DEV: Find optimal way to select correct corner to display atom on
-    # Determine which corner of BZ to display the atom on
-    cx,cy,cz = (-1 if v<0 else 0 for v in self.lattice[2])
-
-    self.vAtoms = []
-    for ix in range(nx):
-      for iy in range(ny):
-        for iz in range(nz):
-          c_pos = self.vector(self.origin) + self.get_cell_pos(cx,cy,cz) + self.get_cell_pos(ix,iy,iz)
-          for i,a in enumerate(self.atoms):
-            a_pos = c_pos + self.vector(a)
-            color = self.vector(self.specD[self.spec[i]])
-            self.vAtoms.append(Atom(a_pos,col=color,species=self.spec[i]))
-
-    self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
-    if coord_axes:
-      self.draw_coord_axis()
-
-  def draw_BZ_boundary ( self, b_vec=None ):
-    '''
-    Draw the Brillouin Zone boundary in the vpython window
-
-    Arguments:
-      b_vec (list or ndarray): 3 3-d vectors representing the reciprocal lattice vectors
-    '''
-    from .Util import bravais_boundaries
-    if b_vec is None:
-      b_vec = self.rlattice
-
-    self.BZ_curves = []
-    self.BZ_planes,corners = bravais_boundaries(b_vec)
-    for c in corners:
-      self.BZ_curves.append(vp.curve(self.vector(c[0]), self.vector(c[1]), color=self.bnd_col))
+    self.draw_cell(self.relax_lattices[0], self.relax_poss[0])
 
   def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=1, e_dw=-1 ):
     '''
@@ -461,31 +239,13 @@ class XCrysPy:
     '''
     from scipy.fftpack import fftshift
 
-    draw_flag = vp.text(text='Drawing...', align='center', color=vp.vector(1,0,0))
-    draw_flag.up = self.canvas.up
-
-    fdata, sdata = np.load(fermi_fname), np.load(spin_fname)
-    eig, spin = fdata['nameband'], sdata['spinband']
-    nx,ny,nz,_ = spin.shape
+    fdata,sdata = np.load(fermi_fname),np.load(spin_fname)
+    eig,spins = fdata['nameband'],sdata['spinband']
 
     eig = fftshift(eig,axes=(0,1,2))
-    S = np.moveaxis(np.real(spin[:,:,:,:]),spin.ndim-1,0)
+    spins = np.moveaxis(np.real(spins[:,:,:,:]),spins.ndim-1,0)
 
-    self.draw_BZ_boundary(self.rlattice)
-
-    self.arrows = []
-    colscale = np.mean(eig)
-    vp_shift = .5 * np.array([1,1,0])
-    for x in range(nx):
-      for y in range(ny):
-        for z in range(nz):
-          bv = eig[x,y,z]
-          if bv > e_dw and bv < e_up:
-            point = self.atomic_position([x/nx,y/ny,z/nz]-vp_shift, lattice=self.rlattice)
-            self.arrows.append(vp.arrow(pos=self.vector(point),axis=self.vector(S[:,x,y,z]), length=.01, color=self.vector([bv/colscale,.5,.1])))
-
-    draw_flag.visible = False
-    del draw_flag
+    self.view.draw_arrows(spins, eig, self.reciprocal_lattice(self.lattice), e_up, e_dw)
 
   def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]] ):
     '''
@@ -497,64 +257,16 @@ class XCrysPy:
       bands (list): List of integers representing the index of the band to plot
       colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
     '''
-    from numpy.linalg import det,norm,solve
-    from scipy.fftpack import fftshift
     from .Util import read_bxsf
 
     if len(iso) != len(bands):
       raise ValueError("Each band in 'bands' should have one corresponding isosurface in 'iso'")
+    if len(iso) != len(colors) and len(colors) != 1:
+      raise ValueError("Specify 1 color to plot all bands in the same color, or specify 1 color for each band.")
 
     b_vec,data = read_bxsf(fname)
-    nx,ny,nz,nbnd = data.shape
 
-    if np.max(bands) > nbnd:
+    if np.max(bands) > data.shape[-1]:
       raise ValueError("'nbnd' too large to plot all bands in 'bands'")
 
-    draw_flag = vp.text(text='Drawing...', align='center', color=vp.vector(1,0,0))
-    draw_flag.up = self.canvas.up
-
-    self.draw_BZ_boundary(b_vec)
-
-    poss = []
-    data = fftshift(data,axes=(0,1,2))
-    vp_shift = .5 * (np.array([1,1,1]) - [1/nx,1/ny,1/nz])
-
-    def inside_BZ ( pnt ):
-      # Helper function to test whether points lie within the BZ
-      pmag = np.linalg.norm(pnt)
-      for p in self.BZ_planes:
-        if pmag > np.linalg.norm(p):
-          return False
-      return True
-
-    # Test points between x & x+1 to see whether they house an 'iso' point
-    for i,b in enumerate(bands):
-      bpos = []
-      for x in range(nx-1):
-        for y in range(ny-1):
-          for z in range(nz-1):
-            dA = data[x,y,z][b]
-            dBL = [data[x+v[0],y+v[1],z+v[2]][b] for v in [(1,0,0),(0,1,0),(0,0,1)]]
-            point = [x/nx,y/ny,z/nz] - vp_shift
-            point = np.sum([[v] for v in point]*b_vec,axis=0)
-            if dA == iso[i]:
-              if inside_BZ(point):
-                bpos.append(self.vector(point))
-            for dB in dBL:
-              if (dA > iso[i] and dB < iso[i]) or (dA < iso[i] and dB > iso[i]):
-                if inside_BZ(point):
-                  bpos.append(self.vector(point))
-      if len(bpos) > 0:
-        poss.append(bpos)
-
-    self.vAtoms = []
-    static_color = len(colors) < len(bands)
-    srad = np.min([.5/n for n in (nx,ny,nz)])
-    for i,p in enumerate(poss):
-      col = colors[0] if static_color else colors[i]
-      self.vAtoms.append(vp.points(pos=p,color=self.vector(col)))
-
-    self.draw_coord_axis(length=.1*np.linalg.norm(b_vec[0]),offset=[-1,0,0])
-
-    draw_flag.visible = False
-    del draw_flag
+    self.view.draw_bxsf(b_vec, data, iso, bands, colors)

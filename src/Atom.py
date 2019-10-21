@@ -1,6 +1,6 @@
 from vpython import sphere,vector
 class Atom:
-  def __init__ ( self, pos, col=vector(1,1,1), species='' ):
+  def __init__ ( self, pos, col=vector(1,1,1), species='', radius=.75 ):
     '''
     Initialize an Atom object
 
@@ -11,5 +11,6 @@ class Atom:
     '''
     self.pos = pos
     self.col = col
+    self.rad = radius
     self.species = str(species)
-    self.vpy_sph = sphere(pos=self.pos, color=self.col, radius=.75)
+    self.vpy_sph = sphere(pos=self.pos, color=self.col, radius=self.rad)
