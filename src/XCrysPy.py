@@ -78,10 +78,23 @@ class XCrysPy:
     title = 'CrysPy' if qe_fname is None else qe_fname
 
     self.canvas = vp.canvas(title=title+'\n', width=w_width, height=w_height, background=self.vector(bg_col))
-    self.disp_menu = vp.menu(choices=['Atoms', 'Bonds'], pos=self.canvas.title_anchor, bind=self.disp_menu_change)
+    self.canvas.bind('click', self.click)
+
+    anch = self.canvas.title_anchor
+    self.disp_menu = vp.menu(choices=['Atoms', 'Bonds'], pos=anch, bind=self.disp_menu_change)
     self.sel_menu = vp.menu(choices=['Select', 'Distance', 'Angle'], pos=self.canvas.title_anchor, bind=self.sel_menu_change)
     self.sel_menu_text = vp.wtext()
-    self.canvas.bind('click', self.click)
+
+    sel_nums = [str(i+1) for i in range(6)]
+    self.sel_nx = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_nx_cells, selected=str(nx))
+    self.sel_ny = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_ny_cells, selected=str(ny))
+    self.sel_nz = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_nz_cells, selected=str(nz))
+
+    text = 'Draw Cell Boundaries'
+    self.sel_bounary = vp.checkbox(text=text, pos=anch, bind=self.toggle_boundary, checked=boundary)
+
+    text = 'Perspective View'
+    self.sel_fov = vp.checkbox(text=text, pos=anch, bind=self.toggle_fov, checked=perspective)
 
     self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists)
 
@@ -115,6 +128,28 @@ class XCrysPy:
       self.atom_angle()
     else:
       raise ValueError('No such selection.')
+
+  def toggle_boundary ( self, m ):
+    self.view.boundary = not self.view.boundary
+    self.draw_cell(self.lattice, self.atoms)
+
+  def toggle_fov ( self, m ):
+    self.view.canvas.fov = self.view.oFOV if m.checked else .01
+    self.draw_cell(self.lattice, self.atoms)
+
+  def sel_num_cells ( self, m, ind):
+    self.view.cell_dim[ind] = int(m.selected)
+    self.view.reset_selection()
+    self.draw_cell(self.lattice, self.atoms)
+
+  def sel_nx_cells ( self, m ):
+    self.sel_num_cells(m, 0)
+
+  def sel_ny_cells ( self, m ):
+    self.sel_num_cells(m, 1)
+
+  def sel_nz_cells ( self, m ):
+    self.sel_num_cells(m, 2)
 
   def atom_select ( self ):
     '''
