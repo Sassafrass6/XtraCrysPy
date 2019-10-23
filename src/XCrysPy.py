@@ -30,12 +30,14 @@ class XCrysPy:
 
     self.natoms = 0
     self.spec = None
+    self.atoms = None
     self.lattice = None
     self.relax_index = 0
     self.coord_type = None
     self.eval_dist = False
     self.eval_angle = False
     self.relax_coords = None
+    self.recip_space = False
 
     if qe_fname is None:
       self.coord_type = 'manual'
@@ -249,7 +251,8 @@ class XCrysPy:
     '''
     Draw the cell by calling the View's draw_cell method with the current cell configurations
     '''
-    self.view.draw_cell(lattice, atoms, self.spec, self.spec_col, self.atom_radius, self.bond_radius)
+    if lattice is not None and atoms is not None and not self.recip_space:
+      self.view.draw_cell(lattice, atoms, self.spec, self.spec_col, self.atom_radius, self.bond_radius)
 
   def draw_relax ( self ):
     '''
@@ -287,6 +290,7 @@ class XCrysPy:
     '''
     from scipy.fftpack import fftshift
 
+    self.recip_space = True
     fdata,sdata = np.load(fermi_fname),np.load(spin_fname)
     eig,spins = fdata['nameband'],sdata['spinband']
 
@@ -312,6 +316,7 @@ class XCrysPy:
     if len(iso) != len(colors) and len(colors) != 1:
       raise ValueError("Specify 1 color to plot all bands in the same color, or specify 1 color for each band.")
 
+    self.recip_space = True
     b_vec,data = read_bxsf(fname)
 
     if np.max(bands) > data.shape[-1]:
