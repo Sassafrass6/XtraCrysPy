@@ -153,7 +153,7 @@ def qe_lattice ( ibrav, cell_param ):
     coords = np.array([[A,0,0],[0,B,0],[0,0,C]])
   elif ibrav == (9 or -9):
     A,B,C = cell_param[0],cell_param[1],cell_param[2]
-    sng = np.sign(ibrav)
+    sgn = np.sign(ibrav)
     coords = .5 * np.array([[A,sng*B,0],[-sgn*A,B,0],[0,0,2*C]])
   elif ibrav == 91:
     A,B,C = cell_param[0],cell_param[1],cell_param[2]
