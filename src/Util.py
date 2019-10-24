@@ -204,7 +204,7 @@ def bravais_boundaries ( b_vec ):
     from numpy.linalg import det,norm,solve
 
     indices = [[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[0,1,1],[0,-1,-1],[1,0,0],[-1,0,0],[1,0,1],[-1,0,-1],[1,1,0],[-1,-1,0],[1,1,1],[-1,-1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[-1,1,0],[1,-1,0],[1,0,-1],[-1,0,1],[0,1,-1],[0,-1,1]]
-    G = [np.sum([[i[0]],[i[1]],[i[2]]]*b_vec,axis=0) for i in indices]
+    G = [np.dot(i,b_vec) for i in indices]
     incl_G = np.ones(len(G))
 
     # Determine which G vectors lie on BZ boundary

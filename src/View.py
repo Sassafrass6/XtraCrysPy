@@ -108,7 +108,7 @@ class View:
       iy (int): y index
       iz (int): z index
     '''
-    return self.vector(np.sum([ix,iy,iz]*lat, axis=1))
+    return self.vector(np.dot([ix,iy,iz],lat))
 
   def reset_selection ( self ):
     '''
@@ -295,15 +295,11 @@ class View:
             orig = self.get_cell_pos(lat,ix,iy,iz)
             self.bound_curve += [vp.curve(orig+self.vector(al[0]),orig+self.vector(al[1]),color=self.bnd_col) for al in alines]
 
-    # DEV: Find optimal way to select correct corner to display atom on
-    # Determine which corner of BZ to display the atom on
-    cx,cy,cz = (-1 if v<0 else 0 for v in lat[2])
-
     self.vAtoms = []
     for ix in range(nx):
       for iy in range(ny):
         for iz in range(nz):
-          c_pos = self.vector(self.origin) + self.get_cell_pos(lat,cx,cy,cz) + self.get_cell_pos(lat,ix,iy,iz)
+          c_pos = self.vector(self.origin) + self.get_cell_pos(lat,ix,iy,iz)
           for i,a in enumerate(atoms):
             a_pos = c_pos + self.vector(a)
             color = self.vector(spec_col[species[i]])
@@ -377,7 +373,7 @@ class View:
         for z in range(nz):
           bv = eig[x,y,z]
           if bv > e_dw and bv < e_up:
-            point = np.sum(([x/nx,y/ny,z/nz]-vp_shift)*rlat, axis=1)
+            point = np.dot([x/nx,y/ny,z/nz]-vp_shift,rlat)
             self.arrows.append(vp.arrow(pos=self.vector(point),axis=self.vector(spins[:,x,y,z]), length=.01, color=self.vector([bv/colscale,.5,.1])))
 
     draw_flag.visible = False
@@ -424,7 +420,7 @@ class View:
             dA = data[x,y,z][b]
             dBL = [data[x+v[0],y+v[1],z+v[2]][b] for v in [(1,0,0),(0,1,0),(0,0,1)]]
             point = [x/nx,y/ny,z/nz] - vp_shift
-            point = np.sum([[v] for v in point]*rlat,axis=0)
+            point = np.dot(point,rlat)
             if dA == iso[i]:
               if inside_BZ(point):
                 bpos.append(self.vector(point))
