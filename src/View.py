@@ -22,7 +22,7 @@ class View:
 
     self.canvas = canvas
     self.boundary = boundary
-    self.cell_dim = (nx,ny,nz)
+    self.cell_dim = [nx,ny,nz]
     self.coord_axes = coord_axes
     self.bond_dists = bond_dists
     self.origin = np.array(origin)
