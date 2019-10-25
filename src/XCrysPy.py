@@ -3,7 +3,7 @@ import numpy as np
 
 class XCrysPy:
 
-  def __init__ ( self, qe_fname=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1200, w_height=750, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, bond_dists=0. ):
+  def __init__ ( self, qe_fname=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, bond_dists=0. ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -76,28 +76,7 @@ class XCrysPy:
     else:
       self.spec_col = spec_col
 
-    self.atom_radius,self.bond_radius = .7,.07
-    title = 'CrysPy' if qe_fname is None else qe_fname
-
-    self.canvas = vp.canvas(title=title+'\n', width=w_width, height=w_height, background=self.vector(bg_col))
-    self.canvas.bind('click', self.click)
-
-    anch = self.canvas.title_anchor
-    self.disp_menu = vp.menu(choices=['Atoms', 'Bonds'], pos=anch, bind=self.disp_menu_change)
-    self.sel_menu = vp.menu(choices=['Select', 'Distance', 'Angle'], pos=self.canvas.title_anchor, bind=self.sel_menu_change)
-    self.sel_menu_text = vp.wtext()
-
-    sel_nums = [str(i+1) for i in range(6)]
-    self.sel_nx = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_nx_cells, selected=str(nx))
-    self.sel_ny = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_ny_cells, selected=str(ny))
-    self.sel_nz = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_nz_cells, selected=str(nz))
-
-    text = 'Draw Cell Boundaries'
-    self.sel_bounary = vp.checkbox(text=text, pos=anch, bind=self.toggle_boundary, checked=boundary)
-
-    text = 'Perspective View'
-    self.sel_fov = vp.checkbox(text=text, pos=anch, bind=self.toggle_fov, checked=perspective)
-
+    self.setup_canvas(qe_fname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
     self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists)
 
     if draw_cell and self.lattice is not None:
@@ -105,6 +84,37 @@ class XCrysPy:
         self.draw_relax()
       else:
         self.draw_cell(self.lattice, self.atoms)
+
+  def setup_canvas ( self, qe_fname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
+
+    self.atom_radius,self.bond_radius = .7,.07
+    title = 'CrysPy' if qe_fname is None else qe_fname
+
+    self.canvas = vp.canvas(title=title+'\n', width=w_width, height=w_height, background=self.vector(bg_col))
+    self.canvas.bind('click', self.click)
+
+    anch = self.canvas.caption_anchor
+    self.canvas.caption = '\nOptions:\t\t\t\tTools:\n'
+
+    text = 'Cell Boundaries'
+    self.sel_bounary = vp.checkbox(text=text, pos=anch, bind=self.toggle_boundary, checked=boundary)
+
+    self.canvas.append_to_caption('     \t')
+    self.disp_menu = vp.menu(choices=['Atoms', 'Bonds'], pos=anch, bind=self.disp_menu_change)
+    self.sel_menu = vp.menu(choices=['Select Atom', 'Distance', 'Angle'], pos=anch, bind=self.sel_menu_change)
+
+    text = 'Perspective View'
+    self.canvas.append_to_caption('\n')
+    self.sel_fov = vp.checkbox(text=text, pos=anch, bind=self.toggle_fov, checked=perspective)
+    self.canvas.append_to_caption('\t\t')
+    self.sel_menu_text = vp.wtext()
+
+    self.canvas.append_to_caption('\n\nNumber of Cells:\n   Nx      Ny      Nz\n')
+
+    sel_nums = [str(i+1) for i in range(6)]
+    self.sel_nx = vp.menu(choices=sel_nums, pos=[2,0], bind=self.sel_nx_cells, selected=str(nx))
+    self.sel_ny = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_ny_cells, selected=str(ny))
+    self.sel_nz = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_nz_cells, selected=str(nz))
 
   def disp_menu_change ( self, m ):
     if m.selected == 'Atoms':
@@ -122,11 +132,11 @@ class XCrysPy:
     Arguments:
       m (vpython widget): Menu widget
     '''
-    if m.selected == 'Select':
+    if 'Select' in m.selected:
       self.atom_select()
-    elif m.selected == 'Distance':
+    elif 'Distance' in m.selected:
       self.atom_dist()
-    elif m.selected == 'Angle':
+    elif 'Angle' in m.selected:
       self.atom_angle()
     else:
       raise ValueError('No such selection.')
