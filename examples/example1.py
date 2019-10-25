@@ -3,7 +3,7 @@ from XtraCrysPy import XtraCrysPy as XCP
 if '__main__' == __name__:
 
   # Define params
-  a = 5.65
+  a = 10.599478
 
   # Unit origin
   origin = [0,0,0]
@@ -19,5 +19,5 @@ if '__main__' == __name__:
   spec_col = {'Ga':(1,0,0), 'As':(0,0,1)}
 
   # Plot with CrysPy
-  cpy = XCP.XtraCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin, nx=3, ny=3, nz=3, bond_dists=3., boundary=False)
+  cpy = XCP.XtraCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin, nx=3, ny=3, nz=3, bond_dists=a/1.73, boundary=False)
 

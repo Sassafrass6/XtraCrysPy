@@ -59,9 +59,9 @@ class XtraCrysPy:
       if 'angstrom' in self.coord_type:
         conv = .529177210 # Reciprocal of (Bohr to Anstrom)
         self.atoms = np.array(self.atoms) / conv
-      elif 'crystal' in self.coord_type:
+      elif 'alat' in self.coord_type or 'crystal' in self.coord_type:
         self.atoms = [self.atomic_position(a) for a in self.atoms]
-        print('Crystal coordinate types require more testing')
+        print('Crystal & Alat coordinate types require more testing')
       elif 'relax' in self.coord_type:
         if len(self.relax_lattices) > 0:
           self.lattice = self.relax_lattices[0]
@@ -80,15 +80,25 @@ class XtraCrysPy:
     self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists)
 
     if draw_cell and self.lattice is not None:
-      if 'relax' in self.coord_type:
-        self.draw_relax()
-      else:
-        self.draw_cell(self.lattice, self.atoms)
+      self.draw_cell(self.lattice, self.atoms)
 
   def setup_canvas ( self, qe_fname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
+    '''
+    Create the Canvas object and initialize the caption text and buttons.
 
+    Arguments:
+      qe_fname (str): Filename of a quantum espresso inputfile
+      draw_cell (bool): Draw the cell on creation of XtraCrysPy object
+      w_width (int): Vpython window width
+      w_height (int): Vpython window height
+      bg_col (tuple): Background color (R,G,B)
+      bnd_col (tuple): Brillouin Zone boundary color (R,G,B)
+      nx,ny,nz (int): Number of cells to draw in the x,y,z direction
+      boundary (bool): True to draw the boundary of the lattice
+      perspective (bool): Flag to set the FOV as perspective mode
+    '''
     self.atom_radius,self.bond_radius = .7,.07
-    title = 'CrysPy' if qe_fname is None else qe_fname
+    title = '\tXtraCrysPy' if qe_fname is None else qe_fname
 
     self.canvas = vp.canvas(title=title+'\n', width=w_width, height=w_height, background=self.vector(bg_col))
     self.canvas.bind('click', self.click)
@@ -108,6 +118,12 @@ class XtraCrysPy:
     self.sel_fov = vp.checkbox(text=text, pos=anch, bind=self.toggle_fov, checked=perspective)
     self.canvas.append_to_caption('\t\t')
     self.sel_menu_text = vp.wtext()
+
+    if 'relax' in self.coord_type:
+      self.canvas.append_to_caption('  \t')
+      self.relax_backward = vp.button(text='<-', bind=self.relax_step_backward)
+      self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
+      self.relax_text = vp.wtext(text='Step: 0')
 
     self.canvas.append_to_caption('\n\nNumber of Cells:\n   Nx      Ny      Nz\n')
 
@@ -215,7 +231,7 @@ class XtraCrysPy:
 
     if top or bot:
       self.relax_index += sgn
-      self.relax_text.text = str(self.relax_index)
+      self.relax_text.text = 'Step: %d'%self.relax_index
       self.atoms = self.relax_poss[self.relax_index]
       if len(self.relax_lattices) > 0:
         self.lattice = self.relax_lattices[self.relax_index]
@@ -263,17 +279,6 @@ class XtraCrysPy:
     '''
     if lattice is not None and atoms is not None and not self.recip_space:
       self.view.draw_cell(lattice, atoms, self.spec, self.spec_col, self.atom_radius, self.bond_radius)
-
-  def draw_relax ( self ):
-    '''
-    Start a relaxation visualization. Saves argument information for future drawings
-    Creates Forward & Backward buttons & draws the first cell
-    '''
-    self.relax_backward = vp.button(text='<-', bind=self.relax_step_backward)
-    self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
-    self.relax_text = vp.wtext(text='0')
-
-    self.draw_cell(self.lattice, self.relax_poss[0])
 
   def draw_BZ_points ( self, points, color=None, rlat=None ):
     '''
