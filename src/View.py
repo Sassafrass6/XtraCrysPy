@@ -346,16 +346,17 @@ class View:
     self.points_BZ = vp.points(pos=points, color=col)
     
 
-  def draw_arrows ( self, spins, eig, rlat, e_up, e_dw ):
+  def draw_arrows ( self, rlat, points, directions, colors, size ):
     '''
     Draw the arrows for spin texture plots
 
     Arugments:
-      spins (ndarray): 3d vector for each point in the BZ to plot
-      eig (ndarray): Surface height (energy) for each point in the BZ
       rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice
-      e_up (float): Highest eig to plot
-      e_dw (float): Lowest eig to plot
+      points (list or ndarray): List of 3d vectors with positions of points (x,y,z) to plot
+      directions (list or ndarray): List of 3d vectors with directions of arrows for each point.
+      colors (list or ndarray): List of 3d vectors representing colors (R,G,B) for each arrow
+      rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice
+      size (float): Size of the arrow. Default is .05
     '''
     self.clear_canvas()
 
@@ -365,16 +366,13 @@ class View:
     self.draw_BZ_boundary(rlat)
 
     self.arrows = []
-    colscale = np.mean(eig)
-    _,nx,ny,nz = spins.shape
-    vp_shift = .5 * np.array([1,1,0])
-    for x in range(nx):
-      for y in range(ny):
-        for z in range(nz):
-          bv = eig[x,y,z]
-          if bv > e_dw and bv < e_up:
-            point = np.dot([x/nx,y/ny,z/nz]-vp_shift,rlat)
-            self.arrows.append(vp.arrow(pos=self.vector(point),axis=self.vector(spins[:,x,y,z]), length=.01, color=self.vector([bv/colscale,.5,.1])))
+    col = self.vector([.8,.8,0])
+    for i,p in enumerate(points):
+      pnt = self.vector(p)
+      adir = self.vector(directions[i])
+      if colors is not None:
+        col = self.vector(colors[i])
+      self.arrows.append(vp.arrow(pos=pnt,axis=adir, length=size, color=col))
 
     draw_flag.visible = False
     del draw_flag

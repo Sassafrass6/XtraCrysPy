@@ -5,7 +5,7 @@ Requirements:
   python3.7  
   vpython  
   
-Installation:  
+Installation (only use --user if you do not have permission to install python packages):  
   python setup.py install  
   python setup.py install --user  
   

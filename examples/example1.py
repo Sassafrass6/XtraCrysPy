@@ -1,4 +1,4 @@
-from XCrysPy import XCrysPy as XCP
+from XtraCrysPy import XtraCrysPy as XCP
 
 if '__main__' == __name__:
 
@@ -19,5 +19,5 @@ if '__main__' == __name__:
   spec_col = {'Ga':(1,0,0), 'As':(0,0,1)}
 
   # Plot with CrysPy
-  cpy = XCP.XCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin, nx=3, ny=3, nz=3, bond_dists=3., boundary=False)
+  cpy = XCP.XtraCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin, nx=3, ny=3, nz=3, bond_dists=3., boundary=False)
 

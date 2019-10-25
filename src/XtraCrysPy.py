@@ -1,17 +1,17 @@
 import vpython as vp
 import numpy as np
 
-class XCrysPy:
+class XtraCrysPy:
 
   def __init__ ( self, qe_fname=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, bond_dists=0. ):
     '''
-    Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
+    Initialize the XtraCrysPy object, creating a canvas and computing the corresponding lattice
 
     Arguments:
       qe_fname (str): Filename of a quantum espresso inputfile
       lattice (list): List of 3 3d vectors, representing the lattice parameters
       basis (list): List of N 3d vectors, representing the positions of each of N atoms
-      draw_cell (bool): Draw the cell on creation of XCrysPy object
+      draw_cell (bool): Draw the cell on creation of XtraCrysPy object
       origin (list): List of 3 points, representing the x,y,z position of the grid's center
       species (list): List of N species strings corresponding to atoms in 'basis' (e.g. ['Si','Si'])
       sepc_col (dict): Dictionary linking atom identfiers (e.g. 'Si' or 'He') to color tuples (R,G,B)
@@ -289,6 +289,28 @@ class XCrysPy:
       rlat = self.rlattice = self.reciprocal_lattice(self.lattice)
     self.view.draw_BZ_points(points, color, rlat)
 
+  def draw_arrows ( self, points, directions, colors=None, rlat=None, size=.05 ):
+    '''
+    Draw the arrows for spin texture plots
+
+    Arugments:
+      points (list or ndarray): List of 3d vectors with positions of points (x,y,z) to plot
+      directions (list or ndarray): List of 3d vectors with directions of arrows for each point.
+      colors (list or ndarray): List of 3d vectors representing colors (R,G,B) for each arrow
+      rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice
+      size (float): Length of the vpython arrow
+    '''
+
+    if len(points) != len(directions):
+      raise IndexError('points and directions must have the same number of elements')
+    if colors is not None and len(points) != len(colors):
+      raise IndexError('points and colors must have the same number of elements')
+
+    if rlat is None:
+      rlat = self.rlattice = self.reciprocal_lattice(self.lattice)
+
+    self.view.draw_arrows(rlat, points, directions, colors, size)
+
   def plot_spin_texture ( self, fermi_fname, spin_fname, e_up=1, e_dw=-1 ):
     '''
     Plots the spin texture read from the format output by PAOFLOW
@@ -308,7 +330,21 @@ class XCrysPy:
     eig = fftshift(eig,axes=(0,1,2))
     spins = np.moveaxis(np.real(spins[:,:,:,:]),spins.ndim-1,0)
 
-    self.view.draw_arrows(spins, eig, self.reciprocal_lattice(self.lattice), e_up, e_dw)
+    colscale = np.mean(eig)
+    _,nx,ny,nz = spins.shape
+    vp_shift = .5 * np.array([1,1,1])
+    points,directions,colors = [],[],[]
+    rlat = self.reciprocal_lattice(self.lattice)
+    for x in range(nx):
+      for y in range(ny):
+        for z in range(nz):
+          bv = eig[x,y,z]
+          if bv > e_dw and bv < e_up:
+            points.append(np.dot([x/nx,y/ny,z/nz]-vp_shift,rlat))
+            directions.append(spins[:,x,y,z])
+            colors.append([bv/colscale,.5,.1])
+
+    self.view.draw_arrows(rlat, points, directions, colors, .01)
 
   def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]] ):
     '''
