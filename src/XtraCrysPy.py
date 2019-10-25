@@ -273,8 +273,7 @@ class XtraCrysPy:
     self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
     self.relax_text = vp.wtext(text='0')
 
-    print(self.relax_lattices)
-    self.draw_cell(self.relax_lattices[0], self.relax_poss[0])
+    self.draw_cell(self.lattice, self.relax_poss[0])
 
   def draw_BZ_points ( self, points, color=None, rlat=None ):
     '''
