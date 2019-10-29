@@ -3,12 +3,12 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, qe_fname=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, bond_dists=0. ):
+  def __init__ ( self, inputfile=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, bond_dists=0. ):
     '''
     Initialize the XtraCrysPy object, creating a canvas and computing the corresponding lattice
 
     Arguments:
-      qe_fname (str): Filename of a quantum espresso inputfile
+      inputfile (str): Filename of a quantum espresso inputfile
       lattice (list): List of 3 3d vectors, representing the lattice parameters
       basis (list): List of N 3d vectors, representing the positions of each of N atoms
       draw_cell (bool): Draw the cell on creation of XtraCrysPy object
@@ -39,7 +39,7 @@ class XtraCrysPy:
     self.relax_coords = None
     self.recip_space = False
 
-    if qe_fname is None:
+    if inputfile is None:
       self.coord_type = 'manual'
       if (lattice or basis or species) is None:
         print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
@@ -50,10 +50,10 @@ class XtraCrysPy:
         self.lattice = np.array(lattice)
         self.cell_param = [np.abs(np.mean([np.linalg.norm(v) for v in self.lattice]))]
     else:
-      if 'relax' in qe_fname:
-        read_relax_file(self,qe_fname)
+      if 'relax' in inputfile:
+        read_relax_file(self,inputfile)
       else:
-        read_scf_file(self,qe_fname)
+        read_scf_file(self,inputfile)
       self.lattice = qe_lattice(self.ibrav, self.cell_param)
 
       if 'angstrom' in self.coord_type:
@@ -76,18 +76,18 @@ class XtraCrysPy:
     else:
       self.spec_col = spec_col
 
-    self.setup_canvas(qe_fname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
+    self.setup_canvas(inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
     self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists)
 
     if draw_cell and self.lattice is not None:
       self.draw_cell(self.lattice, self.atoms)
 
-  def setup_canvas ( self, qe_fname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
+  def setup_canvas ( self, inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
     '''
     Create the Canvas object and initialize the caption text and buttons.
 
     Arguments:
-      qe_fname (str): Filename of a quantum espresso inputfile
+      inputfile (str): Filename of a quantum espresso inputfile
       draw_cell (bool): Draw the cell on creation of XtraCrysPy object
       w_width (int): Vpython window width
       w_height (int): Vpython window height
@@ -98,7 +98,7 @@ class XtraCrysPy:
       perspective (bool): Flag to set the FOV as perspective mode
     '''
     self.atom_radius,self.bond_radius = .7,.07
-    title = '\tXtraCrysPy' if qe_fname is None else qe_fname
+    title = '\tXtraCrysPy' if inputfile is None else inputfile
 
     self.canvas = vp.canvas(title=title+'\n', width=w_width, height=w_height, background=self.vector(bg_col))
     self.canvas.bind('click', self.click)
