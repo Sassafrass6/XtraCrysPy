@@ -113,17 +113,17 @@ class XtraCrysPy:
     self.disp_menu = vp.menu(choices=['Atoms', 'Bonds'], pos=anch, bind=self.disp_menu_change)
     self.sel_menu = vp.menu(choices=['Select Atom', 'Distance', 'Angle'], pos=anch, bind=self.sel_menu_change)
 
-    text = 'Perspective View'
-    self.canvas.append_to_caption('\n')
-    self.sel_fov = vp.checkbox(text=text, pos=anch, bind=self.toggle_fov, checked=perspective)
-    self.canvas.append_to_caption('\t\t')
-    self.sel_menu_text = vp.wtext()
-
     if 'relax' in self.coord_type:
       self.canvas.append_to_caption('  \t')
       self.relax_backward = vp.button(text='<-', bind=self.relax_step_backward)
       self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
       self.relax_text = vp.wtext(text='Step: 0')
+
+    text = 'Perspective View'
+    self.canvas.append_to_caption('\n')
+    self.sel_fov = vp.checkbox(text=text, pos=anch, bind=self.toggle_fov, checked=perspective)
+    self.canvas.append_to_caption('\t\t')
+    self.sel_menu_text = vp.wtext()
 
     self.canvas.append_to_caption('\n\nNumber of Cells:\n   Nx      Ny      Nz\n')
 
