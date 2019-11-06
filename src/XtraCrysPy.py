@@ -26,7 +26,6 @@ class XtraCrysPy:
       bond_dists (int or dict): Maximum bond distance or dictionary of form {'species':max_bond_dist}
     '''
     from .View import View
-    from .Util import qe_lattice,read_scf_file,read_relax_file
 
     self.natoms = 0
     self.spec = None
@@ -50,11 +49,22 @@ class XtraCrysPy:
         self.lattice = np.array(lattice)
         self.cell_param = [np.abs(np.mean([np.linalg.norm(v) for v in self.lattice]))]
     else:
-      if 'relax' in inputfile:
-        read_relax_file(self,inputfile)
+      if 'poscar' in inputfile:
+        from .Util import read_poscar_file
+        tup = read_poscar_file(self, inputfile)
+        self.coord_type = tup[0]
+        self.lattice = tup[1]
+        self.natoms = tup[2]
+        self.atoms = tup[3]
       else:
-        read_scf_file(self,inputfile)
-      self.lattice = qe_lattice(self.ibrav, self.cell_param)
+        from .Util import qe_lattice
+        if 'relax' in inputfile:
+          from .Util import read_relax_file
+          read_relax_file(self, inputfile)
+        else:
+          from .Util import read_scf_file
+          read_scf_file(self, inputfile)
+        self.lattice = qe_lattice(self.ibrav, self.cell_param)
 
       if 'angstrom' in self.coord_type:
         conv = .529177210 # Reciprocal of (Bohr to Anstrom)
@@ -110,7 +120,7 @@ class XtraCrysPy:
     self.sel_bounary = vp.checkbox(text=text, pos=anch, bind=self.toggle_boundary, checked=boundary)
 
     self.canvas.append_to_caption('     \t')
-    self.disp_menu = vp.menu(choices=['Atoms', 'Bonds'], pos=anch, bind=self.disp_menu_change)
+    self.disp_menu = vp.menu(choices=['Atom Primary', 'Bond Primary'], pos=anch, bind=self.sel_disp_menu)
     self.sel_menu = vp.menu(choices=['Select Atom', 'Distance', 'Angle'], pos=anch, bind=self.sel_menu_change)
 
     if 'relax' in self.coord_type:
@@ -132,11 +142,11 @@ class XtraCrysPy:
     self.sel_ny = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_ny_cells, selected=str(ny))
     self.sel_nz = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_nz_cells, selected=str(nz))
 
-  def disp_menu_change ( self, m ):
-    if m.selected == 'Atoms':
+  def sel_disp_menu ( self, m ):
+    if m.selected == 'Atom Primary':
       self.atom_radius = .7
       self.bond_radius = .07
-    if m.selected == 'Bonds':
+    if m.selected == 'Bond Primary':
       self.atom_radius = .25
       self.bond_radius = .15
     self.draw_cell(self.lattice, self.atoms)
