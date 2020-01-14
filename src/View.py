@@ -3,7 +3,7 @@ import numpy as np
 
 class View:
 
-  def __init__ ( self, canvas, origin, perspective, bnd_col, nx, ny, nz, coord_axes, boundary, bond_dists ):
+  def __init__ ( self, canvas, origin, perspective, bnd_col, nx, ny, nz, coord_axes, boundary, bond_dists, bond_thickness, atom_radii):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -18,6 +18,8 @@ class View:
       nz (int): Number of cells to draw in z direction
       coord_axes (bool): Draw the coordinate system
       boundary (bool): Draw cell boundaries
+      bond_thickness (float): Thickness of the drawn bonds
+      atom_radii: (float or dict): Float to specify atom radius, or dict of form {'Species':radius}
     '''
 
     self.canvas = canvas
@@ -25,8 +27,10 @@ class View:
     self.cell_dim = [nx,ny,nz]
     self.coord_axes = coord_axes
     self.bond_dists = bond_dists
+    self.atom_radii = atom_radii
     self.origin = np.array(origin)
     self.perspective = perspective
+    self.bnd_thck = bond_thickness
     self.bnd_col = self.vector(bnd_col)
 
     self.oFOV = self.canvas.fov
@@ -43,6 +47,7 @@ class View:
     self.coord_axis = None
     self.bound_curve = None
     self.bond_radius = None
+
     self.selected_atoms = []
     self.selected_bonds = []
     self.selected_colors = []
@@ -281,7 +286,12 @@ class View:
 
     self.clear_canvas()
     nx,ny,nz = self.cell_dim
-    self.bond_radius = bond_radius
+    self.bond_radius = bond_radius if self.bnd_thck is None else self.bnd_thck
+
+    atom_radius = atom_radius if self.atom_radii is None else self.atom_radii
+    if not isinstance(atom_radius, dict):
+      rad = atom_radius
+      atom_radius = {s:rad for s in species}
 
     if self.boundary:
       self.bound_curve = []
@@ -303,7 +313,7 @@ class View:
           for i,a in enumerate(atoms):
             a_pos = c_pos + self.vector(a)
             color = self.vector(spec_col[species[i]])
-            self.vAtoms.append(Atom(a_pos,col=color,species=species[i],radius=atom_radius))
+            self.vAtoms.append(Atom(a_pos,col=color,species=species[i],radius=atom_radius[species[i]]))
 
     if len(self.vAtoms) > 1:
       self.draw_bonds()
@@ -337,13 +347,15 @@ class View:
       color (tuple): Tuple of (R,G,B) with each between 0 & 1
       rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice
     '''
+    self.clear_canvas()
 
     if self.BZ_planes is None:
       self.draw_BZ_boundary(b_vec=rlat)
 
     col = vp.vector(1,1,1) if color is None else self.vector(color)
     points = [self.vector(p) for p in points]
-    self.points_BZ = vp.points(pos=points, color=col)
+    if len(points) > 0:
+      self.points_BZ = vp.points(pos=points, color=col)
     
 
   def draw_arrows ( self, rlat, points, directions, colors, size ):

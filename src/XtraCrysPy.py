@@ -3,7 +3,7 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, inputfile=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, bond_dists=0. ):
+  def __init__ ( self, inputfile=None, lattice=None, basis=None, draw_cell=True, origin=[0,0,0], species=None, spec_col=None, perspective=True, w_width=1000, w_height=700, bg_col=(0,0,0), bnd_col=(1,1,1), nx=1, ny=1, nz=1, coord_axes=False, boundary=True, atom_radii=None, bond_dists=0., bond_thickness=None, relax=False ):
     '''
     Initialize the XtraCrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -23,7 +23,10 @@ class XtraCrysPy:
       nx,ny,nz (int): Number of cells to draw in the x,y,z direction
       coord_axes (bool): Draw the cartesian axes for reference
       boundary (bool): True to draw the boundary of the lattice
-      bond_dists (int or dict): Maximum bond distance or dictionary of form {'species':max_bond_dist}
+      atom_radii: (float or dict): Float to specify atom radius, or dict of form {'Species':radius}
+      bond_dists (dict or dict): Maximum bond distance or dictionary of form {'Sp1_Sp2':max_bond_dist}
+      bond_thickness (float): Thickness of the drawn bonds
+      relax (bool): True if a QE relax output file is the inputfile
     '''
     from .View import View
 
@@ -49,7 +52,8 @@ class XtraCrysPy:
         self.lattice = np.array(lattice)
         self.cell_param = [np.abs(np.mean([np.linalg.norm(v) for v in self.lattice]))]
     else:
-      if 'poscar' in inputfile:
+      # Disabled poscar functionality
+      if False and 'poscar' in inputfile:
         from .Util import read_poscar_file
         tup = read_poscar_file(self, inputfile)
         self.coord_type = tup[0]
@@ -58,7 +62,7 @@ class XtraCrysPy:
         self.atoms = tup[3]
       else:
         from .Util import qe_lattice
-        if 'relax' in inputfile:
+        if relax:
           from .Util import read_relax_file
           read_relax_file(self, inputfile)
         else:
@@ -87,7 +91,7 @@ class XtraCrysPy:
       self.spec_col = spec_col
 
     self.setup_canvas(inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
-    self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists)
+    self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists,bond_thickness,atom_radii)
 
     if draw_cell and self.lattice is not None:
       self.draw_cell(self.lattice, self.atoms)
@@ -290,7 +294,7 @@ class XtraCrysPy:
     if lattice is not None and atoms is not None and not self.recip_space:
       self.view.draw_cell(lattice, atoms, self.spec, self.spec_col, self.atom_radius, self.bond_radius)
 
-  def draw_BZ_points ( self, points, color=None, rlat=None ):
+  def draw_BZ_points ( self, points=[], color=None, rlat=None ):
     '''
     Draw points inside of the BZ
 
@@ -299,6 +303,7 @@ class XtraCrysPy:
       color (tuple): Tuple of (R,G,B) with each between 0 & 1
       rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice. If 'None' vectors will be computed from 'self.lattice'
     '''
+    self.recip_space = True
     if rlat is None:
       rlat = self.rlattice = self.reciprocal_lattice(self.lattice)
     self.view.draw_BZ_points(points, color, rlat)
@@ -314,7 +319,6 @@ class XtraCrysPy:
       rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice
       size (float): Length of the vpython arrow
     '''
-
     if len(points) != len(directions):
       raise IndexError('points and directions must have the same number of elements')
     if colors is not None and len(points) != len(colors):
