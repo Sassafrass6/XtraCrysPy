@@ -80,7 +80,7 @@ class View:
         b (Atom or vpython.sphere): Second atom
       '''
       dist = b.pos - a.pos
-      text = '%f angstroms'%dist.mag
+      text = '%f angstroms'%(dist.mag * .529177)
       print('Distance = %s'%text)
       return text
 
