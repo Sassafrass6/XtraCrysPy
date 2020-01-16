@@ -431,7 +431,7 @@ class View:
       for tri in triangles:
         vs = []
         inside = True
-        norm = self.vector(np.cross(tri[0],tri[1])) if normals else self.vector([0,0,0])
+        norm = self.vector((np.cross(tri[1]-tri[0], tri[2]-tri[1]) if normals else [0,0,1])).norm()
         for j,t in enumerate(tri):
           t = t / grid_size[j] - vp_shift
           t = t @ rlat
