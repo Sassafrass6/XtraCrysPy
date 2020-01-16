@@ -1,5 +1,5 @@
 import numpy as np
-from VertexTables import edge_offsets, corner_offsets, vertex_table
+from .VertexTables import edge_offsets, corner_offsets, vertex_table
 
 def get_cube_triangles ( index, grid, iso_val ):
   '''

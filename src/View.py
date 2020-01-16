@@ -389,7 +389,7 @@ class View:
     draw_flag.visible = False
     del draw_flag
 
-  def draw_bxsf ( self, rlat, data, iso, bands, colors ):
+  def draw_bxsf ( self, rlat, data, iso, bands, colors, normals ):
     '''
     Create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
 
@@ -399,7 +399,9 @@ class View:
       iso (list): List of floats corresponding to the isosurface values for each respective band in 'bands'
       bands (list): List of integers representing the index of the band to plot
       colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
+      normals (bool): True adds normals to triangle vertices, improving surface visibility
     '''
+    from .MarchingCubes import marching_cubes
     from numpy.linalg import det,norm,solve
     from scipy.fftpack import fftshift
 
@@ -421,32 +423,24 @@ class View:
           return False
       return True
 
-    # Test points between x & x+1 to see whether they house an 'iso' point
-    for i,b in enumerate(bands):
-      bpos = []
-      for x in range(nx-1):
-        for y in range(ny-1):
-          for z in range(nz-1):
-            dA = data[x,y,z][b]
-            dBL = [data[x+v[0],y+v[1],z+v[2]][b] for v in [(1,0,0),(0,1,0),(0,0,1)]]
-            point = [x/nx,y/ny,z/nz] - vp_shift
-            point = np.dot(point,rlat)
-            if dA == iso[i]:
-              if inside_BZ(point):
-                bpos.append(self.vector(point))
-            for dB in dBL:
-              if (dA > iso[i] and dB < iso[i]) or (dA < iso[i] and dB > iso[i]):
-                if inside_BZ(point):
-                  bpos.append(self.vector(point))
-      if len(bpos) > 0:
-        poss.append(bpos)
-
-    # Plot the points from each band
     self.vAtoms = []
-    srad = np.min([.5/n for n in (nx,ny,nz)])
-    for i,p in enumerate(poss):
-      col = colors[0] if len(colors)<2 else colors[i]
-      self.vAtoms.append(vp.points(pos=p,color=self.vector(col)))
+    grid_size = [nx, ny, nz]
+    for i,b in enumerate(bands):
+      vTris = []
+      triangles = marching_cubes(data[:,:,:,b], iso[i])
+      for tri in triangles:
+        vs = []
+        inside = True
+        norm = self.vector(np.cross(tri[0],tri[1])) if normals else self.vector([0,0,0])
+        for j,t in enumerate(tri):
+          t = t / grid_size[j] - vp_shift
+          t = t @ rlat
+          if not inside_BZ(t):
+            inside = False
+          vs.append(vp.vertex(pos=self.vector(t), normal=norm, color=self.vector(colors[i])))
+        if inside:
+          vTris.append(vp.triangle(vs=vs))
+      self.vAtoms.append(vTris)
 
     if self.coord_axes:
       self.draw_coord_axis(length=.1*np.linalg.norm(rlat[0]),offset=[-1,0,0])

@@ -364,7 +364,7 @@ class XtraCrysPy:
 
     self.view.draw_arrows(rlat, points, directions, colors, .01)
 
-  def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]] ):
+  def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]], normals=True ):
     '''
     Create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
 
@@ -373,6 +373,7 @@ class XtraCrysPy:
       iso (list): List of floats corresponding to the isosurface values for each respective band in 'bands'
       bands (list): List of integers representing the index of the band to plot
       colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
+      normals (bool): True adds normals to triangle vertices, improving surface visibility
     '''
     from .Util import read_bxsf
 
@@ -384,7 +385,7 @@ class XtraCrysPy:
     self.recip_space = True
     b_vec,data = read_bxsf(fname)
 
-    if np.max(bands) > data.shape[-1]:
-      raise ValueError("'nbnd' too large to plot all bands in 'bands'")
+    if np.max(bands) >= data.shape[-1]:
+      raise ValueError("'bands' contains an index too large for the dataset")
 
-    self.view.draw_bxsf(b_vec, data, iso, bands, colors)
+    self.view.draw_bxsf(b_vec, data, iso, bands, colors, normals)
