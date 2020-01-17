@@ -36,9 +36,9 @@ class XtraCrysPy:
     self.lattice = None
     self.relax_index = 0
     self.coord_type = None
+    self.relax_poss = None
     self.eval_dist = False
     self.eval_angle = False
-    self.relax_posss = None
     self.recip_space = False
 
     if inputfile is None:
