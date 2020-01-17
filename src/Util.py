@@ -101,6 +101,9 @@ def read_relax_file ( self, fname ):
       if 'ATOMIC_POSITIONS' in l:
         if self.natoms is None:
           raise ValueError('natoms not found in relax file. Are you sure that a QE relax output file was provided?')
+        ls = l.split()
+        if len(ls) > 1:
+          self.coord_type = ls[1]
         self.spec = []
         apos = np.zeros((self.natoms,3), dtype=float)
         for i in range(self.natoms):
@@ -230,7 +233,7 @@ def bravais_boundaries ( b_vec ):
     from numpy.linalg import det,norm,solve
 
     indices = [[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[0,1,1],[0,-1,-1],[1,0,0],[-1,0,0],[1,0,1],[-1,0,-1],[1,1,0],[-1,-1,0],[1,1,1],[-1,-1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[-1,1,0],[1,-1,0],[1,0,-1],[-1,0,1],[0,1,-1],[0,-1,1]]
-    G = [np.dot(i,b_vec) for i in indices]
+    G = [i@b_vec for i in indices]
     incl_G = np.ones(len(G))
 
     # Determine which G vectors lie on BZ boundary

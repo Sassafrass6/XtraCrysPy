@@ -38,7 +38,7 @@ class XtraCrysPy:
     self.coord_type = None
     self.eval_dist = False
     self.eval_angle = False
-    self.relax_coords = None
+    self.relax_posss = None
     self.recip_space = False
 
     if inputfile is None:
@@ -70,18 +70,22 @@ class XtraCrysPy:
           read_scf_file(self, inputfile)
         self.lattice = qe_lattice(self.ibrav, self.cell_param)
 
-      if 'angstrom' in self.coord_type:
-        conv = .529177210 # Reciprocal of (Bohr to Anstrom)
-        self.atoms = np.array(self.atoms) / conv
-      elif 'alat' in self.coord_type or 'crystal' in self.coord_type:
-        self.atoms = [self.atomic_position(a) for a in self.atoms]
-        print('Crystal & Alat coordinate types require more testing')
-      elif 'relax' in self.coord_type:
+      if relax:
         if len(self.relax_lattices) > 0:
           self.lattice = self.relax_lattices[0]
         for i in range(len(self.relax_poss)):
-          self.relax_poss[i][:,:] = np.array([self.atomic_position(a) for a in self.relax_poss[i]])
+          if 'angstrom' in self.coord_type:
+            self.relax_poss[i] /= .52917720
+          else:
+            self.relax_poss[i][:,:] = np.array([self.atomic_position(a) for a in self.relax_poss[i]])
         self.atoms = self.relax_poss[0]
+      else:
+        if 'angstrom' in self.coord_type:
+          conv = .529177210 # Reciprocal of (Bohr to Anstrom)
+          self.atoms = np.array(self.atoms) / conv
+        elif 'alat' in self.coord_type or 'crystal' in self.coord_type:
+          self.atoms = [self.atomic_position(a) for a in self.atoms]
+          print('Crystal & Alat coordinate types require more testing')
 
     if species is None and self.spec is None:
       self.spec = [i for i in range(self.natoms)]
@@ -127,7 +131,7 @@ class XtraCrysPy:
     self.disp_menu = vp.menu(choices=['Atom Primary', 'Bond Primary'], pos=anch, bind=self.sel_disp_menu)
     self.sel_menu = vp.menu(choices=['Select Atom', 'Distance', 'Angle'], pos=anch, bind=self.sel_menu_change)
 
-    if 'relax' in self.coord_type:
+    if self.relax_poss is not None:
       self.canvas.append_to_caption('  \t')
       self.relax_backward = vp.button(text='<-', bind=self.relax_step_backward)
       self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
@@ -285,7 +289,7 @@ class XtraCrysPy:
     '''
     if lattice is None:
       lattice = self.lattice
-    return np.dot(v,lattice)
+    return v @ lattice
 
   def draw_cell ( self, lattice, atoms ):
     '''
@@ -358,15 +362,33 @@ class XtraCrysPy:
         for z in range(nz):
           bv = eig[x,y,z]
           if bv > e_dw and bv < e_up:
-            points.append(np.dot([x/nx,y/ny,z/nz]-vp_shift,rlat))
+            points.append(([x/nx,y/ny,z/nz]-vp_shift) @ rlat)
             directions.append(spins[:,x,y,z])
             colors.append([bv/colscale,.5,.1])
 
     self.view.draw_arrows(rlat, points, directions, colors, .01)
 
+  def plot_isosurface ( self, data, iso, color=[0,0,1], normals=True ):
+    '''
+    Create the Brillouin Zone boundary and bsxf points at iso value for each band in the vpython window
+
+    Arguemnts:
+      data (ndarray): 3d array with values to compare with iso. (Surface data)
+      iso (float): Float corresponding to the isosurface value
+      color (list): 3-d RGB color vectors for the surface. If ignored band will be blue
+      normals (bool): True adds normals to triangle vertices, improving surface visibility
+    '''
+    if self.lattice is None:
+      print('Lattice vectors are required.')
+    elif self.rlattice is None:
+      self.rlattice = self.reciprocal_lattice(self.lattice)
+
+    self.recip_space = True
+    self.view.draw_bxsf(self.rlattice, np.reshape(data,data.shape+(1,)), iso, [0], color, normals)
+
   def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]], normals=True ):
     '''
-    Create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
+    Create the Brillouin Zone boundary and bsxf points at iso value for each band in the vpython window
 
     Arguemnts:
       fname (str): Name of bxsf file

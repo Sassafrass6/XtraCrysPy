@@ -98,7 +98,7 @@ class View:
     '''
     v1 = atoms[0].pos - atoms[1].pos
     v2 = atoms[2].pos - atoms[1].pos
-    angle = np.arccos(v1.dot(v2)/(v1.mag*v2.mag))
+    angle = np.arccos((v1@v2)/(v1.mag*v2.mag))
     text = '%f degrees'%np.degrees(angle)
     print('Angle = %s (%f radians)'%(text,angle))
     return text
@@ -113,7 +113,7 @@ class View:
       iy (int): y index
       iz (int): z index
     '''
-    return self.vector(np.dot([ix,iy,iz],lat))
+    return self.vector(np.array([ix,iy,iz]) @ lat)
 
   def reset_selection ( self ):
     '''
