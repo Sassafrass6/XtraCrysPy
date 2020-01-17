@@ -94,6 +94,19 @@ class XtraCrysPy:
     else:
       self.spec_col = spec_col
 
+    for i,a in enumerate(self.atoms):
+      for j,l in enumerate(self.lattice):
+        dist = a@l
+        norm = np.linalg.norm(a)*np.linalg.norm(l)
+        if dist > norm:
+          self.atoms[i] -= l
+        else:
+          for k,l2 in enumerate(self.lattice):
+            if j >= k: continue
+            ang = np.arccos(abs(l@l2)/(np.linalg.norm(l)*np.linalg.norm(l2)))
+            if np.arccos(abs(dist)/norm) > ang:
+              self.atoms[i] += l
+
     self.setup_canvas(inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
     self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists,bond_thickness,atom_radii)
 
