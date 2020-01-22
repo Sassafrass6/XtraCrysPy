@@ -427,17 +427,18 @@ class View:
     grid_size = [nx, ny, nz]
     for i,b in enumerate(bands):
       vTris = []
-      triangles = marching_cubes(data[:,:,:,b], iso[i])
+      triangles,vert_norms = marching_cubes(data[:,:,:,b], iso[i])
       for tri in triangles:
         vs = []
         inside = True
-        norm = self.vector((np.cross(tri[1]-tri[0], tri[2]-tri[1]) if normals else [0,0,1])).norm()
         for j,t in enumerate(tri):
+          ind = tuple(abs(int(np.round(v))) for v in t)
           t = t / grid_size[j] - vp_shift
           t = t @ rlat
           if not inside_BZ(t):
             inside = False
-          vs.append(vp.vertex(pos=self.vector(t), normal=norm, color=self.vector(colors[i])))
+            break
+          vs.append(vp.vertex(pos=self.vector(t), normal=self.vector(vert_norms[ind]).norm(), color=self.vector(colors[i])))
         if inside:
           vTris.append(vp.triangle(vs=vs))
       self.vAtoms.append(vTris)
