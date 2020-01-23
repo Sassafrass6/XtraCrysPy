@@ -74,7 +74,7 @@ class View:
     Aruments:
       a (list or ndarray): List or ndarray with 3 components (x,y,z)
     '''
-    return vp.vector(a[0],a[1],a[2])
+    return vp.vector(a[0], a[1], a[2])
   
   def calc_dist ( self, a, b ):
       '''
@@ -413,35 +413,11 @@ class View:
     poss = []
     nx,ny,nz,nbnd = data.shape
     data = fftshift(data, axes=(0,1,2))
-    vp_shift = .5 * (np.array([1,1,1]) - [1/nx,1/ny,1/nz])
 
-    # Helper function to test whether points lie within the BZ
-    def inside_BZ ( pnt ):
-      pmag = np.linalg.norm(pnt)
-      for p in self.BZ_planes:
-        if pmag > np.linalg.norm(p):
-          return False
-      return True
-
+    from time import time
     self.vAtoms = []
-    grid_size = [nx, ny, nz]
     for i,b in enumerate(bands):
-      vTris = []
-      triangles,vert_norms = marching_cubes(data[:,:,:,b], iso[i])
-      for tri in triangles:
-        vs = []
-        inside = True
-        for j,t in enumerate(tri):
-          ind = tuple(abs(int(np.round(v))) for v in t)
-          t = t / grid_size[j] - vp_shift
-          t = t @ rlat
-          if not inside_BZ(t):
-            inside = False
-            break
-          vs.append(vp.vertex(pos=self.vector(t), normal=self.vector(vert_norms[ind]).norm(), color=self.vector(colors[i])))
-        if inside:
-          vTris.append(vp.triangle(vs=vs))
-      self.vAtoms.append(vTris)
+      self.vAtoms += marching_cubes(data[:,:,:,b], iso[i], rlat, self.BZ_planes, colors[i])
 
     if self.coord_axes:
       self.draw_coord_axis(length=.1*np.linalg.norm(rlat[0]),offset=[-1,0,0])

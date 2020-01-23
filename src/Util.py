@@ -246,17 +246,18 @@ def bravais_boundaries ( b_vec ):
     planes = np.array([g for i,g in enumerate(G) if incl_G[i]])
 
     corners = []
+    sqr = lambda v : np.sum(v*v)
     # Search combinations of planes and save intersections as corners
     for i,p1 in enumerate(planes):
       for j,p2 in enumerate(planes[i+1:]):
         for k,p3 in enumerate(planes[j+1:]):
           M = np.array([p1,p2,p3])
-          sqr = lambda v : np.sum(v*v)
           magG = .5 * np.array([sqr(p1),sqr(p2),sqr(p3)])
           if not np.isclose(det(M),0.):
             c = solve(M,magG)
             corners.append(c)
 
+    corners = np.array(corners)
     # Set near zero vlues to zero explicitly
     for i,c in enumerate(corners):
       for j,v in enumerate(c):
@@ -280,10 +281,16 @@ def bravais_boundaries ( b_vec ):
       for c2 in corners[ci+1:]:
         for pi,p1 in enumerate(planes):
           for p2 in planes[pi+1:]:
-            dists = [np.abs(np.sum(p*c)-np.sum(p*p)/2) for p in [p1,p2] for c in [c1,c2]]
-            if all(np.isclose(d,0.) for d in dists):
+            incl = True
+            for p in [(p1,c1), (p1,c2), (p2,c1), (p2,c2)]:
+              d = np.sum(p[0]*(p[1] - p[0]/2))
+              if not np.isclose(d, 0.):
+                incl = False
+                break
+            if incl:
               pairs.append((c1,c2))
 
     # Adjust planes to represent midpoints between reciprocal lattice points
-    planes = [p/2 for p in planes]
-    return planes,pairs
+    planes = np.array(planes)/2
+
+    return planes, np.array(pairs)
