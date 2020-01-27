@@ -220,6 +220,38 @@ def qe_lattice ( ibrav, cell_param ):
 
   return coords
 
+def constrain_atoms_to_unit_cell ( lattice, atoms ):
+   '''
+   Force atoms to lie inside of the unit cell.
+
+   Arguments:
+     lattice (ndarray): 3x3 array of lattice vectors
+     atoms (list): List of 3 component vectors representing the atomic basis
+
+   Returns:
+     (list): Updated list of atomic positions
+   '''
+
+   def inside_cell ( apos ):
+     ''' Helper function returning True if the position is interior to the cell '''
+     for i,l in enumerate(lattice):
+       tvec = np.linalg.inv(lattice).T @ apos
+       for v in tvec:
+         if v >= 1 or v < 0:
+           return False
+     return True
+
+   for i,a in enumerate(atoms):
+     while not inside_cell(atoms[i]):
+       nlat = np.linalg.inv(lattice).T @ atoms[i]
+       for j,n in enumerate(nlat):
+         if n < 0:
+           atoms[i] += lattice[j]
+         elif n >= 1:
+           atoms[i] -= lattice[j]
+
+   return atoms
+
 def bravais_boundaries ( b_vec ):
     '''
     Create the Brillouin Zone boundary in the vpython window

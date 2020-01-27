@@ -97,8 +97,12 @@ class XtraCrysPy:
     self.setup_canvas(inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
     self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists,bond_thickness,atom_radii)
 
-    if draw_cell and self.lattice is not None:
-      self.draw_cell(self.lattice, self.atoms)
+    if self.lattice is not None:
+      if self.atoms is not None:
+        from .Util import constrain_atoms_to_unit_cell
+        self.atoms = constrain_atoms_to_unit_cell(self.lattice, self.atoms)
+        if draw_cell:
+          self.draw_cell(self.lattice, self.atoms)
 
   def setup_canvas ( self, inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
     '''
