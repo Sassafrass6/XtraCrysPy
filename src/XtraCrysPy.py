@@ -94,76 +94,15 @@ class XtraCrysPy:
     else:
       self.spec_col = spec_col
 
-    #self.atoms = self.atoms[8:9]
-
-    def rot_mat ( phi, theta ):
-      return np.array([[np.cos(phi)*np.cos(theta),np.sin(phi)*np.cos(theta),-np.sin(theta)],[-np.sin(phi),np.cos(phi),0],[np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta)]])
-
-    def get_phi_theta ( latv ):
-      if np.isclose(latv[0],0):
-        phi = np.pi/2
-      else:
-        phi = np.arctan(latv[1]/latv[0])
-        if latv[0] < 0:
-          phi += np.pi
-      if np.isclose(latv[2], 0):
-        theta = np.pi/2
-      else:
-        r = np.sqrt(latv[0]**2 + latv[1]**2)
-        theta = np.arctan(r/latv[2])
-        if latv[2] < 0:
-          theta += np.pi
-      return phi, theta
-
-    rot_mats = np.empty((3,3,3), dtype=float)
-    for i,l in enumerate(self.lattice):
-      rot_mats[i,:,:] = rot_mat(*get_phi_theta(l))
-
-    for i,a in enumerate(self.atoms):
-      for _ in range(2):
-        for j,l in enumerate(self.lattice):
-          tpos = rot_mats[j] @ a
-          r_vec = rot_mats[j] @ l
-          while tpos[2] > r_vec[2] or tpos[2] < 0.:
-            tpos -= r_vec * np.sign(tpos[2]-r_vec[2])
-          self.atoms[i] = np.linalg.inv(rot_mats[j]) @ tpos.T
-
-
-#    for i,l in enumerate(self.lattice[:1]):
-#      r_mat = rot_mat(*get_phi_theta(l))
-#      r_vec = r_mat @ l
-#      for j,a in enumerate(self.atoms):
-#        tpos = r_mat @ a
-#        print(r_vec, a, tpos)
-#        while tpos[2] > r_vec[2] or tpos[2] < 0.:
-#          tpos -= r_vec * np.sign(tpos[2]-r_vec[2])
-    #      break
-#        print(tpos)
-#        self.atoms[j] = np.linalg.inv(r_mat) @ tpos.T
-#    for i,a in enumerate(self.atoms):
-#      for j,l in enumerate(self.lattice):
-#        dist = a@l
-#        norm = np.linalg.norm(a)*np.linalg.norm(l)
-#        if dist > norm:
-#          self.atoms[i] -= l
-#        else:
-#          for k,l2 in enumerate(self.lattice):
-#            if j >= k: continue
-#            ang = np.arccos(abs(l@l2)/(np.linalg.norm(l)*np.linalg.norm(l2)))
-#            if np.arccos(abs(dist)/norm) > ang:
-#              self.atoms[i] += l
-
     self.setup_canvas(inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
     self.view = View(self.canvas,origin,perspective,bnd_col,nx,ny,nz,coord_axes,boundary,bond_dists,bond_thickness,atom_radii)
 
-    if draw_cell and self.lattice is not None:
-      self.draw_cell(self.lattice, self.atoms)
-
-    latv = 0
-    curve = vp.curve(self.vector((0,0,0)), self.vector(self.lattice[latv]), color=self.vector((1,0,0)))
-
-    norm = np.linalg.norm(self.atoms[0])*np.linalg.norm(self.lattice[latv])
-    print(self.atoms[0]@self.lattice[latv]/norm)
+    if self.lattice is not None:
+      if self.atoms is not None:
+        from .Util import constrain_atoms_to_unit_cell
+        self.atoms = constrain_atoms_to_unit_cell(self.lattice, self.atoms)
+        if draw_cell:
+          self.draw_cell(self.lattice, self.atoms)
 
   def setup_canvas ( self, inputfile, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
     '''
