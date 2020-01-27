@@ -52,23 +52,14 @@ class XtraCrysPy:
         self.lattice = np.array(lattice)
         self.cell_param = [np.abs(np.mean([np.linalg.norm(v) for v in self.lattice]))]
     else:
-      # Disabled poscar functionality
-      if False and 'poscar' in inputfile:
-        from .Util import read_poscar_file
-        tup = read_poscar_file(self, inputfile)
-        self.coord_type = tup[0]
-        self.lattice = tup[1]
-        self.natoms = tup[2]
-        self.atoms = tup[3]
+      from .Util import qe_lattice
+      if relax:
+        from .Util import read_relax_file
+        read_relax_file(self, inputfile)
       else:
-        from .Util import qe_lattice
-        if relax:
-          from .Util import read_relax_file
-          read_relax_file(self, inputfile)
-        else:
-          from .Util import read_scf_file
-          read_scf_file(self, inputfile)
-        self.lattice = qe_lattice(self.ibrav, self.cell_param)
+        from .Util import read_scf_file
+        read_scf_file(self, inputfile)
+      self.lattice = qe_lattice(self.ibrav, self.cell_param)
 
       if relax:
         if len(self.relax_lattices) > 0:

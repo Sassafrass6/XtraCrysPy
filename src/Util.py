@@ -1,31 +1,5 @@
 import numpy as np
 
-def read_poscar_file ( self, fname ):
-  '''
-  Read necessary information from QE file. (Currently only input files are readable)
-
-  '''
-  import re
-  with open(fname) as f:
-    lines = [l.split() for l in f.readlines() if l!='' or l!='\n']
-    headline = lines[0][0]
-    alat = float(lines[1][0])
-
-    s = 2
-    # Lattice Vectors
-    lat = np.zeros((3,3), dtype=float)
-    for i in range(3):
-      lat[i,:] = np.array([float(v) for v in lines[s+i]])
-
-    natoms = int(lines[s+3][0])
-    cell_type = lines[s+4][0]
-
-    s += 5
-    atoms = np.zeros((natoms,3), dtype=float)
-    for i in range(natoms):
-      atoms[i,:] = np.array([float(v) for v in lines[s+i]])
-    return cell_type, alat*lat, natoms, atoms
-
 def read_scf_file ( self, fname ):
   '''
   Read necessary information from QE file. (Currently only input files are readable)
