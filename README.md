@@ -1,8 +1,9 @@
-# XCrysPy
+# XtraCrysPy
 A crystallographic visualizer for Python, made to read and display information from Quantum Espresso inputfiles
 
 Requirements:  
-  python3.7  
+  python3.7
+  numpy
   vpython  
   
 Installation (only use --user if you do not have permission to install python packages):  
