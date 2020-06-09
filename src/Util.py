@@ -12,8 +12,8 @@ def read_scf_file ( self, fname ):
     strip_int = lambda s : int(re.search(r'\d+',s).group())
     strip_float = lambda s : float(re.search(r'\d+.\d+',s).group())
     natoms = 0
-    self.spec = []
     self.atoms = []
+    self.basis_labels = []
     self.cell_param= 6*[0]
 
     line = f.readline()
@@ -33,7 +33,7 @@ def read_scf_file ( self, fname ):
             ls = f.readline().split()
             if len(ls) > 0:
               natoms -= 1
-              self.spec.append(ls[0])
+              self.basis_labels.append(ls[0])
               self.atoms.append([float(v) for v in ls[1:4]])
       line = f.readline()
     self.cell_param[1] *= self.cell_param[0]
@@ -78,11 +78,11 @@ def read_relax_file ( self, fname ):
         ls = l.split()
         if len(ls) > 1:
           self.coord_type = ls[1]
-        self.spec = []
+        self.basis_labels = []
         apos = np.zeros((self.natoms,3), dtype=float)
         for i in range(self.natoms):
           ls = f.readline().split()
-          self.spec.append(ls[0])
+          self.basis_labels.append(ls[0])
           apos[i,:] = np.array([float(v) for v in ls[1:]])
         self.relax_poss.append(apos)
       l = f.readline()

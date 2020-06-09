@@ -15,8 +15,21 @@ if '__main__' == __name__:
   atoms = [[0,0,0], [a/4,a/4,a/4]]
 
   # Label for each atom and colors
-  spec = ['Ga', 'As']
-  spec_col = {'Ga':(1,0,0), 'As':(0,0,1)}
+  labels = ['Ga', 'As']
 
-  # Plot with CrysPy
-  cpy = XCP.XtraCrysPy(lattice=fcc_vecs, basis=atoms, species=spec, spec_col=spec_col, origin=origin, nx=3, ny=3, nz=3, bond_dists=a/1.73, boundary=False, bond_thickness=.3, atom_radii=.75)
+  # Bond distance between Ga and As, in ????
+  bonds = {'Ga_As':1.1}
+
+  # Species information, including radius and color
+  species = {'Ga':{'color':(1,0,0,0),'radius':.8}, 'As':{'color':(0,0,1,1)}}
+
+  # Construct model with XtraCrysPy
+  xcpy = XCP.XtraCrysPy(lattice=fcc_vecs, basis=atoms, species=species, basis_labels=labels, origin=origin, bonds=bonds)
+
+  # Write an XML file for blender
+  xcpy.write_blender_xml(fname='GaAs_blender.xml', nx=3, ny=3, nz=3)
+
+  #bounds = cpy.get_boundary_positions(nx=1, ny=1, nz=1)
+  #poss = cpy.get_atomic_positions(nx=2, ny=2, nz=2)
+  #print(bounds)
+  #print(poss)
