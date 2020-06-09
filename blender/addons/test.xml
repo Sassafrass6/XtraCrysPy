@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<XCP_DATA>
+    <SCENE>
+        <CAMERA>
+            <POS>0.0 0.0 0.0</POS>
+            <ROT>0.0 0.0 0.0</ROT>
+        </CAMERA>
+    </SCENE>
+    <SYSTEM>
+        <SPECIES id="1" label="O">
+			<RADIUS>0.8</RADIUS>
+            <COLOR>0.9 0.0 0.0 1.0</COLOR>
+		</SPECIES>
+        <SPEC id="2" label="H">
+			<RADIUS>0.5</RADIUS>
+            <COLOR>1.0 1.0 1.0 1.0</COLOR>
+		</SPECIES>
+        <ATOM id="1" species="1">0.0 0.0 0.0</ATOM>
+        <ATOM id="2" species="2">3.0 0.0 0.0</ATOM>
+        <ATOM id="3" species="2">0.0 3.0 0.0</ATOM>
+        <BOND id="1" type="1" A="1" B="2"></BOND>
+        <BOND id="2" type="1" A="1" B="3"></BOND>
+    </SYSTEM>
+    <FRAME>
+        <VERTEX id=1>0.0 0.0 0.0</VERTEX>
+        <VERTEX id=2>0.0 0.0 10.0</VERTEX>
+        <EDGE id=1 A="1" B="2"></EDGE>
+    </FRAME>
+</XCP_DATA>
