@@ -42,7 +42,8 @@ def read_xcp(filepath):
         "SCENE": {},
         "SPECIES": {},
         "ATOMS": {},
-        "BONDS": {}
+        "BONDS": {},
+        "FRAME": {}
     }
     with open(filepath, 'r', encoding='utf-8') as f:
         data = f.read()
@@ -52,24 +53,24 @@ def read_xcp(filepath):
         species = xcp["SPECIES"]
         atoms = xcp["ATOMS"]
         bonds = xcp["BONDS"]
+        frame = xcp["FRAME"]
         # for SCENE object throw all objects with a single occurance
         if get_tag(root, './SCENE/CAMERA'):
             scene["CAMERA"] = {}
             scene["CAMERA"]["position"] = get_text(root, './SCENE/CAMERA/POSITION', tuple)
             scene["CAMERA"]["rotation"] = get_text(root, './SCENE/CAMERA/ROTATION', tuple)
         for spec in root.iter("SPECIES"):
-            radius = get_text(spec, './RADIUS', float)
             sp_id = get_attrib(spec, '.', 'id', int)
             species[sp_id] = {}
             species[sp_id]["label"] = get_attrib(spec, '.', 'label', str)
-            species[sp_id]["scale"] = (radius, radius, radius)
+            species[sp_id]["scale"] = get_text(spec, './RADIUS', float)
             species[sp_id]["color"] = get_text(spec, './COLOR', tuple)
         for atom in root.iter("ATOM"):
             at_id = get_attrib(atom, '.', 'id', int)
             atoms[at_id] = {}
             sp_id = get_attrib(atom, '.', 'species', int)
             atoms[at_id]["spinfo"] = species[sp_id]
-            atoms[at_id]["pos"] = get_text(atom, '.', tuple)
+            atoms[at_id]["position"] = get_text(atom, '.', tuple)
         for bond in root.iter("BOND"):
             bd_id = get_attrib(bond, '.', 'id', int)
             bonds[bd_id] = {}
@@ -77,6 +78,20 @@ def read_xcp(filepath):
             # set keys A, B to reference to the relevant atom entries
             bonds[bd_id]["A"] = atoms[get_attrib(bond, '.', 'A', int)]
             bonds[bd_id]["B"] = atoms[get_attrib(bond, '.', 'B', int)]
+        xframe = get_tag(root, './FRAME')
+        if xframe:
+            # expect vertices and edges
+            frame = {
+                "VERTICES": {},
+                "EDGES": {}
+            }
+            for vertex in xframe.iter("VERTEX"):
+                vx_id = get_attrib(vertex, '.', 'id', int)
+                frame["VERTICES"][vx_id]["position"] = get_text(vertex, '.', tuple)
+            for edge in xframe.iter("EDGE"):
+                eg_id = get_attrib(edge, '.', 'id', int)
+                frame["EDGES"][eg_id]["A"] = frame["VERTICES"][get_attrib(edge, '.', 'A', int)]
+                frame["EDGES"][eg_id]["B"] = frame["VERTICES"][get_attrib(edge, '.', 'B', int)]
 
     return xcp
     
