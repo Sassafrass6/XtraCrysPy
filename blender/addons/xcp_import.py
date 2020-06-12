@@ -30,7 +30,7 @@ def add_camera(position, rotation):
     objref.rotation_euler = rotation
     return objref
 
-def draw_ball(position, radius):
+def draw_ball(position, scale):
     # TODO add this to a collection of sorts
     bpy.ops.mesh.primitive_uv_sphere_add(
         segments=64, ring_count=48, 
@@ -39,11 +39,13 @@ def draw_ball(position, radius):
         
     ball = bpy.context.view_layer.objects.active
     ball.location = position
-    ball.scale = radius
+    ball.scale = (scale, scale, scale)
     return ball
 
-def draw_stick(origin, vec1):
+def draw_stick(A, B, scale):
     # next, get rotation matrix
+    origin = (A + B) / 2.0
+    vec1 = A - B
     norm = np.linalg.norm(vec1)
     vec1 /= norm
     vec2 = np.array([0, 0, 1])
@@ -65,8 +67,8 @@ def draw_stick(origin, vec1):
 
     # scale accordingly
     scale4 = np.eye(4, dtype=float)
-    scale4[0, 0] = 0.2
-    scale4[1, 1] = 0.2
+    scale4[0, 0] = scale
+    scale4[1, 1] = scale
     scale4[2, 2] = norm / 2
 
     # apply these transformations
@@ -83,15 +85,23 @@ def draw_atom(atom):
 def draw_bond(bond):
     pointA = np.array(bond["A"]["pos"])
     pointB = np.array(bond["B"]["pos"])
+    midpoint = (pointA + pointB) / 2.0
     objref = []
 
-    midpoint = (pointA + pointB) / 2.0
-    originA = (pointA + midpoint) / 2.0
-    originB = (midpoint + pointB) / 2.0
-    vecA = pointA - midpoint
-    vecB = midpoint - pointB
-    objref.append(draw_stick(originA, vecA))
-    objref.append(draw_stick(originB, vecB))
+    objref.append(draw_stick(pointA, midpoint, 0.2))
+    objref.append(draw_stick(midpoint, pointB, 0.2))
+    return objref
+
+def draw_frame(frame):
+    # TODO move defaults into single location
+    frame_scale = 1.0
+    objref = []
+    for vertex in frame["VERTICES"].values():
+        objref.append(draw_ball(vertex["position"], frame_scale))
+    for edge in frame["EDGES"].values():
+        pointA = np.array(edge["A"]["position"])
+        pointB = np.array(edge["B"]["position"])
+        objref.append(draw_stick(pointA, pointB, frame_scale))
     return objref
 
 def create_material(id, color):
@@ -124,6 +134,8 @@ def import_xcp(context, filepath, use_some_setting):
     if "CAMERA" in xcp["SCENE"]:
         camera = xcp["SCENE"]["CAMERA"]
         cameraobj = add_camera(camera["pos"], camera["rot"])
+    if "FRAME" in xcp:
+        frameobj = draw_frame(xcp["FRAME"])
         
     # tells blender that the addon main function is successful
     return {'FINISHED'}
