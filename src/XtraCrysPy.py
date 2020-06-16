@@ -23,7 +23,9 @@ class XtraCrysPy:
     self.ibrav = None        # Bravais lattice ID, following QE indexing
     self.atoms = None        # Atomic positions (basis)
     self.bonds = None        # Dictionary of bond distances
+    self.frame = True       # Boolean. True if the frame should be drawn
     self.relax = relax       # Boolean. True if there are relaxation steps
+    self.cameras = None      # New feature which could provide camera locations to Blender
     self.lattice = None      # Unit vectors (lattice)
     self.origin = origin     # Origin of the figure. Default [0,0,0]
     self.coord_type = None   # Units (angstrom, bohr, alat, crystal, manual)
@@ -162,22 +164,33 @@ class XtraCrysPy:
         raise ValueError('No lattice to convert')
       lattice = self.lattice
 
-    lines = []
-    lat = lattice
+    edges = []
+    vertex_ind = 0
+    vertices = [[0,0,0]]
+    vertex_map = {(0,0,0):0}
     for ix in range(nx+1):
       for iy in range(ny+1):
         for iz in range(nz+1):
-          orig = self.atomic_position([ix,iy,iz], lat)
+          orig_ind = vertex_map[(ix,iy,iz)]
+          orig = self.atomic_position([ix,iy,iz], lattice)
           if ix < nx:
-            lines += [[orig, orig+lat[0]]]
+            vertex_ind += 1
+            vertices += [orig+lattice[0]]
+            edges += [[orig_ind, vertex_ind]]
+            vertex_map[(ix+1,iy,iz)] = vertex_ind
           if iy < ny:
-            lines += [[orig, orig+lat[1]]]
+            vertex_ind += 1
+            vertices += [orig+lattice[1]]
+            edges += [[orig_ind, vertex_ind]]
+            vertex_map[(ix,iy+1,iz)] = vertex_ind
           if iz < nz:
-            lines += [[orig, orig+lat[2]]]
-    return np.array(lines) + self.origin
-          
-          #self.bound_curve += [vp.curve(orig+self.vector(al[0]),orig+self.vector(al[1]),color=self.bnd_col) for al in alines]
-    
+            vertex_ind += 1
+            vertices += [orig+lattice[2]]
+            edges += [[orig_ind, vertex_ind]]
+            vertex_map[(ix,iy,iz+1)] = vertex_ind
+    vertices = np.array(vertices) + self.origin
+    return vertices, edges
+
   def get_atomic_positions ( self, lattice=None, atoms=None, nx=1, ny=1, nz=1 ):
     '''
     Compute the coordinates of each atomic position for a lattice and basis, repeating nx,ny,nz times in the respective direction.
@@ -236,30 +249,44 @@ class XtraCrysPy:
     with open(opjoin(directory,fname), 'w') as f:
       f.write('<?xml version="1.0"?>\n')
       f.write('<XCP_DATA>\n')
-      f.write('\t<SPECIES>\n')
+
+      f.write('\t<SCENE>\n')
+      if self.cameras is not None:
+        for i,c in enumerate(self.cameras.values()):
+          f.write('\t\t<CAMERA id="%d">\n'%i)
+          f.write('\t\t\t<POSITION>%f %f %f</POSITION>'%tuple(c['position']))
+          f.write('\t\t\t<ROTATION>%f %f %f</ROTATION>'%tuple(c['rotation']))
+          f.write('\t\t</CAMERA>\n')
+      f.write('\t</SCENE>\n')
+
+      f.write('\t<SYSTEM>\n')
       for k,v in self.spec.items():
-        f.write('\t\t<SPEC id="%d" ="%s">\n'%(self.spec[k]['id'], k))
-        f.write('\t\t\t<R>%f</R>\n'%self.spec[k]['radius'])
-        f.write('\t\t\t<C>%f %f %f %f</C>\n'%self.spec[k]['color'])
-        f.write('\t\t</SPEC>\n')
-      f.write('\t</SPECIES>\n')
+        f.write('\t\t<SPECIES id="%d" label="%s">\n'%(self.spec[k]['id'], k))
+        f.write('\t\t\t<RADIUS>%f</RADIUS>\n'%self.spec[k]['radius'])
+        f.write('\t\t\t<COLOR>%f %f %f %f</COLOR>\n'%self.spec[k]['color'])
+        f.write('\t\t</SPECIES>\n')
 
       atomic_poss = self.get_atomic_positions(nx=nx, ny=ny, nz=nz)
-      f.write('\t<ATOMS>\n')
       for i,a in enumerate(atomic_poss):
         key = self.basis_labels[i%self.natoms]
-        f.write('\t\t<ATOM id="%d" species="%d">\n'%(i,self.spec[key]['id']))
-        f.write('\t\t\t<POS>%f %f %f</POS>\n'%tuple(a))
-        f.write('\t\t</ATOM>\n')
-      f.write('\t</ATOMS>\n')
-      f.write('\t<BONDS>\n')
+        f.write('\t\t<ATOM id="%d" species="%d">'%(i,self.spec[key]['id']))
+        f.write('%f %f %f</ATOM>\n'%tuple(a))
       if self.bonds is not None:
-        for i,vals in enumerate(self.bonds.items()):
-          k,v = vals[0],vals[1]
+        for i,k in enumerate(self.bonds.keys()):
           sA,sB = tuple(k.split('_'))
-          tup = (i, self.DEFAULT_BOND_TYPE, self.spec[sA]['id'], self.spec[sB]['id'], v)
-          f.write('\t\t<BOND id="%d" type="%d" A="%d" B="%d">%f</BOND>\n'%tup)
-      f.write('\t</BONDS>\n')
+          tup = (i, self.DEFAULT_BOND_TYPE, self.spec[sA]['id'], self.spec[sB]['id'])
+          f.write('\t\t<BOND id="%d" type="%d" A="%d" B="%d"></BOND>\n'%tup)
+      f.write('\t</SYSTEM>\n')
+
+      if self.frame:
+        vertices,edges = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
+        f.write('\t<FRAME>\n')
+        for i,v in enumerate(vertices):
+          f.write('\t\t<VERTEX id="%d">%f %f %f</VERTEX>\n'%((i,)+tuple(v)))
+        for i,e in enumerate(edges):
+          f.write('\t\t<EDGE id="%d" A="%d" B="%d"></EDGE>\n'%(i, e[0], e[1]))
+        f.write('\t</FRAME>\n')
+
       f.write('</XCP_DATA>\n')
 
   def start_cryspy_view ( self ):
