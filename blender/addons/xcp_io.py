@@ -8,6 +8,8 @@ def get_tag(root, tag):
         return root.findall(tag)[0]
     except ValueError:
         return None
+    except IndexError:
+        return None
 
 def get_attrib(root, tag, att, typ):
     try:
@@ -20,6 +22,10 @@ def get_attrib(root, tag, att, typ):
         elif typ == tuple:
             return tuple([float(x) for x in root.findall(tag)[0].attrib[att].split()])
     except ValueError:
+        return None
+    except IndexError:
+        return None
+    except KeyError:
         return None
     return None
     
@@ -34,6 +40,8 @@ def get_text(root, tag, typ):
         elif typ == tuple:
             return tuple([float(x) for x in root.findall(tag)[0].text.split()])
     except ValueError:
+        return None
+    except IndexError:
         return None
     return None
 
@@ -81,17 +89,17 @@ def read_xcp(filepath):
         xframe = get_tag(root, './FRAME')
         if xframe:
             # expect vertices and edges
-            frame = {
-                "VERTICES": {},
-                "EDGES": {}
-            }
+            frame["VERTICES"] = {}
+            frame["EDGES"] = {}
             for vertex in xframe.iter("VERTEX"):
                 vx_id = get_attrib(vertex, '.', 'id', int)
-                frame["VERTICES"][vx_id]["position"] = get_text(vertex, '.', tuple)
+                frame["VERTICES"][vx_id] = { "position": get_text(vertex, '.', tuple) }
             for edge in xframe.iter("EDGE"):
                 eg_id = get_attrib(edge, '.', 'id', int)
-                frame["EDGES"][eg_id]["A"] = frame["VERTICES"][get_attrib(edge, '.', 'A', int)]
-                frame["EDGES"][eg_id]["B"] = frame["VERTICES"][get_attrib(edge, '.', 'B', int)]
+                frame["EDGES"][eg_id] = { 
+                    "A": frame["VERTICES"][get_attrib(edge, '.', 'A', int)],
+                    "B": frame["VERTICES"][get_attrib(edge, '.', 'B', int)]
+                }
 
     return xcp
     

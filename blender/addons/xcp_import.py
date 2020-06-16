@@ -20,17 +20,18 @@ import bpy
 import numpy as np # I think this comes with blender by default, doublecheck this
 import xcp_io
 
-def add_camera(position, rotation):
-    cam = bpy.data.cameras.new("Camera 1")
+def add_camera(position, rotation, collection):
+    cam = bpy.data.cameras.new("Camera")
     cam.lens = 18
 
     # create the first camera object
-    objref = bpy.data.objects.new("Camera 1", cam1)
+    objref = bpy.data.objects.new("Camera", cam)
     objref.location = position
     objref.rotation_euler = rotation
+    bpy.data.collections[collection].objects.link(objref)
     return objref
 
-def draw_ball(position, scale):
+def draw_ball(position, scale, name, collection):
     # TODO add this to a collection of sorts
     bpy.ops.mesh.primitive_uv_sphere_add(
         segments=64, ring_count=48, 
@@ -38,23 +39,33 @@ def draw_ball(position, scale):
         location=(0., 0., 0.), rotation=(0., 0., 0.))
         
     ball = bpy.context.view_layer.objects.active
+    bpy.ops.collection.objects_remove_all()
+    bpy.data.collections[collection].objects.link(ball)
     ball.location = position
     ball.scale = (scale, scale, scale)
+    ball.name = name
+
     return ball
 
-def draw_stick(A, B, scale):
+def draw_stick(A, B, scale, name, collection):
     # next, get rotation matrix
     origin = (A + B) / 2.0
     vec1 = A - B
     norm = np.linalg.norm(vec1)
     vec1 /= norm
     vec2 = np.array([0, 0, 1])
-    vec3 = np.cross(vec1, vec2)
-    dot = np.dot(vec1, vec2)
-    skew = np.array([[0, -vec3[2], vec3[1]],
-                     [vec3[2], 0, -vec3[0]],
-                     [-vec3[1], vec3[0], 0]])
-    rotator = np.identity(3) + skew + (np.matmul(skew, skew) * (1.0 / (1.0 + dot)))
+    if (vec1 == vec2).all():
+        rotator = np.identity(3)
+    elif (vec1 == -vec2).all():
+        rotator = np.identity(3) * -1.0
+        rotator[0, 0] += 2.0
+    else:
+        vec3 = np.cross(vec1, vec2)
+        dot = np.dot(vec1, vec2)
+        skew = np.array([[0, -vec3[2], vec3[1]],
+                        [vec3[2], 0, -vec3[0]],
+                        [-vec3[1], vec3[0], 0]])
+        rotator = np.identity(3) + skew + (np.matmul(skew, skew) * (1.0 / (1.0 + dot)))
 
     # convert to 4-matrix
     rot4 = np.zeros((4, 4), dtype=float)
@@ -64,6 +75,8 @@ def draw_stick(A, B, scale):
     # now use this rotation matrix to rotate the bond
     bpy.ops.mesh.primitive_cylinder_add(location=tuple(origin))
     stick = bpy.context.view_layer.objects.active
+    bpy.ops.collection.objects_remove_all()
+    bpy.data.collections[collection].objects.link(stick)
 
     # scale accordingly
     scale4 = np.eye(4, dtype=float)
@@ -75,33 +88,39 @@ def draw_stick(A, B, scale):
     stick.data.transform(scale4)
     stick.data.transform(rot4)
     stick.data.update()
+    stick.name = name
 
     return stick
 
-def draw_atom(atom):
-    objref = draw_ball(atom["pos"], atom["spinfo"]["scale"])
+def draw_atom(atom, uid, collection):
+    name = "Atom.{:03d}.{}".format(uid, atom["spinfo"]["label"])
+    objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection)
     return objref
 
-def draw_bond(bond):
-    pointA = np.array(bond["A"]["pos"])
-    pointB = np.array(bond["B"]["pos"])
+def draw_bond(bond, uid, collection):
+    nameA = "Bond.{:03d}.A".format(uid)
+    nameB = "Bond.{:03d}.B".format(uid)
+    pointA = np.array(bond["A"]["position"])
+    pointB = np.array(bond["B"]["position"])
     midpoint = (pointA + pointB) / 2.0
     objref = []
 
-    objref.append(draw_stick(pointA, midpoint, 0.2))
-    objref.append(draw_stick(midpoint, pointB, 0.2))
+    objref.append(draw_stick(pointA, midpoint, 0.2, nameA, collection))
+    objref.append(draw_stick(midpoint, pointB, 0.2, nameB, collection))
     return objref
 
-def draw_frame(frame):
+def draw_frame(frame, collection):
     # TODO move defaults into single location
-    frame_scale = 1.0
+    frame_scale = 0.1
     objref = []
-    for vertex in frame["VERTICES"].values():
-        objref.append(draw_ball(vertex["position"], frame_scale))
-    for edge in frame["EDGES"].values():
+    for key, vertex in frame["VERTICES"].items():
+        name = "FrameVertex.{:03d}".format(key)
+        objref.append(draw_ball(vertex["position"], frame_scale, name, collection))
+    for key, edge in frame["EDGES"].items():
+        name = "FrameEdge.{:03d}".format(key)
         pointA = np.array(edge["A"]["position"])
         pointB = np.array(edge["B"]["position"])
-        objref.append(draw_stick(pointA, pointB, frame_scale))
+        objref.append(draw_stick(pointA, pointB, frame_scale, name, collection))
     return objref
 
 def create_material(id, color):
@@ -115,27 +134,42 @@ def init_materials(species):
         spec = species[key]
         spec["material"] = create_material(key, spec["color"])
 
+def get_collection_id():
+    id = 0
+    sub_collections = bpy.context.scene.collection.children.keys()
+    for sc in sub_collections:
+        if sc.startswith("AtomGroup"):
+            id = max(id, int(sc.split(".")[1]))
+    return "{:03d}".format(id)
+
 def import_xcp(context, filepath, use_some_setting):
     xcp = xcp_io.read_xcp(filepath)
+
+    coll_id = get_collection_id()
+    coll_atoms = "AtomGroup.{}".format(coll_id)
+    coll_frame = "CellFrame.{}".format(coll_id)
+    collref_atoms = bpy.data.collections.new(coll_atoms) 
+    collref_frame = bpy.data.collections.new(coll_frame) 
+    bpy.context.scene.collection.children.link(collref_atoms)
+    bpy.context.scene.collection.children.link(collref_frame)
 
     # do some processing in between perhaps and then finally here, draw every atom
     init_materials(xcp["SPECIES"])
     for key in xcp["ATOMS"]:
         atom = xcp["ATOMS"][key]
-        atomobj = draw_atom(atom)
+        atomobj = draw_atom(atom, key, coll_atoms)
         # link materials (expects init_materials to have been called)
         atomobj.data.materials.append(atom["spinfo"]["material"])
     for key in xcp["BONDS"]:
         bond = xcp["BONDS"][key]
-        bondobj = draw_bond(bond)
+        bondobj = draw_bond(bond, key, coll_atoms)
         bondobj[0].data.materials.append(bond["A"]["spinfo"]["material"])
         bondobj[1].data.materials.append(bond["B"]["spinfo"]["material"])
-
     if "CAMERA" in xcp["SCENE"]:
         camera = xcp["SCENE"]["CAMERA"]
-        cameraobj = add_camera(camera["pos"], camera["rot"])
+        cameraobj = add_camera(camera["position"], camera["rotation"], coll_atoms)
     if "FRAME" in xcp:
-        frameobj = draw_frame(xcp["FRAME"])
+        frameobj = draw_frame(xcp["FRAME"], coll_frame)
         
     # tells blender that the addon main function is successful
     return {'FINISHED'}
