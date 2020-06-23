@@ -9,16 +9,20 @@ Current design uses dictionaries over objects for now, since this is
 a more direct interpretation of XML
 """
 
+# should fix the import dependencies problem but currently doesn't work as intended
 # When bpy is already in local, we know this is not the initial import...
 if "bpy" in locals():
     # ...so we need to reload our submodule(s) using importlib
     import importlib
     if "xcp_io" in locals():
         importlib.reload(xcp_io)
+    if "xcp_utils" in locals():
+        importlib.reload(xcp_utils)
 
 import bpy
 import numpy as np # I think this comes with blender by default, doublecheck this
 import xcp_io
+import xcp_utils
 
 def add_camera(position, rotation, collection):
     cam = bpy.data.cameras.new("Camera")
@@ -93,16 +97,21 @@ def draw_stick(A, B, scale, name, collection):
     return stick
 
 def draw_atom(atom, uid, collection):
-    name = "Atom.{:03d}.{}".format(uid, atom["spinfo"]["label"])
+    name = "Atom.{}.{:03d}.{}".format(collection[-3:], uid, atom["spinfo"]["label"])
     objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection)
     return objref
 
 def draw_bond(bond, uid, collection):
-    nameA = "Bond.{:03d}.A".format(uid)
-    nameB = "Bond.{:03d}.B".format(uid)
+    nameA = "Bond.{}.{:03d}.A".format(collection[-3:], uid)
+    nameB = "Bond.{}.{:03d}.B".format(collection[-3:], uid)
     pointA = np.array(bond["A"]["position"])
     pointB = np.array(bond["B"]["position"])
-    midpoint = (pointA + pointB) / 2.0
+    norm = np.linalg.norm(pointA - pointB)
+    radiusA = bond["A"]["spinfo"]["scale"] / norm
+    radiusB = bond["B"]["spinfo"]["scale"] / norm
+    # this equation takes in account the radii of each atom and sets the midpoint to reveal
+    # an equal portion of bond
+    midpoint = (pointA * (1.0 + radiusB - radiusA) + pointB * (1.0 + radiusA - radiusB)) / 2.0
     objref = []
 
     objref.append(draw_stick(pointA, midpoint, 0.2, nameA, collection))
@@ -135,17 +144,19 @@ def init_materials(species):
         spec["material"] = create_material(key, spec["color"])
 
 def get_collection_id():
-    id = 0
+    id = -1
     sub_collections = bpy.context.scene.collection.children.keys()
     for sc in sub_collections:
         if sc.startswith("AtomGroup"):
             id = max(id, int(sc.split(".")[1]))
-    return "{:03d}".format(id)
+    return id
 
-def import_xcp(context, filepath, use_some_setting):
+def import_xcp(context, filepath, clear_world, default_view, join_mode):
+    if clear_world:
+        xcp_utils.removeAll()
     xcp = xcp_io.read_xcp(filepath)
 
-    coll_id = get_collection_id()
+    coll_id = "{:03d}".format(get_collection_id() + 1)
     coll_atoms = "AtomGroup.{}".format(coll_id)
     coll_frame = "CellFrame.{}".format(coll_id)
     collref_atoms = bpy.data.collections.new(coll_atoms) 
@@ -198,24 +209,32 @@ class ImportXCP(Operator, ImportHelper):
 
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
-    use_setting: BoolProperty(
-        name="Example Boolean",
-        description="Example Tooltip",
-        default=True,
+    clear_world: BoolProperty(
+        name="Clear World",
+        description="Removes everything from current world",
+        default=False,
     )
 
-    type: EnumProperty(
-        name="Example Enum",
-        description="Choose between two items",
+    default_view: BoolProperty(
+        name="Default View",
+        description="Adds a camera and lights defaulted to look at the molecule at some sensible distance",
+        default=False,
+    )
+
+    # TODO join mode should remove inside faces but I'm not certain how to do this
+    join_mode: EnumProperty(
+        name="Join Mode",
+        description="Determines whether meshes are joined. Joining facilitates control.",
         items=(
-            ('OPT_A', "First Option", "Description one"),
-            ('OPT_B', "Second Option", "Description two"),
+            ('OPT_A', "No Join", "Each atom and bond is a separate mesh"),
+            ('OPT_B', "Atom Join", "Bonds are joined to each respective atom"),
+            ('OPT_C', "Molecule Join", "Entire molecule is joined")
         ),
         default='OPT_A',
     )
 
     def execute(self, context):
-        return import_xcp(context, self.filepath, self.use_setting)
+        return import_xcp(context, self.filepath, self.clear_world, self.default_view, self.join_mode)
 
 
 # Only needed if you want to add into a dynamic menu
