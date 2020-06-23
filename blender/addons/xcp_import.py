@@ -151,10 +151,45 @@ def get_collection_id():
             id = max(id, int(sc.split(".")[1]))
     return id
 
+def get_center(atoms):
+    center = np.zeros(3)
+    for atom in atoms.values():
+        center += np.array(atom["position"])
+    center /= len(atoms)
+    return center
+
+def get_span(atoms):
+    pmin = np.zeros(3)
+    pmax = np.zeros(3)
+    for atom in atoms.values():
+        pmin = np.minimum(pmin, np.array(atom["position"]))
+        pmax = np.maximum(pmax, np.array(atom["position"]))
+    return np.max(pmax - pmin)
+
+def add_default_view(origin, radius):
+    constraint = xcp_utils.create_point(origin)
+    # temporary
+    cameraobj = xcp_utils.camera(target=constraint)
+    xcp_utils.limit_distance(cameraobj, radius, constraint)
+    l1pos = origin + np.array((1., 1., 0.))
+    l2pos = origin + np.array((-1., -1., -1.))
+    l3pos = origin + np.array((0., 1., 1.))
+    lampobj1 = xcp_utils.lamp(origin=l1pos, energy=10000, target=constraint)
+    lampobj2 = xcp_utils.lamp(origin=l2pos, energy=10000, target=constraint)
+    lampobj3 = xcp_utils.lamp(origin=l3pos, energy=10000, target=constraint)
+    xcp_utils.limit_distance(lampobj1, radius - 4.0, constraint)
+    xcp_utils.limit_distance(lampobj2, radius - 4.0, constraint)
+    xcp_utils.limit_distance(lampobj3, radius - 4.0, constraint)
+
 def import_xcp(context, filepath, clear_world, default_view, join_mode):
     if clear_world:
         xcp_utils.removeAll()
     xcp = xcp_io.read_xcp(filepath)
+
+    if default_view:
+        def_origin = get_center(xcp["ATOMS"])
+        def_radius = get_span(xcp["ATOMS"]) * 2.0
+        add_default_view(def_origin, def_radius)
 
     coll_id = "{:03d}".format(get_collection_id() + 1)
     coll_atoms = "AtomGroup.{}".format(coll_id)
