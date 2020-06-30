@@ -12,6 +12,17 @@ def removeAll(type=None):
         override = bpy.context.copy()
         override['selected_objects'] = list(bpy.context.scene.objects)
         bpy.ops.object.delete(override)
+    for c in bpy.data.collections:
+        if not c.users:
+            bpy.data.collections.remove(c)
+
+def init_default_materials():
+    materials = {}
+    mat = bpy.data.materials.new('DefaultBondMaterial')
+    mat.diffuse_color = (0.4, 0.4, 0.4, 1.0)
+    mat.specular_intensity = 0
+    materials["BOND"] = mat
+    return materials
 
 def create_point(location):
     bpy.ops.object.empty_add(type="PLAIN_AXES", location=location)
