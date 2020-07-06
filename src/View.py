@@ -28,6 +28,7 @@ class View:
     self.relax_poss = None
     self.lattice = model[0]
     self.species = model[2]
+    self.bond_pairs = model[4]
     self.basis_labels = model[3]
     if len(self.model[1]) == 3:
       self.relax_poss = self.model[1]
@@ -437,20 +438,12 @@ class View:
     Arguments:
       dits (float or dict): A float describes global bond distance, while a dictionary can specify distances for various pairs of atoms
     '''
-    dist = self.bond_dists
+    self.bonds = []
     dList = lambda a : {'pos':a.pos, 'color':a.col, 'radius':self.bond_radius}
-    if not isinstance(dist, dict):
-      self.bonds = [vp.curve(dList(a),dList(b)) for i,a in enumerate(self.vAtoms) for j,b in enumerate(self.vAtoms) if i!=j and (a.pos-b.pos).mag<=dist]
-    else:
-      self.bonds = []
-      dist = {'%s_%s'%tuple(sorted(k.split('_'))):dist[k] for k in dist.keys()}
-      for i,a in enumerate(self.vAtoms):
-        for j,b in enumerate(self.vAtoms):
-          if i != j:
-            key = '%s_%s'%tuple(sorted([a.species,b.species]))
-            if key in dist:
-              if (a.pos-b.pos).mag <= dist[key]:
-                self.bonds.append(vp.curve(dList(a),dList(b)))
+    for pair in self.bond_pairs:
+      a1 = self.vAtoms[pair[0]]
+      a2 = self.vAtoms[pair[1]]
+      self.bonds.append(vp.curve(dList(a1),dList(a2)))
 
   def draw_cell ( self ):
     '''
@@ -492,8 +485,8 @@ class View:
             a_pos = c_pos + self.vector(a)
             self.vAtoms.append(Atom(a_pos, col=self.vector(spec['color']), radius=spec['radius']))
 
-#    if len(self.vAtoms) > 1:
-#      self.draw_bonds()
+    if len(self.vAtoms) > 1:
+      self.draw_bonds()
 
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
 #    if self.coord_axes:

@@ -174,17 +174,17 @@ class XtraCrysPy:
         for iz in range(nz+1):
           orig_ind = vertex_map[(ix,iy,iz)]
           orig = self.atomic_position([ix,iy,iz], lattice)
-          if nx != 1 and ix < nx:
+          if ix < nx:
             vertex_ind += 1
             vertices += [orig+lattice[0]]
             edges += [[orig_ind, vertex_ind]]
             vertex_map[(ix+1,iy,iz)] = vertex_ind
-          if ny != 1 and iy < ny:
+          if iy < ny:
             vertex_ind += 1
             vertices += [orig+lattice[1]]
             edges += [[orig_ind, vertex_ind]]
             vertex_map[(ix,iy+1,iz)] = vertex_ind
-          if nz != 1 and iz < nz:
+          if iz < nz:
             vertex_ind += 1
             vertices += [orig+lattice[2]]
             edges += [[orig_ind, vertex_ind]]
@@ -279,5 +279,7 @@ class XtraCrysPy:
     from .View import View
     frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
     atoms = self.atoms if not self.relax else self.relax_poss
-    model = [self.lattice, atoms, self.spec, self.basis_labels]
+    bonds = self.get_bond_pairs(atoms)
+    print(bonds)
+    model = [self.lattice, atoms, self.spec, self.basis_labels, bonds]
     self.view = View(title,w_width,w_height,self.origin,model,perspective,frame,f_color,bg_color,nx,ny,nz)
