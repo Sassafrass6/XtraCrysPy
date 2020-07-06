@@ -36,6 +36,7 @@ def read_scf_file ( self, fname ):
               self.basis_labels.append(ls[0])
               self.atoms.append([float(v) for v in ls[1:4]])
       line = f.readline()
+    self.atoms = np.array(self.atoms)
     self.cell_param[1] *= self.cell_param[0]
     self.cell_param[2] *= self.cell_param[0]
 
@@ -195,108 +196,150 @@ def qe_lattice ( ibrav, cell_param ):
   return coords
 
 def constrain_atoms_to_unit_cell ( lattice, atoms ):
-   '''
-   Force atoms to lie inside of the unit cell.
+  '''
+  Force atoms to lie inside of the unit cell.
 
-   Arguments:
-     lattice (ndarray): 3x3 array of lattice vectors
-     atoms (list): List of 3 component vectors representing the atomic basis
+  Arguments:
+    lattice (ndarray): 3x3 array of lattice vectors
+    atoms (list): List of 3 component vectors representing the atomic basis
 
-   Returns:
-     (list): Updated list of atomic positions
-   '''
+  Returns:
+    (list): Updated list of atomic positions
+  '''
 
-   def inside_cell ( apos ):
-     ''' Helper function returning True if the position is interior to the cell '''
-     for i,l in enumerate(lattice):
-       tvec = np.linalg.inv(lattice).T @ apos
-       for v in tvec:
-         if v >= 1 or v < 0:
-           return False
-     return True
+  def inside_cell ( apos ):
+    ''' Helper function returning True if the position is interior to the cell '''
+    for i,l in enumerate(lattice):
+      tvec = np.linalg.inv(lattice).T @ apos
+      for v in tvec:
+        if v >= 1 or v < 0:
+          return False
+    return True
 
-   for i,a in enumerate(atoms):
-     while not inside_cell(atoms[i]):
-       nlat = np.linalg.inv(lattice).T @ atoms[i]
-       for j,n in enumerate(nlat):
-         if n < 0:
-           atoms[i] += lattice[j]
-         elif n >= 1:
-           atoms[i] -= lattice[j]
+  for i,a in enumerate(atoms):
+    while not inside_cell(atoms[i]):
+      nlat = np.linalg.inv(lattice).T @ atoms[i]
+      for j,n in enumerate(nlat):
+        if n < 0:
+          atoms[i] += lattice[j]
+        elif n >= 1:
+          atoms[i] -= lattice[j]
 
-   return atoms
+  return atoms
 
 def bravais_boundaries ( b_vec ):
-    '''
-    Create the Brillouin Zone boundary in the vpython window
+  '''
+  Create the Brillouin Zone boundary in the vpython window
 
-    Arguments:
-      b_vec (list or ndarray): List of 3 3-d vectors, representing the reciprocal lattice vectors
+  Arguments:
+    b_vec (list or ndarray): List of 3 3-d vectors, representing the reciprocal lattice vectors
 
-    Returns:
-      (list): List of tuples, each containing two 3-d points between which to draw an edge
-    '''
-    from numpy.linalg import det,norm,solve
+  Returns:
+    (list): List of tuples, each containing two 3-d points between which to draw an edge
+  '''
+  from numpy.linalg import det,norm,solve
 
-    indices = [[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[0,1,1],[0,-1,-1],[1,0,0],[-1,0,0],[1,0,1],[-1,0,-1],[1,1,0],[-1,-1,0],[1,1,1],[-1,-1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[-1,1,0],[1,-1,0],[1,0,-1],[-1,0,1],[0,1,-1],[0,-1,1]]
-    G = [i@b_vec for i in indices]
-    incl_G = np.ones(len(G))
+  indices = [[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[0,1,1],[0,-1,-1],[1,0,0],[-1,0,0],[1,0,1],[-1,0,-1],[1,1,0],[-1,-1,0],[1,1,1],[-1,-1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[-1,1,0],[1,-1,0],[1,0,-1],[-1,0,1],[0,1,-1],[0,-1,1]]
+  G = [i@b_vec for i in indices]
+  incl_G = np.ones(len(G))
 
-    # Determine which G vectors lie on BZ boundary
-    #   If G/2 is closer to Gamma than to another reciprocal lattice vector
-    for i,g1 in enumerate(G):
-      half_G = g1/2
-      for j,g2 in enumerate(G[:len(G)//2]):
-        if i != j and norm(half_G) >= norm(half_G-g2):
-          incl_G[i] = 0
-    planes = np.array([g for i,g in enumerate(G) if incl_G[i]])
+  # Determine which G vectors lie on BZ boundary
+  #   If G/2 is closer to Gamma than to another reciprocal lattice vector
+  for i,g1 in enumerate(G):
+    half_G = g1/2
+    for j,g2 in enumerate(G[:len(G)//2]):
+      if i != j and norm(half_G) >= norm(half_G-g2):
+        incl_G[i] = 0
+  planes = np.array([g for i,g in enumerate(G) if incl_G[i]])
 
-    corners = []
-    sqr = lambda v : np.sum(v*v)
-    # Search combinations of planes and save intersections as corners
-    for i,p1 in enumerate(planes):
-      for j,p2 in enumerate(planes[i+1:]):
-        for k,p3 in enumerate(planes[j+1:]):
-          M = np.array([p1,p2,p3])
-          magG = .5 * np.array([sqr(p1),sqr(p2),sqr(p3)])
-          if not np.isclose(det(M),0.):
-            c = solve(M,magG)
-            corners.append(c)
+  corners = []
+  sqr = lambda v : np.sum(v*v)
+  # Search combinations of planes and save intersections as corners
+  for i,p1 in enumerate(planes):
+    for j,p2 in enumerate(planes[i+1:]):
+      for k,p3 in enumerate(planes[j+1:]):
+        M = np.array([p1,p2,p3])
+        magG = .5 * np.array([sqr(p1),sqr(p2),sqr(p3)])
+        if not np.isclose(det(M),0.):
+          c = solve(M,magG)
+          corners.append(c)
 
-    corners = np.array(corners)
-    # Set near zero vlues to zero explicitly
-    for i,c in enumerate(corners):
-      for j,v in enumerate(c):
-        if np.isclose(v,0):
-          corners[i][j] = 0.
+  corners = np.array(corners)
+  # Set near zero vlues to zero explicitly
+  for i,c in enumerate(corners):
+    for j,v in enumerate(c):
+      if np.isclose(v,0):
+        corners[i][j] = 0.
 
-    # Select corners closer to Gamma than to another reciprocal lattice vector
-    # Then, eliminate any repeated corners
-    incl_C = np.ones(len(corners))
-    for i,c in enumerate(corners):
-      for g in G:
-        if norm(c) > norm(c-g)+1e-10:
-          incl_C[i] = 0
+  # Select corners closer to Gamma than to another reciprocal lattice vector
+  # Then, eliminate any repeated corners
+  incl_C = np.ones(len(corners))
+  for i,c in enumerate(corners):
+    for g in G:
+      if norm(c) > norm(c-g)+1e-10:
+        incl_C[i] = 0
 
-    # Eliminate duplicate corners
-    corners = np.unique(np.array([t for i,t in enumerate(corners) if incl_C[i]]), axis=0)
+  # Eliminate duplicate corners
+  corners = np.unique(np.array([t for i,t in enumerate(corners) if incl_C[i]]), axis=0)
 
-    pairs = []
-    # Compute pairs of points which share two planes
-    for ci,c1 in enumerate(corners):
-      for c2 in corners[ci+1:]:
-        for pi,p1 in enumerate(planes):
-          for p2 in planes[pi+1:]:
-            incl = True
-            for p in [(p1,c1), (p1,c2), (p2,c1), (p2,c2)]:
-              d = np.sum(p[0]*(p[1] - p[0]/2))
-              if not np.isclose(d, 0.):
-                incl = False
-                break
-            if incl:
-              pairs.append((c1,c2))
+  pairs = []
+  # Compute pairs of points which share two planes
+  for ci,c1 in enumerate(corners):
+    for c2 in corners[ci+1:]:
+      for pi,p1 in enumerate(planes):
+        for p2 in planes[pi+1:]:
+          incl = True
+          for p in [(p1,c1), (p1,c2), (p2,c1), (p2,c2)]:
+            d = np.sum(p[0]*(p[1] - p[0]/2))
+            if not np.isclose(d, 0.):
+              incl = False
+              break
+          if incl:
+            pairs.append((c1,c2))
 
-    # Adjust planes to represent midpoints between reciprocal lattice points
-    planes = np.array(planes)/2
+  # Adjust planes to represent midpoints between reciprocal lattice points
+  planes = np.array(planes)/2
 
-    return planes, np.array(pairs)
+  return planes, np.array(pairs)
+
+def blender_xml ( fnpath, natoms, species, labels, atomic_poss, bonds, frame, cameras ):
+  with open(fnpath, 'w') as f:
+    f.write('<?xml version="1.0"?>\n')
+    f.write('<XCP_DATA>\n')
+
+    f.write('\t<SCENE>\n')
+    if cameras is not None:
+      for i,c in enumerate(cameras.values()):
+        f.write('\t\t<CAMERA id="%d">\n'%i)
+        f.write('\t\t\t<POSITION>%f %f %f</POSITION>'%tuple(c['position']))
+        f.write('\t\t\t<ROTATION>%f %f %f</ROTATION>'%tuple(c['rotation']))
+        f.write('\t\t</CAMERA>\n')
+    f.write('\t</SCENE>\n')
+
+    f.write('\t<SYSTEM>\n')
+    for k,v in species.items():
+      f.write('\t\t<SPECIES id="%d" label="%s">\n'%(species[k]['id'], k))
+      f.write('\t\t\t<RADIUS>%f</RADIUS>\n'%species[k]['radius'])
+      f.write('\t\t\t<COLOR>%f %f %f %f</COLOR>\n'%species[k]['color'])
+      f.write('\t\t</SPECIES>\n')
+
+    for i,a in enumerate(atomic_poss):
+      key = labels[i%natoms]
+      f.write('\t\t<ATOM id="%d" species="%d">'%(i,species[key]['id']))
+      f.write('%f %f %f</ATOM>\n'%tuple(a))
+
+    DEFAULT_BOND_TYPE = 1
+    for i,b in enumerate(bonds):
+      tup = (i, DEFAULT_BOND_TYPE, b[0], b[1])
+      f.write('\t\t<BOND id="%d" type="%d" A="%d" B="%d"></BOND>\n'%tup)
+    f.write('\t</SYSTEM>\n')
+
+    vertices,edges = frame[0],frame[1]
+    f.write('\t<FRAME>\n')
+    for i,v in enumerate(vertices):
+      f.write('\t\t<VERTEX id="%d">%f %f %f</VERTEX>\n'%((i,)+tuple(v)))
+    for i,e in enumerate(edges):
+      f.write('\t\t<EDGE id="%d" A="%d" B="%d"></EDGE>\n'%(i, e[0], e[1]))
+    f.write('\t</FRAME>\n')
+
+    f.write('</XCP_DATA>\n')
