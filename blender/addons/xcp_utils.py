@@ -12,6 +12,10 @@ def removeAll(type=None):
         override = bpy.context.copy()
         override['selected_objects'] = list(bpy.context.scene.objects)
         bpy.ops.object.delete(override)
+    context = bpy.context
+    scene = context.scene
+    for c in scene.collection.children:
+        scene.collection.children.unlink(c)
     for c in bpy.data.collections:
         if not c.users:
             bpy.data.collections.remove(c)
@@ -68,3 +72,34 @@ def lamp(origin=(0., 0., 0.), type='POINT', energy=1, color=(1,1,1), target=None
     if target: 
         track_to_constraint(obj, target)
     return obj
+
+def create_taper(label="Taper"):
+    bpy.ops.curve.primitive_bezier_curve_add(radius=1.0,
+        location=(0.0, 0.0, 0.0))
+    
+    taper = bpy.context.view_layer.objects.active
+    taper.name = label
+    bezier_points = taper.data.splines[0].bezier_points
+    for bp in bezier_points:
+        bp.handle_left_type = "ALIGNED"
+        bp.handle_right_type = "ALIGNED"
+
+    bezier_points.add(3)
+    bezier_points[0].co = (-1.5, 0.9, 0.0)
+    bezier_points[1].co = (-0.5, 0.5, 0.0)
+    bezier_points[2].co = (0.0, 0.5, 0.0)
+    bezier_points[3].co = (0.5, 0.5, 0.0)
+    bezier_points[4].co = (1.5, 0.9, 0.0)
+
+    bezier_points[0].handle_left = (-1.5, 1.0, 0.0)
+    bezier_points[0].handle_right = (-1.5, 0.8, 0.0)
+    bezier_points[1].handle_left = (-1.0, 0.5, 0.0)
+    bezier_points[1].handle_right = (-0.4, 0.5, 0.0)
+    bezier_points[2].handle_left = (-0.1, 0.5, 0.0)
+    bezier_points[2].handle_right = (0.1, 0.5, 0.0)
+    bezier_points[3].handle_left = (0.4, 0.5, 0.0)
+    bezier_points[3].handle_right = (1.0, 0.5, 0.0)
+    bezier_points[4].handle_left = (1.5, 0.8, 0.0)
+    bezier_points[4].handle_right = (1.5, 1.0, 0.0)
+
+    return taper

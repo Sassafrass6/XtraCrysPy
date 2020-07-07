@@ -19,6 +19,7 @@ if "bpy" in locals():
     if "xcp_utils" in locals():
         importlib.reload(xcp_utils)
 
+from blender.addons.xcp_math import rotator_to_quaternion
 import bpy
 import numpy as np # I think this comes with blender by default, doublecheck this
 import xcp_io
@@ -57,23 +58,7 @@ def draw_ball(position, scale, name, collection, mtype="UV"):
 def draw_stick(A, B, scale, name, collection, mtype='PRIMITIVE'):
     # next, get rotation matrix
     position = (A + B) / 2.0
-    vec1 = A - B
-    norm = np.linalg.norm(vec1)
-    vec1 /= norm
-    vec2 = np.array([0, 0, 1])
-    if (vec1 == vec2).all():
-        rotator = np.identity(3)
-    elif (vec1 == -vec2).all():
-        rotator = np.identity(3) * -1.0
-        rotator[0, 0] += 2.0
-    else:
-        vec3 = np.cross(vec1, vec2)
-        dot = np.dot(vec1, vec2)
-        skew = np.array([[0, -vec3[2], vec3[1]],
-                        [vec3[2], 0, -vec3[0]],
-                        [-vec3[1], vec3[0], 0]])
-        rotator = np.identity(3) + skew + (np.matmul(skew, skew) * (1.0 / (1.0 + dot)))
-    
+    rotator = xcp_math.vec_to_rotator(A - B)    
     quat = xcp_math.rotator_to_quaternion(rotator)
 
     # call create mesh
@@ -101,22 +86,36 @@ def draw_stick(A, B, scale, name, collection, mtype='PRIMITIVE'):
 
     return stick
 
-def draw_bezier(A, B, scale, name, collection):
+def draw_bezier(A, B, scale, name, collection, taper):
+    midpoint = (A + B) / 2.0
     bpy.ops.curve.primitive_bezier_curve_add(radius=1.0,
         location=(0.0, 0.0, 0.0))
 
     curve = bpy.context.view_layer.objects.active
+    curve.location = midpoint
     bezier_points = curve.data.splines[0].bezier_points
-    for bp in bezier_points:
-        bp.handle_left_type = "VECTOR"
-        bp.handle_right_type = "VECTOR"
-    
-    bezier_points[0].co = A
-    bezier_points[1].co = B
+    bezier_points[0].co = A - midpoint
+    bezier_points[0].handle_left = (A - midpoint) * 1.1
+    bezier_points[0].handle_right = (0., 0., 0.)
+    bezier_points[1].co = B - midpoint
+    bezier_points[1].handle_left = (0., 0., 0.)
+    bezier_points[1].handle_right = (B - midpoint) * 1.1
     
     curve.data.bevel_depth = scale
+    curve.data.taper_object = taper
 
     return curve
+
+def draw_surface(center, norm):
+    rotator = xcp_math.vec_to_rotator(norm)
+    quat = xcp_math.rotator_to_quaternion(rotator)
+    bpy.ops.mesh.primitive_plane_add(location=center)
+    surface = bpy.context.view_layer.objects.active
+    surface.rotation_mode = "QUATERNION"
+    surface.rotation_quaternion = quat
+    
+    return surface
+    
 
 def draw_atom(atom, uid, collection):
     name = "Atom.{}.{:03d}.{}".format(collection[-3:], uid, atom["spinfo"]["label"])
@@ -149,22 +148,25 @@ def draw_meta_bond(bond, uid, collection):
     name = ""
     pointA = np.array(bond["A"]["position"])
     pointB = np.array(bond["B"]["position"])
-    norm = np.linalg.norm(pointA - pointB)
     
     objref = []
 
     objref.append(draw_stick(pointA, pointB, 0.2, name, collection, mtype='META'))
     return objref
 
-def draw_plastic_bond(bond, uid, collection):
+def draw_plastic_bond(bond, uid, collection, taper):
     name = "Bond.{}.{:03d}".format(collection[-3:], uid)
     pointA = np.array(bond["A"]["position"])
     pointB = np.array(bond["B"]["position"])
     norm = np.linalg.norm(pointA - pointB)
+    vecA = (pointB - pointA) / norm
+    vecB = (pointA - pointB) / norm
+    pointA += bond["A"]["spinfo"]["scale"] * vecA * 0.9
+    pointB += bond["B"]["spinfo"]["scale"] * vecB * 0.9
     
     objref = []
 
-    objref.append(draw_bezier(pointA, pointB, 0.2, name, collection))
+    objref.append(draw_bezier(pointA, pointB, 0.4, name, collection, taper))
     return objref
 
 def draw_frame(frame, collection):
@@ -229,15 +231,27 @@ def add_default_view(origin, radius):
     xcp_utils.limit_distance(lampobj2, radius - 4.0, constraint)
     xcp_utils.limit_distance(lampobj3, radius - 4.0, constraint)
 
+    return (constraint, [cameraobj], [lampobj1, lampobj2, lampobj3])
+
+def add_default_background(camera_ref, molecule_ref, radius):
+    cpos = np.array(camera_ref.location)
+    mpos = np.array(molecule_ref.location)
+    spos = cpos + 2.5 * (mpos - cpos)
+    surface = draw_surface(spos, (cpos - mpos), radius * 8.0)
+    return surface
+
 def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mode):
     if clear_world:
         xcp_utils.removeAll()
     xcp = xcp_io.read_xcp(filepath)
+    def_cameras = []
+    def_lights = []
 
     if default_view:
         def_origin = get_center(xcp["ATOMS"])
         def_radius = get_span(xcp["ATOMS"]) * 2.0
-        add_default_view(def_origin, def_radius)
+        point, def_cameras, def_lights = add_default_view(def_origin, def_radius)
+        def_background = add_default_background(def_cameras[0], point, def_radius)
 
     coll_id = "{:03d}".format(get_collection_id() + 1)
     coll_atoms = "AtomGroup.{}".format(coll_id)
@@ -259,6 +273,9 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mod
         # link materials (expects init_materials to have been called)
         xcp["ATOMS"][key]["obj"] = atomobj
         atomobj.data.materials.append(atom["spinfo"]["material"])
+    # move into bond draw once we have methods to draw them in bulk
+    if draw_mode == "OPT_C":
+        taper = xcp_utils.create_taper(label="Taper")
     for key in xcp["BONDS"]:
         bond = xcp["BONDS"][key]
         if draw_mode == "OPT_A":
@@ -269,10 +286,11 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mod
             bondobj = draw_meta_bond(bond, key, coll_atoms)
             bondobj[0].data.materials.append(default_materials["BOND"])
         elif draw_mode == "OPT_C":
-            bondobj = draw_plastic_bond(bond, key, coll_atoms)
+            bondobj = draw_plastic_bond(bond, key, coll_atoms, taper)
             bondobj[0].data.materials.append(default_materials["BOND"])
         xcp["BONDS"][key]["obj"] = bondobj
     if "CAMERA" in xcp["SCENE"]:
+        # untested
         camera = xcp["SCENE"]["CAMERA"]
         cameraobj = add_camera(camera["position"], camera["rotation"], coll_atoms)
     if "FRAME" in xcp:

@@ -1,5 +1,23 @@
 import numpy as np
 
+def vec_to_rotator(vec):
+    norm = np.linalg.norm(vec)
+    vec /= norm
+    vec2 = np.array([0, 0, 1])
+    if (vec1 == vec2).all():
+        rotator = np.identity(3)
+    elif (vec1 == -vec2).all():
+        rotator = np.identity(3) * -1.0
+        rotator[0, 0] += 2.0
+    else:
+        vec3 = np.cross(vec1, vec2)
+        dot = np.dot(vec1, vec2)
+        skew = np.array([[0, -vec3[2], vec3[1]],
+                        [vec3[2], 0, -vec3[0]],
+                        [-vec3[1], vec3[0], 0]])
+        rotator = np.identity(3) + skew + (np.matmul(skew, skew) * (1.0 / (1.0 + dot)))
+    return rotator
+
 def rotator_to_quaternion(mat):
     trace = np.trace(mat)
     if trace > 0.0:
