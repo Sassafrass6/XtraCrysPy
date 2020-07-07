@@ -19,7 +19,6 @@ if "bpy" in locals():
     if "xcp_utils" in locals():
         importlib.reload(xcp_utils)
 
-from blender.addons.xcp_math import rotator_to_quaternion
 import bpy
 import numpy as np # I think this comes with blender by default, doublecheck this
 import xcp_io
@@ -45,6 +44,10 @@ def draw_ball(position, scale, name, collection, mtype="UV"):
             align='WORLD', enter_editmode=False)
     elif mtype == "META":
         bpy.ops.object.metaball_add(type='BALL', align='WORLD')
+    elif mtype == "NURBS":
+        bpy.ops.surface.primitive_nurbs_surface_sphere_add(
+            align='WORLD'
+        )
 
     ball = bpy.context.view_layer.objects.active     
     bpy.ops.collection.objects_remove_all()
@@ -68,6 +71,8 @@ def draw_stick(A, B, scale, name, collection, mtype='PRIMITIVE'):
         bpy.ops.object.metaball_add(type='CAPSULE', align='WORLD')
         meta_mod = 1 / (np.sqrt(2))
         quat = xcp_math.quaternion_multiply((meta_mod, 0., meta_mod, 0.), quat)
+    elif mtype == 'NURBS':
+        bpy.ops.surface.primitive_nurbs_surface_cylinder_add(align='WORLD')
     else:
         return
 
@@ -78,7 +83,8 @@ def draw_stick(A, B, scale, name, collection, mtype='PRIMITIVE'):
     stick.rotation_mode = "QUATERNION"
     stick.rotation_quaternion = quat
 
-    if mtype == 'PRIMITIVE':
+    norm = np.linalg.norm(A - B)
+    if mtype == 'PRIMITIVE' or mtype == 'NURBS':
         stick.scale = (scale, scale, norm / 2.0)
     elif mtype == 'META':
         stick.scale = (norm / 4.0, scale, scale)
@@ -102,24 +108,26 @@ def draw_bezier(A, B, scale, name, collection, taper):
     bezier_points[1].handle_right = (B - midpoint) * 1.1
     
     curve.data.bevel_depth = scale
+    curve.data.bevel_resolution = 10
     curve.data.taper_object = taper
+    bpy.ops.object.modifier_add(type="SOLIDIFY")
+    curve.modifiers["Solidify"].thickness = 0.1
 
     return curve
 
-def draw_surface(center, norm):
+def draw_surface(center, norm, scale):
     rotator = xcp_math.vec_to_rotator(norm)
     quat = xcp_math.rotator_to_quaternion(rotator)
     bpy.ops.mesh.primitive_plane_add(location=center)
     surface = bpy.context.view_layer.objects.active
     surface.rotation_mode = "QUATERNION"
     surface.rotation_quaternion = quat
-    
+    surface.scale = (scale, scale, scale)
     return surface
-    
 
-def draw_atom(atom, uid, collection):
+def draw_atom(atom, uid, collection, mtype='UV'):
     name = "Atom.{}.{:03d}.{}".format(collection[-3:], uid, atom["spinfo"]["label"])
-    objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection, mtype='UV')
+    objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection, mtype)
     return objref
 
 def draw_meta_atom(atom, uid, collection):    
@@ -127,7 +135,7 @@ def draw_meta_atom(atom, uid, collection):
     objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection, mtype='META')
     return objref
 
-def draw_bond(bond, uid, collection):
+def draw_bond(bond, uid, collection, mtype='PRIMITIVE'):
     nameA = "Bond.{}.{:03d}.A".format(collection[-3:], uid)
     nameB = "Bond.{}.{:03d}.B".format(collection[-3:], uid)
     pointA = np.array(bond["A"]["position"])
@@ -140,8 +148,8 @@ def draw_bond(bond, uid, collection):
     midpoint = (pointA * (1.0 + radiusB - radiusA) + pointB * (1.0 + radiusA - radiusB)) / 2.0
     objref = []
 
-    objref.append(draw_stick(pointA, midpoint, 0.2, nameA, collection))
-    objref.append(draw_stick(midpoint, pointB, 0.2, nameB, collection))
+    objref.append(draw_stick(pointA, midpoint, 0.2, nameA, collection, mtype))
+    objref.append(draw_stick(midpoint, pointB, 0.2, nameB, collection, mtype))
     return objref
 
 def draw_meta_bond(bond, uid, collection):
@@ -237,7 +245,7 @@ def add_default_background(camera_ref, molecule_ref, radius):
     cpos = np.array(camera_ref.location)
     mpos = np.array(molecule_ref.location)
     spos = cpos + 2.5 * (mpos - cpos)
-    surface = draw_surface(spos, (cpos - mpos), radius * 8.0)
+    surface = draw_surface(spos, (cpos - mpos), radius * 3.0)
     return surface
 
 def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mode):
@@ -266,10 +274,12 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mod
     default_materials = xcp_utils.init_default_materials()
     for key in xcp["ATOMS"]:
         atom = xcp["ATOMS"][key]
-        if draw_mode == "OPT_A" or draw_mode == "OPT_C":
+        if draw_mode == "OPT_A":
             atomobj = draw_atom(atom, key, coll_atoms)
         elif draw_mode == "OPT_B":
             atomobj = draw_meta_atom(atom, key, coll_atoms)
+        elif draw_mode == "OPT_C" or draw_mode == "OPT_D":
+            atomobj = draw_atom(atom, key, coll_atoms, mtype='NURBS')
         # link materials (expects init_materials to have been called)
         xcp["ATOMS"][key]["obj"] = atomobj
         atomobj.data.materials.append(atom["spinfo"]["material"])
@@ -288,6 +298,10 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mod
         elif draw_mode == "OPT_C":
             bondobj = draw_plastic_bond(bond, key, coll_atoms, taper)
             bondobj[0].data.materials.append(default_materials["BOND"])
+        elif draw_mode == "OPT_D":
+            bondobj = draw_bond(bond, key, coll_atoms, mtype='NURBS')
+            bondobj[0].data.materials.append(bond["A"]["spinfo"]["material"])
+            bondobj[1].data.materials.append(bond["B"]["spinfo"]["material"])
         xcp["BONDS"][key]["obj"] = bondobj
     if "CAMERA" in xcp["SCENE"]:
         # untested
@@ -351,9 +365,10 @@ class ImportXCP(Operator, ImportHelper):
         name="Draw Mode",
         description="Determines how the atoms and bonds are joined.",
         items=(
-            ('OPT_A', "Ball and Stick", "Standard molecular drawing"),
+            ('OPT_A', "Mesh", "Standard molecular drawing"),
             ('OPT_B', "Metaballs", "Each object represented by a metaball"),
-            ('OPT_C', "Plastic Bonds", "Bonds are represented as bezier curves")
+            ('OPT_C', "Plastic Bonds", "Bonds are represented as bezier curves"),
+            ('OPT_D', "NURBS", "Better for rendering, but more expensive")
         )
     )
 

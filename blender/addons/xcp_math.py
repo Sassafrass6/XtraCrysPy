@@ -1,8 +1,8 @@
 import numpy as np
 
-def vec_to_rotator(vec):
-    norm = np.linalg.norm(vec)
-    vec /= norm
+def vec_to_rotator(vec1):
+    norm = np.linalg.norm(vec1)
+    vec1 /= norm
     vec2 = np.array([0, 0, 1])
     if (vec1 == vec2).all():
         rotator = np.identity(3)
