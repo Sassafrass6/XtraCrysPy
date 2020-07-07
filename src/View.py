@@ -3,13 +3,15 @@ import numpy as np
 
 class View:
 
-  def __init__ ( self, canvas, origin, perspective, bnd_col, nx, ny, nz, coord_axes, boundary, bond_dists, bond_thickness, atom_radii):
+  def __init__ ( self, cname, w_width, w_height, origin, model, perspective, boundary, bnd_col, bg_col, nx, ny, nz ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
     Arguments:
       canvas (vpython.scene): The vpython window
-      origin (list): List of 3 points, representing the x,y,z position of the grid's center
+      cname (str): None or the String name of the canvas
+      w_width (int): Width of the window
+      w_height (int): Height of the window
       perspective (bool): Draw the view in perspective mode if True
       bg_col (tuple): Background color (R,G,B)
       bnd_col (tuple): Brillouin Zone or Cell boundary color (R,G,B)
@@ -22,23 +24,28 @@ class View:
       atom_radii: (float or dict): Float to specify atom radius, or dict of form {'Species':radius}
     '''
 
-    self.canvas = canvas
+    self.model = model
+    self.relax_poss = None
+    self.lattice = model[0]
+    self.species = model[2]
+    self.bond_pairs = model[4]
+    self.basis_labels = model[3]
+    if len(self.model[1]) == 3:
+      self.relax_poss = self.model[1]
+      self.atoms = relax_poss[0]
+    else:
+      self.atoms = model[1]
+    
     self.boundary = boundary
     self.cell_dim = [nx,ny,nz]
-    self.coord_axes = coord_axes
-    self.bond_dists = bond_dists
-    self.atom_radii = atom_radii
     self.origin = np.array(origin)
     self.perspective = perspective
-    self.bnd_thck = bond_thickness
+    self.bnd_thck = None
     self.bnd_col = self.vector(bnd_col)
 
-    self.oFOV = self.canvas.fov
-    if not perspective:
-      self.canvas.fov = .01
-    self.canvas.forward = vp.vector(0,+1,0)
-    self.canvas.up = vp.vector(0,0,1)
-    self.orient_lights()
+    self.eval_dist = False
+    self.eval_angle = False
+    self.recip_space = False
 
     self.bonds = None
     self.arrows = None
@@ -52,7 +59,179 @@ class View:
     self.selected_bonds = []
     self.selected_colors = []
 
-  
+    self.setup_canvas(cname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
+
+    self.oFOV = self.canvas.fov
+    if not perspective:
+      self.canvas.fov = .01
+    self.canvas.forward = vp.vector(0,+1,0)
+    self.canvas.up = vp.vector(0,0,1)
+    self.orient_lights()
+
+    self.draw_cell()
+
+  def setup_canvas ( self, cname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
+    '''
+    Create the Canvas object and initialize the caption text and buttons.
+
+    Arguments:
+      cname (str): Filename of a quantum espresso inputfile
+      draw_cell (bool): Draw the cell on creation of XtraCrysPy object
+      w_width (int): Vpython window width
+      w_height (int): Vpython window height
+      bg_col (tuple): Background color (R,G,B)
+      bnd_col (tuple): Brillouin Zone boundary color (R,G,B)
+      nx,ny,nz (int): Number of cells to draw in the x,y,z direction
+      boundary (bool): True to draw the boundary of the lattice
+      perspective (bool): Flag to set the FOV as perspective mode
+    '''
+    self.atom_radius,self.bond_radius = .7,.07
+    title = '\tXtraCrysPy' if cname=='' else cname
+
+    self.canvas = vp.canvas(title=title+'\n', width=w_width, height=w_height, background=self.vector(bg_col))
+    self.canvas.bind('click', self.click)
+
+    anch = self.canvas.caption_anchor
+    self.canvas.caption = '\nOptions:\t\t\t\tTools:\n'
+
+    text = 'Cell Boundaries'
+    self.sel_bounary = vp.checkbox(text=text, pos=anch, bind=self.toggle_boundary, checked=True)
+
+    self.canvas.append_to_caption('     \t')
+    self.disp_menu = vp.menu(choices=['Atom Primary', 'Bond Primary'], pos=anch, bind=self.sel_disp_menu)
+    self.sel_menu = vp.menu(choices=['Select Atom', 'Distance', 'Angle'], pos=anch, bind=self.sel_menu_change)
+
+    if self.relax_poss is not None:
+      self.canvas.append_to_caption('  \t')
+      self.relax_backward = vp.button(text='<-', bind=self.relax_step_backward)
+      self.relax_forward = vp.button(text='->', bind=self.relax_step_forward)
+      self.relax_text = vp.wtext(text='Step: 0')
+
+    text = 'Perspective View'
+    self.canvas.append_to_caption('\n')
+    self.sel_fov = vp.checkbox(text=text, pos=anch, bind=self.toggle_fov, checked=perspective)
+    self.canvas.append_to_caption('\t\t')
+    self.sel_menu_text = vp.wtext()
+
+    self.canvas.append_to_caption('\n\nNumber of Cells:\n   Nx      Ny      Nz\n')
+
+    sel_nums = [str(i+1) for i in range(6)]
+    self.sel_nx = vp.menu(choices=sel_nums, pos=[2,0], bind=self.sel_nx_cells, selected=str(nx))
+    self.sel_ny = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_ny_cells, selected=str(ny))
+    self.sel_nz = vp.menu(choices=sel_nums, pos=anch, bind=self.sel_nz_cells, selected=str(nz))
+
+  def sel_disp_menu ( self, m ):
+    if m.selected == 'Atom Primary':
+      self.atom_radius = .7
+      self.bond_radius = .07
+    if m.selected == 'Bond Primary':
+      self.atom_radius = .25
+      self.bond_radius = .15
+    self.draw_cell()
+
+  def sel_menu_change ( self, m ):
+    '''
+    React to the atom selection menu selction changing
+
+    Arguments:
+      m (vpython widget): Menu widget
+    '''
+    if 'Select' in m.selected:
+      self.atom_select()
+    elif 'Distance' in m.selected:
+      self.atom_dist()
+    elif 'Angle' in m.selected:
+      self.atom_angle()
+    else:
+      raise ValueError('No such selection.')
+
+  def toggle_boundary ( self, m ):
+    self.boundary = not self.boundary
+    self.draw_cell()
+
+  def toggle_fov ( self, m ):
+    self.canvas.fov = self.oFOV if m.checked else .01
+    self.draw_cell()
+
+  def sel_num_cells ( self, m, ind):
+    self.cell_dim[ind] = int(m.selected)
+    self.reset_selection()
+    self.draw_cell()
+
+  def sel_nx_cells ( self, m ):
+    self.sel_num_cells(m, 0)
+
+  def sel_ny_cells ( self, m ):
+    self.sel_num_cells(m, 1)
+
+  def sel_nz_cells ( self, m ):
+    self.sel_num_cells(m, 2)
+
+  def atom_select ( self ):
+    '''
+    Allow the selection of atoms
+    '''
+    self.reset_selection()
+    self.eval_dist = False
+    self.eval_angle = False
+
+  def atom_dist ( self ):
+    '''
+    Allow the calculation of distance between atoms upon successive selection of two atoms
+    '''
+    self.reset_selection()
+    self.eval_dist = True
+    self.eval_angle = False
+
+  def atom_angle ( self ):
+    '''
+    Allow the calculation of angle between atoms upon successive selection of three atoms
+    '''
+    self.reset_selection()
+    self.eval_dist = False
+    self.eval_angle = True
+
+  def click ( self ):
+    '''
+    Handle mouse click events. Used to select atoms for distance calculation
+    '''
+    new_atom = self.canvas.mouse.pick
+    if self.eval_dist:
+      v = self.distance_selection(new_atom)
+    elif self.eval_angle:
+      v = self.angle_selection(new_atom)
+    else:
+      v = self.single_selection(new_atom)
+    if v is not None:
+      self.sel_menu_text.text = v
+
+  def relax_step ( self, sgn ):
+    '''
+    Make a step forward or backward in relaxation
+
+    Arguments:
+      sgn (int): +1 => forward, -1 => backward
+    '''
+
+    # Ensure that the new index still indexes a valid relaxation step
+    top = sgn > 0 and self.relax_index < len(self.relax_poss)-1
+    bot = sgn < 0 and self.relax_index > 0
+
+    if top or bot:
+      self.relax_index += sgn
+      self.relax_text.text = 'Step: %d'%self.relax_index
+      self.atoms = self.relax_poss[self.relax_index]
+      if len(self.relax_lattices) > 0:
+        self.lattice = self.relax_lattices[self.relax_index]
+
+      self.draw_cell()
+
+  def relax_step_forward ( self ):
+    self.relax_step(1)
+
+  def relax_step_backward ( self ):
+    self.relax_step(-1)
+
   def orient_lights ( self, direction=None ):
     '''
     Orient the lights to face the "front" of the sample
@@ -259,22 +438,14 @@ class View:
     Arguments:
       dits (float or dict): A float describes global bond distance, while a dictionary can specify distances for various pairs of atoms
     '''
-    dist = self.bond_dists
+    self.bonds = []
     dList = lambda a : {'pos':a.pos, 'color':a.col, 'radius':self.bond_radius}
-    if not isinstance(dist, dict):
-      self.bonds = [vp.curve(dList(a),dList(b)) for i,a in enumerate(self.vAtoms) for j,b in enumerate(self.vAtoms) if i!=j and (a.pos-b.pos).mag<=dist]
-    else:
-      self.bonds = []
-      dist = {'%s_%s'%tuple(sorted(k.split('_'))):dist[k] for k in dist.keys()}
-      for i,a in enumerate(self.vAtoms):
-        for j,b in enumerate(self.vAtoms):
-          if i != j:
-            key = '%s_%s'%tuple(sorted([a.species,b.species]))
-            if key in dist:
-              if (a.pos-b.pos).mag <= dist[key]:
-                self.bonds.append(vp.curve(dList(a),dList(b)))
+    for pair in self.bond_pairs:
+      a1 = self.vAtoms[pair[0]]
+      a2 = self.vAtoms[pair[1]]
+      self.bonds.append(vp.curve(dList(a1),dList(a2)))
 
-  def draw_cell ( self, lat, atoms, species, spec_col, atom_radius, bond_radius ):
+  def draw_cell ( self ):
     '''
     Create the cell simulation in the vpython environment
 
@@ -286,13 +457,8 @@ class View:
 
     self.clear_canvas()
     nx,ny,nz = self.cell_dim
-    self.bond_radius = bond_radius if self.bnd_thck is None else self.bnd_thck
 
-    atom_radius = atom_radius if self.atom_radii is None else self.atom_radii
-    if not isinstance(atom_radius, dict):
-      rad = atom_radius
-      atom_radius = {s:rad for s in species}
-
+    lat = self.lattice
     if self.boundary:
       self.bound_curve = []
       for ix in range(nx):
@@ -305,22 +471,26 @@ class View:
             orig = self.get_cell_pos(lat,ix,iy,iz)
             self.bound_curve += [vp.curve(orig+self.vector(al[0]),orig+self.vector(al[1]),color=self.bnd_col) for al in alines]
 
+    atoms = self.atoms
+    species = self.species
+    labels = self.basis_labels
+
     self.vAtoms = []
     for ix in range(nx):
       for iy in range(ny):
         for iz in range(nz):
           c_pos = self.vector(self.origin) + self.get_cell_pos(lat,ix,iy,iz)
           for i,a in enumerate(atoms):
+            spec = species[labels[i]]
             a_pos = c_pos + self.vector(a)
-            color = self.vector(spec_col[species[i]])
-            self.vAtoms.append(Atom(a_pos,col=color,species=species[i],radius=atom_radius[species[i]]))
+            self.vAtoms.append(Atom(a_pos, col=self.vector(spec['color']), radius=spec['radius']))
 
     if len(self.vAtoms) > 1:
       self.draw_bonds()
 
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
-    if self.coord_axes:
-      self.draw_coord_axis()
+#    if self.coord_axes:
+#      self.draw_coord_axis()
 
   def draw_BZ_boundary ( self, b_vec=None ):
     '''

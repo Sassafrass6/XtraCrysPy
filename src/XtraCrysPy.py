@@ -20,10 +20,10 @@ class XtraCrysPy:
     self.spec = {}           # Dicitonary of atomic species
     self.nspec = 0           # Number of species
     self.natoms = 0          # Number of atoms
+    self.view = None         # VPython View
     self.ibrav = None        # Bravais lattice ID, following QE indexing
     self.atoms = None        # Atomic positions (basis)
     self.bonds = None        # Dictionary of bond distances
-    self.frame = True       # Boolean. True if the frame should be drawn
     self.relax = relax       # Boolean. True if there are relaxation steps
     self.cameras = None      # New feature which could provide camera locations to Blender
     self.lattice = None      # Unit vectors (lattice)
@@ -31,13 +31,14 @@ class XtraCrysPy:
     self.coord_type = None   # Units (angstrom, bohr, alat, crystal, manual)
     self.relax_poss = None   # Atomic positions for each step of relaxation
     self.cell_param = None   # Average of norms for lattice?
+    self.relax_poss = None   # Sets of coordinates by relaxation step
     self.relax_index = None  # Index of the current relax step being modeled
     self.relax_steps = None  # Number of relaxation steps, if applicable
     self.basis_labels = None # Species label for each atom in the basis
 
     self.WHITE = (1,1,1,1)
+    self.BLACK = (0,0,0,1)
     self.DEFAULT_RADIUS = 1
-    self.DEFAULT_BOND_TYPE = 1
     self.BOHR_TO_ANGSTROM = .52917720
 
     if inputfile is None:
@@ -45,7 +46,7 @@ class XtraCrysPy:
       if lattice is None or basis is None or species is None:
         print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
       else:
-        self.atoms = basis
+        self.atoms = np.array(basis)
         self.spec = species
         self.natoms = len(basis)
         self.lattice = np.array(lattice)
@@ -82,15 +83,15 @@ class XtraCrysPy:
         if 'angstrom' in self.coord_type:
           self.atoms = np.array(self.atoms) / self.BOHR_TO_ANGSTROM
         elif 'alat' in self.coord_type or 'crystal' in self.coord_type:
-          self.atoms = [self.atomic_position(a) for a in self.atoms]
+          self.atoms =  np.array([self.atomic_position(a) for a in self.atoms])
           print('Crystal & Alat coordinate types require more testing')
 
     if species is not None:
-      if basis_labels is None:
+      if self.basis_labels is None:
         raise ValueError('Must specify basis_labels if the species dictionary is provided.')
-      if len(species) < len(list(set(basis_labels))):
+      if len(species) < len(list(set(self.basis_labels))):
         raise ValueError('Must specify every label which appears in basis_labels')
-      for bl in basis_labels:
+      for bl in self.basis_labels:
         if bl not in species:
           raise ValueError('Must provide entry for %s in species dictionary.'%bl)
           
@@ -220,6 +221,26 @@ class XtraCrysPy:
             positions += [c_pos + a]
     return positions
 
+  
+  def get_bond_pairs ( self, atoms ):
+    '''
+    '''
+    bonds = []
+    if self.bonds is None or len(atoms) < 2:
+      return bonds
+
+    na = self.natoms
+    for i,k in enumerate(self.bonds.keys()):
+      sA,sB = tuple(k.split('_'))
+      for m in range(len(atoms)):
+        for n in range(m+1, len(atoms)):
+          l1,l2 = self.basis_labels[m%na],self.basis_labels[n%na]
+          if (l1 == sA and l2 == sB) or (l1 == sB and l2 == sA):
+            if np.linalg.norm(atoms[m] - atoms[n]) <= self.bonds[k]:
+              bonds += [[m, n]]
+    return bonds
+    
+
   def get_BZ_corners ( self, rlat=None ):
     '''
     Compute the corner positions of the Brillouin Zone
@@ -244,50 +265,21 @@ class XtraCrysPy:
             colors += [self.spec[self.basis_labels[i]]['color']]
     return colors
 
-  def write_blender_xml ( self, directory='./', fname='xcpy_system.xml', nx=1, ny=1, nz=1 ):
+  def write_blender_xml ( self, directory='./', fname='xcpy_system.xml', frame=True, nx=1, ny=1, nz=1 ):
     from os.path import join as opjoin
-    with open(opjoin(directory,fname), 'w') as f:
-      f.write('<?xml version="1.0"?>\n')
-      f.write('<XCP_DATA>\n')
+    from .Util import blender_xml
 
-      f.write('\t<SCENE>\n')
-      if self.cameras is not None:
-        for i,c in enumerate(self.cameras.values()):
-          f.write('\t\t<CAMERA id="%d">\n'%i)
-          f.write('\t\t\t<POSITION>%f %f %f</POSITION>'%tuple(c['position']))
-          f.write('\t\t\t<ROTATION>%f %f %f</ROTATION>'%tuple(c['rotation']))
-          f.write('\t\t</CAMERA>\n')
-      f.write('\t</SCENE>\n')
+    atom_positions = self.get_atomic_positions(nx=nx, ny=ny, nz=nz)
+    frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
+    bonds = self.get_bond_pairs(atom_positions)
 
-      f.write('\t<SYSTEM>\n')
-      for k,v in self.spec.items():
-        f.write('\t\t<SPECIES id="%d" label="%s">\n'%(self.spec[k]['id'], k))
-        f.write('\t\t\t<RADIUS>%f</RADIUS>\n'%self.spec[k]['radius'])
-        f.write('\t\t\t<COLOR>%f %f %f %f</COLOR>\n'%self.spec[k]['color'])
-        f.write('\t\t</SPECIES>\n')
+    blender_xml(opjoin(directory,fname), self.natoms, self.spec, self.basis_labels, atom_positions, bonds, frame, self.cameras)
 
-      atomic_poss = self.get_atomic_positions(nx=nx, ny=ny, nz=nz)
-      for i,a in enumerate(atomic_poss):
-        key = self.basis_labels[i%self.natoms]
-        f.write('\t\t<ATOM id="%d" species="%d">'%(i,self.spec[key]['id']))
-        f.write('%f %f %f</ATOM>\n'%tuple(a))
-      if self.bonds is not None:
-        for i,k in enumerate(self.bonds.keys()):
-          sA,sB = tuple(k.split('_'))
-          tup = (i, self.DEFAULT_BOND_TYPE, self.spec[sA]['id'], self.spec[sB]['id'])
-          f.write('\t\t<BOND id="%d" type="%d" A="%d" B="%d"></BOND>\n'%tup)
-      f.write('\t</SYSTEM>\n')
-
-      if self.frame:
-        vertices,edges = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
-        f.write('\t<FRAME>\n')
-        for i,v in enumerate(vertices):
-          f.write('\t\t<VERTEX id="%d">%f %f %f</VERTEX>\n'%((i,)+tuple(v)))
-        for i,e in enumerate(edges):
-          f.write('\t\t<EDGE id="%d" A="%d" B="%d"></EDGE>\n'%(i, e[0], e[1]))
-        f.write('\t</FRAME>\n')
-
-      f.write('</XCP_DATA>\n')
-
-  def start_cryspy_view ( self ):
-    return
+  def start_cryspy_view ( self, title='', w_width=1000, w_height=750, perspective=False, f_color=(1,1,1), bg_color=(0,0,0), nx=1, ny=1, nz=1 ):
+    from .View import View
+    frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
+    atoms = self.atoms if not self.relax else self.relax_poss
+    bonds = self.get_bond_pairs(atoms)
+    print(bonds)
+    model = [self.lattice, atoms, self.spec, self.basis_labels, bonds]
+    self.view = View(title,w_width,w_height,self.origin,model,perspective,frame,f_color,bg_color,nx,ny,nz)
