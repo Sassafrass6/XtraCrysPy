@@ -43,11 +43,12 @@ class XtraCrysPy:
 
     if inputfile is None:
       self.coord_type = 'manual'
-      if lattice is None or basis is None or species is None:
+      if lattice is None or basis is None:
         print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
       else:
         self.atoms = np.array(basis)
         self.spec = species
+        self.bonds = bonds
         self.natoms = len(basis)
         self.lattice = np.array(lattice)
         self.basis_labels = basis_labels
@@ -108,8 +109,10 @@ class XtraCrysPy:
     else:
       if self.basis_labels is None:
         self.nspec = self.natoms
-        self.spec = {i:{'id':i, 'radius':self.DEFAULT_RADIUS, 'color':self.WHITE} for i in range(self.natoms)}
+        self.basis_labels = range(self.natoms)
+        self.spec = {i:{'id':i, 'radius':self.DEFAULT_RADIUS, 'color':self.WHITE} for i in self.basis_labels}
       else:
+        self.spec = {}
         unique_spec = list(set(self.basis_labels))
         for u in unique_spec:
           self.spec[u] = {'id':self.nspec, 'radius':self.DEFAULT_RADIUS, 'color':self.WHITE}
@@ -279,7 +282,6 @@ class XtraCrysPy:
     from .View import View
     frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
     atoms = self.atoms if not self.relax else self.relax_poss
-    bonds = self.get_bond_pairs(atoms)
-    print(bonds)
+    bonds = self.get_bond_pairs(atoms) if not self.relax else [self.get_bond_pairs(a) for a in self.relax_poss]
     model = [self.lattice, atoms, self.spec, self.basis_labels, bonds]
-    self.view = View(title,w_width,w_height,self.origin,model,perspective,frame,f_color,bg_color,nx,ny,nz)
+    self.view = View(title,w_width,w_height,self.origin,model,self.coord_type,perspective,frame,f_color,bg_color,nx,ny,nz)

@@ -3,7 +3,7 @@ import numpy as np
 
 class View:
 
-  def __init__ ( self, cname, w_width, w_height, origin, model, perspective, boundary, bnd_col, bg_col, nx, ny, nz ):
+  def __init__ ( self, cname, w_width, w_height, origin, model, coord_type, perspective, boundary, bnd_col, bg_col, nx, ny, nz ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -38,6 +38,7 @@ class View:
     
     self.boundary = boundary
     self.cell_dim = [nx,ny,nz]
+    self.coord_type = coord_type
     self.origin = np.array(origin)
     self.perspective = perspective
     self.bnd_thck = None
@@ -264,7 +265,12 @@ class View:
         b (Atom or vpython.sphere): Second atom
       '''
       dist = b.pos - a.pos
-      text = '%f angstroms'%(dist.mag * .529177)
+      dist = dist.mag
+      if self.coord_type != 'manual':
+        dist *= .529177
+        text = '%f angstroms'%dist
+      else:
+        text = '%f units'%dist
       print('Distance = %s'%text)
       return text
 
