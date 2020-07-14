@@ -126,14 +126,19 @@ def draw_surface(center, norm, scale):
     return surface
 
 def draw_atom(atom, uid, collection, mtype='UV'):
-    name = "Atom.{}.{:03d}.{}".format(collection[-3:], uid, atom["spinfo"]["label"])
+    if mtype == "META":
+        name = ""
+    else:
+        name = "Atom.{}.{:03d}.{}".format(collection[-3:], uid, atom["spinfo"]["label"])
     objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection, mtype)
     return objref
 
-def draw_meta_atom(atom, uid, collection):    
-    name = ""
-    objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection, mtype='META')
-    return objref
+def draw_duplivert_atom(data, key_list, label, collection, mtype='UV'):
+    if mtype == "META":
+        # TODO name this is a logical compatible way
+        name = ""
+    else:
+        name = "AtomDup.{}.{}".format(collection[-3:], label)
 
 def draw_bond(bond, uid, collection, mtype='PRIMITIVE'):
     nameA = "Bond.{}.{:03d}.A".format(collection[-3:], uid)
@@ -248,7 +253,8 @@ def add_default_background(camera_ref, molecule_ref, radius):
     surface = draw_surface(spos, (cpos - mpos), radius * 3.0)
     return surface
 
-def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mode):
+def import_xcp(context, filepath, clear_world, default_view, join_mode, atom_draw_mode, bond_draw_mode,
+        atom_dup, bond_dup):
     if clear_world:
         xcp_utils.removeAll()
     xcp = xcp_io.read_xcp(filepath)
@@ -272,33 +278,32 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, draw_mod
     # do some processing in between perhaps and then finally here, draw every atom
     init_materials(xcp["SPECIES"])
     default_materials = xcp_utils.init_default_materials()
-    for key in xcp["ATOMS"]:
-        atom = xcp["ATOMS"][key]
-        if draw_mode == "OPT_A":
-            atomobj = draw_atom(atom, key, coll_atoms)
-        elif draw_mode == "OPT_B":
-            atomobj = draw_meta_atom(atom, key, coll_atoms)
-        elif draw_mode == "OPT_C" or draw_mode == "OPT_D":
-            atomobj = draw_atom(atom, key, coll_atoms, mtype='NURBS')
-        # link materials (expects init_materials to have been called)
-        xcp["ATOMS"][key]["obj"] = atomobj
-        atomobj.data.materials.append(atom["spinfo"]["material"])
+    if atom_dup:
+        species_map = xcp_utils.get_species_map(xcp)
+        for key, atom_key_list in species_map.items():
+            draw_duplivert_atom(xcp, atom_key_list, key, coll_atoms, mtype=atom_draw_mode)
+    else:
+        for key, atom in xcp["ATOMS"].items():
+            atomobj = draw_atom(atom, key, coll_atoms, mtype=atom_draw_mode)
+            # link materials (expects init_materials to have been called)
+            xcp["ATOMS"][key]["obj"] = atomobj
+            atomobj.data.materials.append(atom["spinfo"]["material"])
     # move into bond draw once we have methods to draw them in bulk
-    if draw_mode == "OPT_C":
+    if bond_draw_mode == "OPT_C":
         taper = xcp_utils.create_taper(label="Taper")
     for key in xcp["BONDS"]:
         bond = xcp["BONDS"][key]
-        if draw_mode == "OPT_A":
+        if bond_draw_mode == "OPT_A":
             bondobj = draw_bond(bond, key, coll_atoms)
             bondobj[0].data.materials.append(bond["A"]["spinfo"]["material"])
             bondobj[1].data.materials.append(bond["B"]["spinfo"]["material"])
-        elif draw_mode == "OPT_B":
+        elif bond_draw_mode == "OPT_B":
             bondobj = draw_meta_bond(bond, key, coll_atoms)
             bondobj[0].data.materials.append(default_materials["BOND"])
-        elif draw_mode == "OPT_C":
+        elif bond_draw_mode == "OPT_C":
             bondobj = draw_plastic_bond(bond, key, coll_atoms, taper)
             bondobj[0].data.materials.append(default_materials["BOND"])
-        elif draw_mode == "OPT_D":
+        elif bond_draw_mode == "OPT_D":
             bondobj = draw_bond(bond, key, coll_atoms, mtype='NURBS')
             bondobj[0].data.materials.append(bond["A"]["spinfo"]["material"])
             bondobj[1].data.materials.append(bond["B"]["spinfo"]["material"])
@@ -361,20 +366,43 @@ class ImportXCP(Operator, ImportHelper):
         default='OPT_A',
     )
 
-    draw_mode: EnumProperty(
-        name="Draw Mode",
-        description="Determines how the atoms and bonds are joined.",
+    atom_draw_mode: EnumProperty(
+        name="Atom Representation",
+        description="Determines how the atoms are displayed.",
         items=(
-            ('OPT_A', "Mesh", "Standard molecular drawing"),
-            ('OPT_B', "Metaballs", "Each object represented by a metaball"),
-            ('OPT_C', "Plastic Bonds", "Bonds are represented as bezier curves"),
-            ('OPT_D', "NURBS", "Better for rendering, but more expensive")
+            ('UV', "Mesh", "Standard molecular drawing"),
+            ('META', "Metaballs", "Each object represented by a metaball"),
+            ('NURBS', "NURBS", "Better for rendering, but more expensive")
         )
+    )
+
+    atom_duplivert: BoolProperty(
+        name="Duplivert (single atomic species)",
+        description="Draws all atoms of same species as duplivert",
+        default=False,
+    )
+
+    bond_draw_mode: EnumProperty(
+        name="Bond Representation",
+        description="Determines how the bonds are displayed.",
+        items=(
+            ('MESH', "Mesh", "Standard molecular drawing"),
+            ('META', "Metaballs", "Each object represented by a metaball"),
+            ('BEZIER', "Plastic", "Bonds are represented as bezier curves"),
+            ('NURBS', "NURBS", "Better for rendering, but more expensive")
+        )
+    )
+
+    bond_duplivert: BoolProperty(
+        name="Duplivert (bonds)",
+        description="Draws all bonds of same species as duplivert",
+        default=False,
     )
 
     def execute(self, context):
         return import_xcp(context, self.filepath, self.clear_world, 
-            self.default_view, self.join_mode, self.draw_mode)
+            self.default_view, self.join_mode, self.atom_draw_mode, self.bond_draw_mode,
+            self.atom_duplivert, self.bond_duplivert)
 
 
 # Only needed if you want to add into a dynamic menu

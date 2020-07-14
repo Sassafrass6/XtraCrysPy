@@ -103,3 +103,12 @@ def create_taper(label="Taper"):
     bezier_points[4].handle_right = (1.5, 1.0, 0.0)
 
     return taper
+
+def get_species_map(data):
+    species_map = {}
+    for key, atom in data["ATOMS"].items():
+        skey = atom["spinfo"]["label"]
+        if skey not in species_map:
+            species_map[skey] = []
+        species_map[skey].append(key)
+    return species_map
