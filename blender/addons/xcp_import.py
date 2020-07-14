@@ -58,14 +58,14 @@ def draw_ball(position, scale, name, collection, mtype="UV"):
 
     return ball
 
-def draw_stick(A, B, scale, name, collection, mtype='PRIMITIVE'):
+def draw_stick(A, B, scale, name, collection, mtype='MESH'):
     # next, get rotation matrix
     position = (A + B) / 2.0
     rotator = xcp_math.vec_to_rotator(A - B)    
     quat = xcp_math.rotator_to_quaternion(rotator)
 
     # call create mesh
-    if mtype == 'PRIMITIVE':
+    if mtype == 'MESH':
         bpy.ops.mesh.primitive_cylinder_add(align='WORLD')
     elif mtype == 'META':
         bpy.ops.object.metaball_add(type='CAPSULE', align='WORLD')
@@ -84,7 +84,7 @@ def draw_stick(A, B, scale, name, collection, mtype='PRIMITIVE'):
     stick.rotation_quaternion = quat
 
     norm = np.linalg.norm(A - B)
-    if mtype == 'PRIMITIVE' or mtype == 'NURBS':
+    if mtype == 'MESH' or mtype == 'NURBS':
         stick.scale = (scale, scale, norm / 2.0)
     elif mtype == 'META':
         stick.scale = (norm / 4.0, scale, scale)
@@ -109,7 +109,8 @@ def draw_bezier(A, B, scale, name, collection, taper):
     
     curve.data.bevel_depth = scale
     curve.data.bevel_resolution = 10
-    curve.data.taper_object = taper
+    if taper:
+        curve.data.taper_object = taper
     bpy.ops.object.modifier_add(type="SOLIDIFY")
     curve.modifiers["Solidify"].thickness = 0.1
 
@@ -131,16 +132,52 @@ def draw_atom(atom, uid, collection, mtype='UV'):
     else:
         name = "Atom.{}.{:03d}.{}".format(collection[-3:], uid, atom["spinfo"]["label"])
     objref = draw_ball(atom["position"], atom["spinfo"]["scale"], name, collection, mtype)
+    objref.data.materials.append(atom["spinfo"]["material"])
     return objref
 
-def draw_duplivert_atom(data, key_list, label, collection, mtype='UV'):
+def draw_duplivert_atom(data, key_list, label, collection, origin, mtype='UV'):
+    # mostly taken from the official pdb addon for drawing duplivert spheres
+    vertices = []
+    species = None
+    for key in key_list:
+        atom = data["ATOMS"][key]
+        # all of these should be the same, should also sanity check that this is not None
+        species = atom["spinfo"]
+        vertices.append(atom["position"] - origin)
+    
+    if species is None:
+        print("Species info not linked to atom in xml input!")
+    
+    collection_species_name = "AtomicSpecies.{}".format(label)
+    collection_species = bpy.data.collections.new(collection_species_name)
+    bpy.data.collections[collection].children.link(collection_species)
+
+    # this mesh contains the information about all the duplicates
+    atom_dup_mesh = bpy.data.meshes.new("AtomDupMesh.{}".format(label))
+    atom_dup_mesh.from_pydata(vertices, [], [])
+    atom_dup_mesh.update()
+    # this is the main mesh that, when linked, will correctly display the duplicates
+    atom_mesh = bpy.data.objects.new("AtomMesh.{}".format(label), atom_dup_mesh)
+    collection_species.objects.link(atom_mesh)
+
+    ballobj = draw_ball((0., 0., 0.), species["scale"], "Ball.{}".format(label), collection_species_name, mtype)
+    # if not metaball, hide the original!
+    if mtype != "META":
+        ballobj.hide_set(True)
+    ballobj.data.materials.append(species["material"])
+    ballobj.parent = atom_mesh
+
+    atom_mesh.instance_type = "VERTS"
+    atom_mesh.location = origin
+
+    return atom_mesh, collection_species
+
+def draw_bond(bond, uid, collection, default_material, mtype="MESH", taper=None):
     if mtype == "META":
-        # TODO name this is a logical compatible way
         name = ""
     else:
-        name = "AtomDup.{}.{}".format(collection[-3:], label)
-
-def draw_bond(bond, uid, collection, mtype='PRIMITIVE'):
+        name = "Bond.{}.{:03d}".format(collection[-3:], uid)
+    # in the case for multiple bond objects
     nameA = "Bond.{}.{:03d}.A".format(collection[-3:], uid)
     nameB = "Bond.{}.{:03d}.B".format(collection[-3:], uid)
     pointA = np.array(bond["A"]["position"])
@@ -153,34 +190,90 @@ def draw_bond(bond, uid, collection, mtype='PRIMITIVE'):
     midpoint = (pointA * (1.0 + radiusB - radiusA) + pointB * (1.0 + radiusA - radiusB)) / 2.0
     objref = []
 
-    objref.append(draw_stick(pointA, midpoint, 0.2, nameA, collection, mtype))
-    objref.append(draw_stick(midpoint, pointB, 0.2, nameB, collection, mtype))
+    if mtype == "MESH" or mtype == "NURBS":
+        objref.append(draw_stick(pointA, midpoint, 0.2, nameA, collection, mtype))
+        objref.append(draw_stick(midpoint, pointB, 0.2, nameB, collection, mtype))
+        objref[0].data.materials.append(bond["A"]["spinfo"]["material"])
+        objref[1].data.materials.append(bond["B"]["spinfo"]["material"])
+    elif mtype == "META":
+        objref.append(draw_stick(pointA, pointB, 0.2, name, collection, mtype='META'))
+        objref[0].data.materials.append(default_material)
+    elif mtype == "BEZIER":
+        vecA = (pointB - pointA) / norm
+        vecB = (pointA - pointB) / norm
+        pointA += bond["A"]["spinfo"]["scale"] * vecA * 0.9
+        pointB += bond["B"]["spinfo"]["scale"] * vecB * 0.9
+        objref.append(draw_bezier(pointA, pointB, 0.4, name, collection, taper))
+        objref[0].data.materials.append(default_material)
     return objref
 
-def draw_meta_bond(bond, uid, collection):
-    name = ""
-    pointA = np.array(bond["A"]["position"])
-    pointB = np.array(bond["B"]["position"])
-    
-    objref = []
+def draw_duplivert_bond(data, key_list, label, collection, origin, default_material, mtype="MESH", taper=None):
+    # mostly taken from the official pdb addon for drawing duplivert sticks
+    vertices = []
+    faces = []
+    i = 0
+    species = None
+    for key in key_list:
+        bond = data["BONDS"][key]   
+        pointA = np.array(bond["A"]["position"])
+        pointB = np.array(bond["B"]["position"])
+        norm = np.linalg.norm(pointA - pointB)
+        n = (pointA - pointB) / norm
+        radiusA = bond["A"]["spinfo"]["scale"] / norm
+        radiusB = bond["B"]["spinfo"]["scale"] / norm
+        midpoint = (pointA * (1.0 + radiusB - radiusA) + pointB * (1.0 + radiusA - radiusB)) / 2.0
+        labelA = bond["A"]["spinfo"]["label"]
+        if label == labelA:
+            point = pointA
+            species = bond["A"]["spinfo"]
+        else:
+            point = pointB
+            species = bond["B"]["spinfo"]
+        
+        position = (point + midpoint) / 2. - origin
+        if n[0] > 0.9:
+            v1 = np.array([0., 1., 0.])
+        else:
+            v1 = np.array([1., 0., 0.])
+        v2 = np.cross(n, v1)
+        v3 = np.cross(n, v2)
+        p1 = position + v2 / np.linalg.norm(v2) * 0.2
+        p2 = position - v2 / np.linalg.norm(v2) * 0.2
+        p3 = position + v3 / np.linalg.norm(v3) * 0.2
+        p4 = position - v3 / np.linalg.norm(v3) * 0.2
 
-    objref.append(draw_stick(pointA, pointB, 0.2, name, collection, mtype='META'))
-    return objref
+        vertices.append(p1)
+        vertices.append(p2)
+        vertices.append(p3)
+        vertices.append(p4)
 
-def draw_plastic_bond(bond, uid, collection, taper):
-    name = "Bond.{}.{:03d}".format(collection[-3:], uid)
-    pointA = np.array(bond["A"]["position"])
-    pointB = np.array(bond["B"]["position"])
-    norm = np.linalg.norm(pointA - pointB)
-    vecA = (pointB - pointA) / norm
-    vecB = (pointA - pointB) / norm
-    pointA += bond["A"]["spinfo"]["scale"] * vecA * 0.9
-    pointB += bond["B"]["spinfo"]["scale"] * vecB * 0.9
-    
-    objref = []
+        faces.append((i*4+0, i*4+2, i*4+1, i*4+3))
+        i += 1
 
-    objref.append(draw_bezier(pointA, pointB, 0.4, name, collection, taper))
-    return objref
+    collection_bonds_name = "Bonds.{}".format(label)
+    collection_bonds = bpy.data.collections.new(collection_bonds_name)
+    bpy.data.collections[collection].children.link(collection_bonds)
+
+    # this mesh contains the information about all the duplicates
+    bond_dup_mesh = bpy.data.meshes.new("BondDupMesh.{}".format(label))
+    bond_dup_mesh.from_pydata(vertices, [], faces)
+    bond_dup_mesh.update()
+    # this is the main mesh that, when linked, will correctly display the duplicates
+    bond_mesh = bpy.data.objects.new("BondMesh.{}".format(label), bond_dup_mesh)
+    collection_bonds.objects.link(bond_mesh)
+
+    v1 = np.array([0., 0., 0.])
+    v2 = np.array([0., 1., 0.])
+    stickobj = draw_stick(v1, v2, 0.2, "Stick.{}".format(label), collection_bonds_name, mtype)
+    stickobj.hide_set(True)
+    stickobj.data.materials.append(species["material"])
+    stickobj.parent = bond_mesh
+
+    bond_mesh.instance_type = "FACES"
+    bond_mesh.location = origin
+
+    return bond_mesh, collection_bonds
+
 
 def draw_frame(frame, collection):
     # TODO move defaults into single location
@@ -237,9 +330,9 @@ def add_default_view(origin, radius):
     l1pos = origin + np.array((1., 1., 0.))
     l2pos = origin + np.array((-1., -1., -1.))
     l3pos = origin + np.array((0., 1., 1.))
-    lampobj1 = xcp_utils.lamp(origin=l1pos, energy=10000, target=constraint)
-    lampobj2 = xcp_utils.lamp(origin=l2pos, energy=10000, target=constraint)
-    lampobj3 = xcp_utils.lamp(origin=l3pos, energy=10000, target=constraint)
+    lampobj1 = xcp_utils.lamp(origin=l1pos, energy=10 * radius ** 2, target=constraint)
+    lampobj2 = xcp_utils.lamp(origin=l2pos, energy=10 * radius ** 2, target=constraint)
+    lampobj3 = xcp_utils.lamp(origin=l3pos, energy=10 * radius ** 2, target=constraint)
     xcp_utils.limit_distance(lampobj1, radius - 4.0, constraint)
     xcp_utils.limit_distance(lampobj2, radius - 4.0, constraint)
     xcp_utils.limit_distance(lampobj3, radius - 4.0, constraint)
@@ -253,6 +346,14 @@ def add_default_background(camera_ref, molecule_ref, radius):
     surface = draw_surface(spos, (cpos - mpos), radius * 3.0)
     return surface
 
+def add_sphere_background(origin, radius):
+    bpy.ops.surface.primitive_nurbs_surface_sphere_add()
+    surface = bpy.context.view_layer.objects.active 
+    surface.location = origin
+    surface.scale = (radius, radius, radius)
+    surface.hide_viewport = True
+    return surface
+
 def import_xcp(context, filepath, clear_world, default_view, join_mode, atom_draw_mode, bond_draw_mode,
         atom_dup, bond_dup):
     if clear_world:
@@ -260,12 +361,13 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, atom_dra
     xcp = xcp_io.read_xcp(filepath)
     def_cameras = []
     def_lights = []
+    def_origin = get_center(xcp["ATOMS"])
 
     if default_view:
-        def_origin = get_center(xcp["ATOMS"])
         def_radius = get_span(xcp["ATOMS"]) * 2.0
         point, def_cameras, def_lights = add_default_view(def_origin, def_radius)
-        def_background = add_default_background(def_cameras[0], point, def_radius)
+        #def_background = add_default_background(def_cameras[0], point, def_radius)
+        def_background = add_sphere_background(def_origin, def_radius * 1.5)
 
     coll_id = "{:03d}".format(get_collection_id() + 1)
     coll_atoms = "AtomGroup.{}".format(coll_id)
@@ -278,36 +380,27 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, atom_dra
     # do some processing in between perhaps and then finally here, draw every atom
     init_materials(xcp["SPECIES"])
     default_materials = xcp_utils.init_default_materials()
+    if bond_draw_mode == "BEZIER":
+        taper = xcp_utils.create_taper(label="Taper")
+    else:
+        taper = None
+
     if atom_dup:
         species_map = xcp_utils.get_species_map(xcp)
         for key, atom_key_list in species_map.items():
-            draw_duplivert_atom(xcp, atom_key_list, key, coll_atoms, mtype=atom_draw_mode)
+            draw_duplivert_atom(xcp, atom_key_list, key, coll_atoms, def_origin, mtype=atom_draw_mode)
     else:
         for key, atom in xcp["ATOMS"].items():
-            atomobj = draw_atom(atom, key, coll_atoms, mtype=atom_draw_mode)
-            # link materials (expects init_materials to have been called)
-            xcp["ATOMS"][key]["obj"] = atomobj
-            atomobj.data.materials.append(atom["spinfo"]["material"])
+            xcp["ATOMS"][key]["obj"] = draw_atom(atom, key, coll_atoms, mtype=atom_draw_mode)
     # move into bond draw once we have methods to draw them in bulk
-    if bond_draw_mode == "OPT_C":
-        taper = xcp_utils.create_taper(label="Taper")
-    for key in xcp["BONDS"]:
-        bond = xcp["BONDS"][key]
-        if bond_draw_mode == "OPT_A":
-            bondobj = draw_bond(bond, key, coll_atoms)
-            bondobj[0].data.materials.append(bond["A"]["spinfo"]["material"])
-            bondobj[1].data.materials.append(bond["B"]["spinfo"]["material"])
-        elif bond_draw_mode == "OPT_B":
-            bondobj = draw_meta_bond(bond, key, coll_atoms)
-            bondobj[0].data.materials.append(default_materials["BOND"])
-        elif bond_draw_mode == "OPT_C":
-            bondobj = draw_plastic_bond(bond, key, coll_atoms, taper)
-            bondobj[0].data.materials.append(default_materials["BOND"])
-        elif bond_draw_mode == "OPT_D":
-            bondobj = draw_bond(bond, key, coll_atoms, mtype='NURBS')
-            bondobj[0].data.materials.append(bond["A"]["spinfo"]["material"])
-            bondobj[1].data.materials.append(bond["B"]["spinfo"]["material"])
-        xcp["BONDS"][key]["obj"] = bondobj
+    if bond_dup:
+        bond_map = xcp_utils.get_bond_map(xcp)
+        for key, bond_key_list in bond_map.items():
+            draw_duplivert_bond(xcp, bond_key_list, key, coll_atoms, def_origin, default_materials["BOND"], bond_draw_mode, taper)
+    else:
+        for key in xcp["BONDS"]:
+            bond = xcp["BONDS"][key]
+            xcp["BONDS"][key]["obj"] = draw_bond(bond, key, coll_atoms, default_materials["BOND"], bond_draw_mode, taper)
     if "CAMERA" in xcp["SCENE"]:
         # untested
         camera = xcp["SCENE"]["CAMERA"]

@@ -112,3 +112,16 @@ def get_species_map(data):
             species_map[skey] = []
         species_map[skey].append(key)
     return species_map
+
+def get_bond_map(data):
+    bond_map = {}
+    for key, bond in data["BONDS"].items():
+        bkey = bond["A"]["spinfo"]["label"]
+        if bkey not in bond_map:
+            bond_map[bkey] = []
+        bond_map[bkey].append(key)        
+        bkey = bond["B"]["spinfo"]["label"]
+        if bkey not in bond_map:
+            bond_map[bkey] = []
+        bond_map[bkey].append(key)
+    return bond_map
