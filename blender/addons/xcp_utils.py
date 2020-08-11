@@ -62,6 +62,24 @@ def camera(origin=(0., 0., 0.), target=None, lens=45, clip_start=0.1, clip_end=2
         track_to_constraint(camera, target)
     return camera
 
+def camera_from_input(position, rotation, collection):
+    cam = bpy.data.cameras.new("Camera")
+    cam.lens = 18
+
+    # create the first camera object
+    objref = bpy.data.objects.new("Camera", cam)
+    objref.location = position
+    objref.rotation_euler = rotation
+    bpy.data.collections[collection].objects.link(objref)
+    return objref
+
+def create_material(id, color):
+    mat = bpy.data.materials.new('Material.{}'.format(id))
+    mat.diffuse_color = color
+    mat.specular_intensity = 0
+    return mat
+
+
 def lamp(origin=(0., 0., 0.), type='POINT', energy=1, color=(1,1,1), target=None):
     print('createLamp called')
     bpy.ops.object.light_add(type=type, location=origin)
