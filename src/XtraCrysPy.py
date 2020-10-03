@@ -285,3 +285,33 @@ class XtraCrysPy:
     bonds = self.get_bond_pairs(atoms) if not self.relax else [self.get_bond_pairs(a) for a in self.relax_poss]
     model = [self.lattice, atoms, self.spec, self.basis_labels, bonds]
     self.view = View(title,w_width,w_height,self.origin,model,self.coord_type,perspective,frame,f_color,bg_color,nx,ny,nz)
+
+  def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]], normals=True, title='', w_width=1000, w_height=750, perspective=False, f_color=(1,1,1), bg_color=(0,0,0), write_obj=False ):
+    '''
+    Create the Brillouin Zone boundary and bsxf points at iso value for each band in the vpython window
+
+    Arguemnts:
+      fname (str): Name of bxsf file
+      iso (list): List of floats corresponding to the isosurface values for each respective band in 'bands'
+      bands (list): List of integers representing the index of the band to plot
+      colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
+      normals (bool): True adds normals to triangle vertices, improving surface visibility
+      write_obj (bool): True will write the triange vertex, face, and normal data to an obj file
+    '''
+    from .View import View
+    from .Util import read_bxsf
+
+    if len(iso) != len(bands):
+      raise ValueError("Each band in 'bands' should have one corresponding isosurface in 'iso'")
+    if len(iso) != len(colors) and len(colors) != 1:
+      raise ValueError("Specify 1 color to plot all bands in the same color, or specify 1 color for each band.")
+
+    self.recip_space = True
+    b_vec,data = read_bxsf(fname)
+
+    if np.max(bands) >= data.shape[-1]:
+      raise ValueError("'bands' contains an index too large for the dataset")
+    self.view = View(title,w_width,w_height,self.origin,None,self.coord_type,perspective,None,f_color,bg_color,1,1,1)
+
+    self.view.draw_bxsf(b_vec, data, iso, bands, colors, normals, write_obj)
+

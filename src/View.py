@@ -26,15 +26,17 @@ class View:
 
     self.model = model
     self.relax_poss = None
-    self.lattice = model[0]
-    self.species = model[2]
-    self.bond_pairs = model[4]
-    self.basis_labels = model[3]
-    if len(self.model[1]) == 3:
-      self.relax_poss = self.model[1]
-      self.atoms = relax_poss[0]
-    else:
-      self.atoms = model[1]
+
+    if model != None:
+      self.lattice = model[0]
+      self.species = model[2]
+      self.bond_pairs = model[4]
+      self.basis_labels = model[3]
+      if len(self.model[1].shape) == 3:
+        self.relax_poss = self.model[1]
+        self.atoms = self.relax_poss[0]
+      else:
+        self.atoms = model[1]
     
     self.boundary = boundary
     self.cell_dim = [nx,ny,nz]
@@ -46,13 +48,13 @@ class View:
 
     self.eval_dist = False
     self.eval_angle = False
+    self.coord_axis = False
     self.recip_space = False
 
     self.bonds = None
     self.arrows = None
     self.vAtoms = None
     self.BZ_planes = None
-    self.coord_axis = None
     self.bound_curve = None
     self.bond_radius = None
 
@@ -69,7 +71,8 @@ class View:
     self.canvas.up = vp.vector(0,0,1)
     self.orient_lights()
 
-    self.draw_cell()
+    if model != None:
+      self.draw_cell()
 
   def setup_canvas ( self, cname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
     '''
@@ -565,7 +568,7 @@ class View:
     draw_flag.visible = False
     del draw_flag
 
-  def draw_bxsf ( self, rlat, data, iso, bands, colors, normals ):
+  def draw_bxsf ( self, rlat, data, iso, bands, colors, normals, write_obj ):
     '''
     Create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
 
@@ -576,6 +579,7 @@ class View:
       bands (list): List of integers representing the index of the band to plot
       colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
       normals (bool): True adds normals to triangle vertices, improving surface visibility
+      write_obj (bool): True will write the triange vertex, face, and normal data to an obj file
     '''
     from .MarchingCubes import marching_cubes
     from numpy.linalg import det,norm,solve
@@ -593,7 +597,7 @@ class View:
     from time import time
     self.vAtoms = []
     for i,b in enumerate(bands):
-      self.vAtoms += marching_cubes(data[:,:,:,b], iso[i], rlat, self.BZ_planes, colors[i])
+      self.vAtoms += marching_cubes(data[:,:,:,b], iso[i], rlat, self.BZ_planes, colors[i], write_obj=write_obj)
 
     if self.coord_axes:
       self.draw_coord_axis(length=.1*np.linalg.norm(rlat[0]),offset=[-1,0,0])
