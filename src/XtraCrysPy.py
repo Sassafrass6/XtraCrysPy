@@ -225,25 +225,6 @@ class XtraCrysPy:
     return positions
 
   
-  def get_bond_pairs ( self, atoms ):
-    '''
-    '''
-    bonds = []
-    if self.bonds is None or len(atoms) < 2:
-      return bonds
-
-    na = self.natoms
-    for i,k in enumerate(self.bonds.keys()):
-      sA,sB = tuple(k.split('_'))
-      for m in range(len(atoms)):
-        for n in range(m+1, len(atoms)):
-          l1,l2 = self.basis_labels[m%na],self.basis_labels[n%na]
-          if (l1 == sA and l2 == sB) or (l1 == sB and l2 == sA):
-            if np.linalg.norm(atoms[m] - atoms[n]) <= self.bonds[k]:
-              bonds += [[m, n]]
-    return bonds
-    
-
   def get_BZ_corners ( self, rlat=None ):
     '''
     Compute the corner positions of the Brillouin Zone
@@ -270,11 +251,12 @@ class XtraCrysPy:
 
   def write_blender_xml ( self, directory='./', fname='xcpy_system.xml', frame=True, nx=1, ny=1, nz=1 ):
     from os.path import join as opjoin
+    from .model import get_bond_pairs
     from .Util import blender_xml
 
     atom_positions = self.get_atomic_positions(nx=nx, ny=ny, nz=nz)
     frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
-    bonds = self.get_bond_pairs(atom_positions)
+    bonds = get_bond_pairs(self.natoms, atom_positions, self.bonds, self.basis_labels)
 
     blender_xml(opjoin(directory,fname), self.natoms, self.spec, self.basis_labels, atom_positions, bonds, frame, self.cameras)
 
@@ -282,8 +264,7 @@ class XtraCrysPy:
     from .View import View
     frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
     atoms = self.atoms if not self.relax else self.relax_poss
-    bonds = self.get_bond_pairs(atoms) if not self.relax else [self.get_bond_pairs(a) for a in self.relax_poss]
-    model = [self.lattice, atoms, self.spec, self.basis_labels, bonds]
+    model = [self.lattice, atoms, self.spec, self.basis_labels, self.bonds]
     self.view = View(title,w_width,w_height,self.origin,model,self.coord_type,perspective,frame,f_color,bg_color,nx,ny,nz)
 
   def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]], normals=True, title='', w_width=1000, w_height=750, perspective=False, f_color=(1,1,1), bg_color=(0,0,0), write_obj=False ):

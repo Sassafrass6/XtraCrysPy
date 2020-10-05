@@ -28,15 +28,16 @@ class View:
     self.relax_poss = None
 
     if model != None:
+      self.bonds = model[4]
       self.lattice = model[0]
       self.species = model[2]
-      self.bond_pairs = model[4]
       self.basis_labels = model[3]
       if len(self.model[1].shape) == 3:
         self.relax_poss = self.model[1]
         self.atoms = self.relax_poss[0]
       else:
         self.atoms = model[1]
+    self.natoms = len(self.atoms)
     
     self.boundary = boundary
     self.cell_dim = [nx,ny,nz]
@@ -48,13 +49,13 @@ class View:
 
     self.eval_dist = False
     self.eval_angle = False
-    self.coord_axis = False
     self.recip_space = False
 
-    self.bonds = None
     self.arrows = None
     self.vAtoms = None
+    self.vBonds = None
     self.BZ_planes = None
+    self.coord_axes = None
     self.bound_curve = None
     self.bond_radius = None
 
@@ -301,7 +302,7 @@ class View:
       iy (int): y index
       iz (int): z index
     '''
-    return self.vector(np.array([ix,iy,iz]) @ lat)
+    return np.array([ix,iy,iz]) @ lat
 
   def reset_selection ( self ):
     '''
@@ -423,11 +424,11 @@ class View:
 
     if self.vAtoms is not None:
       self.vAtoms = vpobject_destructor([a.vpy_sph for a in self.vAtoms])
-    self.bonds = vpobject_destructor(self.bonds)
-    self.coord_axis = vpobject_destructor(self.coord_axis)
+    self.vBonds = vpobject_destructor(self.vBonds)
+    self.coord_axes = vpobject_destructor(self.coord_axes)
     self.bound_curve = vpobject_destructor(self.bound_curve)
 
-  def draw_coord_axis ( self, offset=[-10,0,0], length=1. ):
+  def draw_coord_axes ( self, offset=[-10,0,0], length=1. ):
     '''
     Draw the Coordinate Axes
 
@@ -436,9 +437,9 @@ class View:
     '''
     apos = np.array(offset)
     vpa = lambda a : vp.arrow(pos=self.vector(apos),axis=self.vector(length*np.array(a)))
-    self.coord_axis = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
+    self.coord_axes = [vpa([2,0,0]),vpa([0,2,0]),vpa([0,0,2])]
 
-  def draw_bonds ( self ):
+  def draw_bonds ( self, atoms ):
     '''
     Draw the bonds if atoms are closer than 'dist' together.
     To specifiy bonds between two types of atoms pass a dictionary into dist with key/value
@@ -447,12 +448,14 @@ class View:
     Arguments:
       dits (float or dict): A float describes global bond distance, while a dictionary can specify distances for various pairs of atoms
     '''
-    self.bonds = []
+    from .model import get_bond_pairs
+
+    self.vBonds = []
     dList = lambda a : {'pos':a.pos, 'color':a.col, 'radius':self.bond_radius}
-    for pair in self.bond_pairs:
+    for pair in get_bond_pairs(self.natoms, atoms, self.bonds, self.basis_labels):
       a1 = self.vAtoms[pair[0]]
       a2 = self.vAtoms[pair[1]]
-      self.bonds.append(vp.curve(dList(a1),dList(a2)))
+      self.vBonds.append(vp.curve(dList(a1),dList(a2)))
 
   def draw_cell ( self ):
     '''
@@ -477,29 +480,31 @@ class View:
             alines = [[3*[0],a] for a in lat]
             alines += [[p,corner] for p in [lat[i]+lat[j] for i in range(3) for j in range(i+1,3)]]
             alines += [[lat[k],lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
-            orig = self.get_cell_pos(lat,ix,iy,iz)
+            orig = self.vector(self.get_cell_pos(lat,ix,iy,iz))
             self.bound_curve += [vp.curve(orig+self.vector(al[0]),orig+self.vector(al[1]),color=self.bnd_col) for al in alines]
 
     atoms = self.atoms
     species = self.species
     labels = self.basis_labels
 
+    patoms = []
     self.vAtoms = []
     for ix in range(nx):
       for iy in range(ny):
         for iz in range(nz):
-          c_pos = self.vector(self.origin) + self.get_cell_pos(lat,ix,iy,iz)
+          c_pos = self.origin + self.get_cell_pos(lat,ix,iy,iz)
           for i,a in enumerate(atoms):
             spec = species[labels[i]]
-            a_pos = c_pos + self.vector(a)
-            self.vAtoms.append(Atom(a_pos, col=self.vector(spec['color']), radius=spec['radius']))
+            a_pos = c_pos + a
+            patoms.append(a_pos)
+            self.vAtoms.append(Atom(self.vector(a_pos), col=self.vector(spec['color']), radius=spec['radius']))
 
     if len(self.vAtoms) > 1:
-      self.draw_bonds()
+      self.draw_bonds(patoms)
 
     self.canvas.center = self.vector(np.mean([[v.pos.x,v.pos.y,v.pos.z] for v in self.vAtoms], axis=0))
-#    if self.coord_axes:
-#      self.draw_coord_axis()
+    if not self.coord_axes is None:
+      self.draw_coord_axs()
 
   def draw_BZ_boundary ( self, b_vec=None ):
     '''
@@ -599,8 +604,8 @@ class View:
     for i,b in enumerate(bands):
       self.vAtoms += marching_cubes(data[:,:,:,b], iso[i], rlat, self.BZ_planes, colors[i], write_obj=write_obj)
 
-    if self.coord_axes:
-      self.draw_coord_axis(length=.1*np.linalg.norm(rlat[0]),offset=[-1,0,0])
+    if not self.coord_axes is None:
+      self.draw_coord_axes(length=.1*np.linalg.norm(rlat[0]),offset=[-1,0,0])
 
     draw_flag.visible = False
     del draw_flag
