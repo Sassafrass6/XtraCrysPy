@@ -90,6 +90,62 @@ def read_relax_file ( self, fname ):
   self.cell_param[1] *= self.cell_param[0]
   self.cell_param[2] *= self.cell_param[0]
 
+def read_cube_file ( self, fname ):
+  '''
+  Read GAUSSIAN cube files
+
+  Arguments:
+    fname (str): .cube formatted filename
+  '''
+  ignore_lines = 2
+  n = []
+  species = set()
+  self.lattice = np.zeros((3, 3))
+  self.atoms = []
+  with open(fname) as f:
+    for _ in range(ignore_lines):
+      f.readline()
+    # read number of atoms and position of origin
+    l = f.readline().split()
+    self.natoms = int(l[0])
+    self.origin = [float(v) for v in l[1:]]
+    # read size and transform matrix
+    for i in range(3):
+      l = f.readline().split()
+      n.append(abs(int(l[0])))
+      # format implies possibility of mixed inputs, however.. just assume this isn't the case
+      self.coord_type = "BOHR" if n[0] > 0 else "ANGSTROM"
+      self.lattice[i] = [float(v) for v in l[1:]]
+    # read atomic info
+    for i in range(self.natoms):
+      l = f.readline().split()
+      # ignore charge for now..
+      species.add(int(l[0]))
+      self.atoms.append([float(v) for v in l[2:]])
+    
+    # sort out species things (TODO add if needed)
+    #self.nspec = len(species)
+    #self.spec = dict()
+    
+    self.volume_data = np.zeros(tuple(n))
+    i = j = k = 0
+    # only works if python > 3.8!
+    while l := f.readline().split():
+      for val in l:
+        try:
+          self.volume_data[i, j, k] = float(val)
+        except IndexError:
+          print("number of data points do not match up with grid dimensions")
+          # debug this if it's encountered, for now just return
+          return
+        k += 1
+        if k >= n[2]:
+          k = 0
+          j += 1
+          if j >= n[1]:
+            j = 0
+            i += 1
+
 def read_bxsf ( fname ):
   '''
   Read BXSF file, originally formatted for XCrysDen

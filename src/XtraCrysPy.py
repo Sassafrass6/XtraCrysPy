@@ -3,7 +3,7 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, inputfile=None, fmt="SCF", lattice=None, basis=None, basis_labels=None, origin=[0,0,0], species=None, bonds=None ):
+  def __init__ ( self, inputfile=None, ftype="SCF", lattice=None, basis=None, basis_labels=None, origin=[0,0,0], species=None, bonds=None ):
     '''
     Initialize the XtraCrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -25,7 +25,7 @@ class XtraCrysPy:
     self.atoms = None        # Atomic positions (basis)
     self.bonds = None        # Dictionary of bond distances
     self.volume_data = None  # numpy array that describes volume data
-    self.format = fmt        # format of the file
+    self.ftype = ftype       # format of the file
     self.cameras = None      # New feature which could provide camera locations to Blender
     self.lattice = None      # Unit vectors (lattice)
     self.origin = origin     # Origin of the figure. Default [0,0,0]
@@ -42,7 +42,8 @@ class XtraCrysPy:
     self.DEFAULT_RADIUS = 1
     self.BOHR_TO_ANGSTROM = .52917720
 
-    relax = (format == "RELAX")
+    relax = (ftype == "RELAX")
+    self.relax = relax
     if inputfile is None:
       self.coord_type = 'manual'
       if lattice is None or basis is None:
