@@ -1,6 +1,6 @@
 
 
-def marching_cubes ( grid, iso_val, rlat, BZ_planes, color ):
+def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_obj=False):
   '''
     March through the entire grid and create a list of all triangles to draw
 
@@ -93,36 +93,73 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color ):
         return False
     return True
 
-  vp_vertices = {}
+  vertices = {}
+  triangles = []
   color = vector(color)
   def add_triangle ( tri ):
-    vs = []
+    ts = []
     for j,t in enumerate(tri):
       ind = tuple(np.rint(t).astype(int))
-      t = t / grid.shape[j] - vp_shift
-      t = t @ rlat
+      t = (t / grid.shape[j] - vp_shift) @ rlat
       if not inside_BZ(t):
         for v in vs:
           v.visible = False
           del v
-        return None
-      if ind not in vp_vertices:
-        vp_vertices[ind] = vp.vertex(pos=vector(t), color=color)
-      vs.append(vp_vertices[ind])
-    return vp.triangle(vs=vs)
+        return
+      if ind not in vertices:
+        vertices[ind] = [t]
+        ind = ind + (0,)
+      else:
+        exists = False
+        for i,v in enumerate(vertices[ind]):
+          if np.allclose(v,t):
+            exists = True
+            ind = ind + (i,)
+            break
+        if not exists:
+          vertices[ind].append(t)
+          ind = ind + (len(vertices[ind])-1,)
+      ts.append(ind)
+    triangles.append(ts)
 
-  triangles = []
   for i in range(n1-1):
     for j in range(n2-1):
       for k in range(n3-1):
         cube_tris = get_cube_triangles((i,j,k))
         if cube_tris is not None:
           for c in range(cube_tris.shape[0]//3):
-            t = add_triangle(cube_tris[3*c:3*(c+1)])
-            if t is not None:
-              triangles.append(t)
+            add_triangle(cube_tris[3*c:3*(c+1)])
+  
+  if write_obj:
+    f = open('./iso_surface.obj', 'w')
 
-  for k,v in vp_vertices.items():
-    v.normal = vector(vertex_norms[k]).norm()
+  n_vert = 0
+  ind_to_num = {}
+  vp_vertices = []
+  for k,v in vertices.items():  
+    for i,vert in enumerate(v):
+      n_vert += 1
+      ind = k + (i,)
+      ind_to_num[ind] = n_vert
+      if render:
+        vpv = vp.vertex(pos=vector(vert),color=color)
+        vpv.normal = vector(vertex_norms[k]).norm()
+        vp_vertices.append(vpv)
+      if write_obj:
+        f.write('v %f %f %f\n'%tuple(vert))
+        f.write('vn %f %f %f\n'%tuple(vertex_norms[k]))
 
-  return triangles 
+  vp_triangles = []
+  for t in triangles:
+    if render:
+      vs = []
+      for ind in t:
+        vs.append(vp_vertices[ind_to_num[ind]-1])
+      vp_triangles.append(vp.triangle(vs=vs))
+    if write_obj:
+      t1,t2,t3 = (ind_to_num[ind] for ind in t)
+      f.write('f %d//%d %d//%d %d//%d\n'%(t1,t1,t2,t2,t3,t3))
+  if write_obj:
+    f.close()
+  
+  return vp_triangles 

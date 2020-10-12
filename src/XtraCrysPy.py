@@ -45,11 +45,12 @@ class XtraCrysPy:
     relax = (format == "RELAX")
     if inputfile is None:
       self.coord_type = 'manual'
-      if lattice is None or basis is None or species is None:
+      if lattice is None or basis is None:
         print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
       else:
         self.atoms = np.array(basis)
         self.spec = species
+        self.bonds = bonds
         self.natoms = len(basis)
         self.lattice = np.array(lattice)
         self.basis_labels = basis_labels
@@ -115,8 +116,10 @@ class XtraCrysPy:
     else:
       if self.basis_labels is None:
         self.nspec = self.natoms
-        self.spec = {i:{'id':i, 'radius':self.DEFAULT_RADIUS, 'color':self.WHITE} for i in range(self.natoms)}
+        self.basis_labels = range(self.natoms)
+        self.spec = {i:{'id':i, 'radius':self.DEFAULT_RADIUS, 'color':self.WHITE} for i in self.basis_labels}
       else:
+        self.spec = {}
         unique_spec = list(set(self.basis_labels))
         for u in unique_spec:
           self.spec[u] = {'id':self.nspec, 'radius':self.DEFAULT_RADIUS, 'color':self.WHITE}
@@ -229,25 +232,6 @@ class XtraCrysPy:
     return positions
 
   
-  def get_bond_pairs ( self, atoms ):
-    '''
-    '''
-    bonds = []
-    if self.bonds is None or len(atoms) < 2:
-      return bonds
-
-    na = self.natoms
-    for i,k in enumerate(self.bonds.keys()):
-      sA,sB = tuple(k.split('_'))
-      for m in range(len(atoms)):
-        for n in range(m+1, len(atoms)):
-          l1,l2 = self.basis_labels[m%na],self.basis_labels[n%na]
-          if (l1 == sA and l2 == sB) or (l1 == sB and l2 == sA):
-            if np.linalg.norm(atoms[m] - atoms[n]) <= self.bonds[k]:
-              bonds += [[m, n]]
-    return bonds
-    
-
   def get_BZ_corners ( self, rlat=None ):
     '''
     Compute the corner positions of the Brillouin Zone
@@ -274,11 +258,12 @@ class XtraCrysPy:
 
   def write_blender_xml ( self, directory='./', fname='xcpy_system.xml', frame=True, nx=1, ny=1, nz=1 ):
     from os.path import join as opjoin
+    from .model import get_bond_pairs
     from .Util import blender_xml
 
     atom_positions = self.get_atomic_positions(nx=nx, ny=ny, nz=nz)
     frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
-    bonds = self.get_bond_pairs(atom_positions)
+    bonds = get_bond_pairs(self.natoms, atom_positions, self.bonds, self.basis_labels)
 
     blender_xml(opjoin(directory,fname), self.natoms, self.spec, self.basis_labels, atom_positions, bonds, frame, self.cameras)
 
@@ -286,7 +271,35 @@ class XtraCrysPy:
     from .View import View
     frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
     atoms = self.atoms if not self.relax else self.relax_poss
-    bonds = self.get_bond_pairs(atoms)
-    print(bonds)
-    model = [self.lattice, atoms, self.spec, self.basis_labels, bonds]
-    self.view = View(title,w_width,w_height,self.origin,model,perspective,frame,f_color,bg_color,nx,ny,nz)
+    model = [self.lattice, atoms, self.spec, self.basis_labels, self.bonds]
+    self.view = View(title,w_width,w_height,self.origin,model,self.coord_type,perspective,frame,f_color,bg_color,nx,ny,nz)
+
+  def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]], normals=True, title='', w_width=1000, w_height=750, perspective=False, f_color=(1,1,1), bg_color=(0,0,0), write_obj=False ):
+    '''
+    Create the Brillouin Zone boundary and bsxf points at iso value for each band in the vpython window
+
+    Arguemnts:
+      fname (str): Name of bxsf file
+      iso (list): List of floats corresponding to the isosurface values for each respective band in 'bands'
+      bands (list): List of integers representing the index of the band to plot
+      colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
+      normals (bool): True adds normals to triangle vertices, improving surface visibility
+      write_obj (bool): True will write the triange vertex, face, and normal data to an obj file
+    '''
+    from .View import View
+    from .Util import read_bxsf
+
+    if len(iso) != len(bands):
+      raise ValueError("Each band in 'bands' should have one corresponding isosurface in 'iso'")
+    if len(iso) != len(colors) and len(colors) != 1:
+      raise ValueError("Specify 1 color to plot all bands in the same color, or specify 1 color for each band.")
+
+    self.recip_space = True
+    b_vec,data = read_bxsf(fname)
+
+    if np.max(bands) >= data.shape[-1]:
+      raise ValueError("'bands' contains an index too large for the dataset")
+    self.view = View(title,w_width,w_height,self.origin,None,self.coord_type,perspective,None,f_color,bg_color,1,1,1)
+
+    self.view.draw_bxsf(b_vec, data, iso, bands, colors, normals, write_obj)
+
