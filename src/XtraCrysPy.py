@@ -3,7 +3,7 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, inputfile=None, relax=False, lattice=None, basis=None, basis_labels=None, origin=[0,0,0], species=None, bonds=None ):
+  def __init__ ( self, inputfile=None, fmt="SCF", lattice=None, basis=None, basis_labels=None, origin=[0,0,0], species=None, bonds=None ):
     '''
     Initialize the XtraCrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -24,7 +24,8 @@ class XtraCrysPy:
     self.ibrav = None        # Bravais lattice ID, following QE indexing
     self.atoms = None        # Atomic positions (basis)
     self.bonds = None        # Dictionary of bond distances
-    self.relax = relax       # Boolean. True if there are relaxation steps
+    self.volume_data = None  # numpy array that describes volume data
+    self.format = fmt        # format of the file
     self.cameras = None      # New feature which could provide camera locations to Blender
     self.lattice = None      # Unit vectors (lattice)
     self.origin = origin     # Origin of the figure. Default [0,0,0]
@@ -41,6 +42,7 @@ class XtraCrysPy:
     self.DEFAULT_RADIUS = 1
     self.BOHR_TO_ANGSTROM = .52917720
 
+    relax = (format == "RELAX")
     if inputfile is None:
       self.coord_type = 'manual'
       if lattice is None or basis is None or species is None:
@@ -55,12 +57,17 @@ class XtraCrysPy:
     else:
       # Read coords from file
       from .Util import qe_lattice
-      if relax:
+      if self.format == "SCF":
         from .Util import read_relax_file
         read_relax_file(self, inputfile)
-      else:
+      elif self.format == "RELAX":
         from .Util import read_scf_file
         read_scf_file(self, inputfile)
+      elif self.format == "CUBE":
+        from .Util import read_cube_file
+        read_cube_file(self, inputfile)
+      else:
+        raise ValueError("format has not been implemented yet")
       self.lattice = qe_lattice(self.ibrav, self.cell_param)
 
       if relax:
