@@ -15,4 +15,4 @@ class EditorPanel(Panel):
 
     def draw(self, context):
         layout = self.layout
-        
+        box = layout.box()

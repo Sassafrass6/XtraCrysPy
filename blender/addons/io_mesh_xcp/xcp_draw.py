@@ -1,6 +1,7 @@
 import bpy
-import xcp_math
 import numpy as np
+
+from . import xcp_math
 
 def draw_ball(position, scale, name, collection, mtype="UV"):
     """draw a ball in blender
@@ -70,7 +71,7 @@ def draw_stick(A, B, scale, name, collection, mtype='MESH'):
         sectors = 12 # tweak/move as needed
         length = np.linalg.norm(A - B)
 
-        vertices = np.zeros((sectors * 2), 3)
+        vertices = np.zeros((sectors * 2, 3))
         x = scale * np.cos(np.linspace(0, 2.0 * np.pi, sectors))
         y = scale * np.sin(np.linspace(0, 2.0 * np.pi, sectors))
         vertices[:sectors, 2] = 0.5 * length
@@ -78,7 +79,27 @@ def draw_stick(A, B, scale, name, collection, mtype='MESH'):
         vertices[1:sectors, 0] = x[:-1]
         vertices[1:sectors, 1] = y[:-1]
         vertices[sectors+1:, 0] = x[:-1]
-        vertices[sectors+1, 1] = y[:-1]
+        vertices[sectors+1:, 1] = y[:-1]
+
+        faces_side = []
+        for i in range(sectors - 1):
+            if i == sectors - 2:
+                faces_side.append([i+1, 1, 1+sectors, i+1+sectors])
+            else:
+                faces_side.append([i+1, i+2, i+2+sectors, i+1+sectors])
+        
+        faces_caps = []
+        for i in range(sectors - 1):
+            if i == sectors - 2:
+                face_top = [0, sectors-1, 1]
+                face_bottom = [sectors, 2*sectors-1, sectors+1]
+            else:
+                face_top = [0, i+1, i+2]
+                face_bottom = [sectors, sectors+1, sectors+2]
+            faces_caps.append(face_top)
+            faces_caps.append(face_bottom)
+        
+        
 
     else:
         return
@@ -271,7 +292,7 @@ def draw_duplivert_bond(data, key_list, label, collection, origin, default_mater
 
     v1 = np.array([0., 0., 0.])
     v2 = np.array([0., 1., 0.])
-    stickobj = draw_stick(v1, v2, 0.2, "Stick.{}".format(label), collection_bonds_name, mtype)
+    stickobj = draw_stick(v1, v2, 0.2, "Stick.{}".format(label), collection_bonds_name, mtype='PYTHON')
     stickobj.hide_set(True)
     stickobj.data.materials.append(species["material"])
     stickobj.parent = bond_mesh

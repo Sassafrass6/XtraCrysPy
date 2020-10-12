@@ -10,10 +10,10 @@ a more direct interpretation of XML
 """
 import bpy
 import numpy as np # I think this comes with blender by default, doublecheck this
-import xcp_io
-import xcp_utils
-import xcp_math
-import xcp_draw
+from . import xcp_io
+from . import xcp_utils
+from . import xcp_math
+from . import xcp_draw
 
 xcp_imports = {
     "xcp_io": xcp_io,
