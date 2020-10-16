@@ -17,7 +17,6 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
   import vpython as vp
   from .VertexTables import edge_offsets, corner_offsets, vertex_table
 
-  grid = grid[:,:,:30]
   if len(grid.shape) != 3:
     print('Grid must be 3 dimensional.')
     quit()
