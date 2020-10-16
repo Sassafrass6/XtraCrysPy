@@ -59,18 +59,19 @@ class XtraCrysPy:
     else:
       # Read coords from file
       from .Util import qe_lattice
-      if self.format == "SCF":
+      if self.ftype == "SCF":
         from .Util import read_relax_file
         read_relax_file(self, inputfile)
-      elif self.format == "RELAX":
+      elif self.ftype == "RELAX":
         from .Util import read_scf_file
         read_scf_file(self, inputfile)
-      elif self.format == "CUBE":
+      elif self.ftype == "CUBE":
         from .Util import read_cube_file
         read_cube_file(self, inputfile)
       else:
         raise ValueError("format has not been implemented yet")
-      self.lattice = qe_lattice(self.ibrav, self.cell_param)
+      if self.lattice is None:
+        self.lattice = qe_lattice(self.ibrav, self.cell_param)
 
       if relax:
         # Setup model to reflect the first relax position
@@ -304,3 +305,16 @@ class XtraCrysPy:
 
     self.view.draw_bxsf(b_vec, data, iso, bands, colors, normals, write_obj)
 
+  def draw_volume( self, iso ):
+    '''
+    Draw the volume object stored in self.volume defined by isosurfaces passed into the function and outputs
+    to an obj file for subsequent rendering
+
+    Arguments:
+      iso (list): floats that define the isosurfaces to draw
+    '''
+
+    from .MarchingCubes import marching_cubes
+    print(self.lattice)
+    for i in iso:
+      marching_cubes(self.volume_data, i, self.lattice, None, [0, 1, 0], write_obj=True)

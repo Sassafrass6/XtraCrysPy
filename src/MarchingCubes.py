@@ -26,7 +26,7 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
   vp_shift = .5 * np.ones(3)
 
   # Precompute samples
-  samples = np.zeros((n1-1,n2-1,n3-1,8),dtype=int)
+  samples = np.zeros((n1-1,n2-1,n3-1,8),dtype=float)
   for i in range(n1-1):
     for j in range(n2-1):
       for k in range(n3-1):
@@ -101,7 +101,7 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
     for j,t in enumerate(tri):
       ind = tuple(np.rint(t).astype(int))
       t = (t / grid.shape[j] - vp_shift) @ rlat
-      if not inside_BZ(t):
+      if BZ_planes and not inside_BZ(t):
         for v in vs:
           v.visible = False
           del v

@@ -101,13 +101,14 @@ def read_cube_file ( self, fname ):
   n = []
   species = set()
   self.lattice = np.zeros((3, 3))
-  self.atoms = []
+  self.ibrav = 0
   with open(fname) as f:
     for _ in range(ignore_lines):
       f.readline()
     # read number of atoms and position of origin
     l = f.readline().split()
     self.natoms = int(l[0])
+    self.atoms = np.zeros((self.natoms, 3))
     self.origin = [float(v) for v in l[1:]]
     # read size and transform matrix
     for i in range(3):
@@ -116,12 +117,13 @@ def read_cube_file ( self, fname ):
       # format implies possibility of mixed inputs, however.. just assume this isn't the case
       self.coord_type = "BOHR" if n[0] > 0 else "ANGSTROM"
       self.lattice[i] = [float(v) for v in l[1:]]
+      self.lattice[i] *= n[i]
     # read atomic info
     for i in range(self.natoms):
       l = f.readline().split()
       # ignore charge for now..
       species.add(int(l[0]))
-      self.atoms.append([float(v) for v in l[2:]])
+      self.atoms[i, :] = [float(v) for v in l[2:]]
     
     # sort out species things (TODO add if needed)
     #self.nspec = len(species)
@@ -182,7 +184,7 @@ def qe_lattice ( ibrav, cell_param ):
   '''
   if ibrav == 1:
     A = cell_param[0]
-    coords = A * np.array([[1,0,0],[0,1,0],[0,0,0]])
+    coords = A * np.array([[1,0,0],[0,1,0],[0,0,1]])
   elif ibrav == 2:
     A = cell_param[0]
     coords = A/2 * np.array([[-1,0,1],[0,1,1],[-1,1,0]])
