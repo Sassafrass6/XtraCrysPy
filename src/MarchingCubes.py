@@ -1,5 +1,4 @@
 
-
 def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_obj=False):
   '''
     March through the entire grid and create a list of all triangles to draw
@@ -18,6 +17,7 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
   import vpython as vp
   from .VertexTables import edge_offsets, corner_offsets, vertex_table
 
+  grid = grid[:,:,:30]
   if len(grid.shape) != 3:
     print('Grid must be 3 dimensional.')
     quit()
@@ -30,10 +30,12 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
   for i in range(n1-1):
     for j in range(n2-1):
       for k in range(n3-1):
-        key = (i,j,k)
+        key = np.array([i,j,k])
         for c in range(8):
-          ind = tuple(key[v]+corner_offsets[c][v] for v in range(3))
-          samples[i,j,k,c] = grid[ind]
+          ind = np.zeros((3), dtype=int)
+          for v in range(3):
+            ind[v] = key[v] + corner_offsets[c][v]
+          samples[i,j,k,c] = grid[ind[0],ind[1],ind[2]]
 
   vertex_norms = np.zeros((n1,n2,n3,3), dtype=float)
   def get_cube_triangles ( index ):
@@ -96,15 +98,13 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
   vertices = {}
   triangles = []
   color = vector(color)
+
   def add_triangle ( tri ):
     ts = []
     for j,t in enumerate(tri):
       ind = tuple(np.rint(t).astype(int))
       t = (t / grid.shape[j] - vp_shift) @ rlat
       if not inside_BZ(t):
-        for v in vs:
-          v.visible = False
-          del v
         return
       if ind not in vertices:
         vertices[ind] = [t]

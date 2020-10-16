@@ -37,7 +37,7 @@ class View:
         self.atoms = self.relax_poss[0]
       else:
         self.atoms = model[1]
-    self.natoms = len(self.atoms)
+      self.natoms = len(self.atoms)
     
     self.boundary = boundary
     self.cell_dim = [nx,ny,nz]
