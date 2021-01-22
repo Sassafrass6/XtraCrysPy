@@ -229,9 +229,9 @@ class XtraCrysPy:
     return positions
 
   
-  def get_BZ_corners ( self, rlat=None ):
+  def draw_BZ ( self, rlat=None ):
     '''
-    Compute the corner positions of the Brillouin Zone
+    Draw the Brillouin Zone
 
     Arguments:
       rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice. If 'None' vectors will be computed from 'self.lattice'
