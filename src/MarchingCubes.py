@@ -1,9 +1,10 @@
 
-def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_obj=False):
+def marching_cubes ( r_space, grid, iso_val, rlat, BZ_planes, color, render=True, write_obj=False):
   '''
     March through the entire grid and create a list of all triangles to draw
 
     Arguments:
+      r_space (bool): True for real space, False for reciprocal space
       grid (ndarray): Array with the surface data to compare to iso_val
       iso_val (float): Value of the desired iso-surface
       rlat (ndarray): 3 reciprocal lattice vectors
@@ -73,7 +74,14 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
         s2 = grid[tuple(v2)]
   
         diff = s1 - s2
-        diff = .5 if diff==0. else (s1-iso_val)/diff
+        if diff == 0.:
+          diff = .5
+        else:
+          diff = (s1-iso_val)/diff
+          if diff < 0:
+            diff = 0
+          elif diff > 1:
+            diff = 1
         corner_pos = v1 + diff * (v2 - v1)
         vertices.append(corner_pos)
   
@@ -103,7 +111,7 @@ def marching_cubes ( grid, iso_val, rlat, BZ_planes, color, render=True, write_o
     for j,t in enumerate(tri):
       ind = tuple(np.rint(t).astype(int))
       t = (t / grid.shape[j] - vp_shift) @ rlat
-      if not inside_BZ(t):
+      if not (r_space or inside_BZ(t)):
         return
       if ind not in vertices:
         vertices[ind] = [t]

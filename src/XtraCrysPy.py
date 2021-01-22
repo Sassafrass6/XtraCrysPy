@@ -14,7 +14,7 @@ class XtraCrysPy:
       basis (list): List of N 3d vectors, representing the positions of each of N atoms
       origin (list): List of 3 points, representing the x,y,z position of the grid's center
       species (list): List of N species strings corresponding to atoms in 'basis' (e.g. ['Si','Si'])
-      bonds (dict or dict): Maximum bond distance or dictionary of form {'Sp1_Sp2':max_bond_dist}
+      bonds (dict): Maximum bond distance or dictionary of form {'Sp1_Sp2':max_bond_dist}
     '''
 
     self.spec = {}           # Dicitonary of atomic species
@@ -30,10 +30,7 @@ class XtraCrysPy:
     self.origin = origin     # Origin of the figure. Default [0,0,0]
     self.coord_type = None   # Units (angstrom, bohr, alat, crystal, manual)
     self.relax_poss = None   # Atomic positions for each step of relaxation
-    self.cell_param = None   # Average of norms for lattice?
     self.relax_poss = None   # Sets of coordinates by relaxation step
-    self.relax_index = None  # Index of the current relax step being modeled
-    self.relax_steps = None  # Number of relaxation steps, if applicable
     self.basis_labels = None # Species label for each atom in the basis
 
     self.WHITE = (1,1,1,1)
@@ -52,35 +49,42 @@ class XtraCrysPy:
         self.natoms = len(basis)
         self.lattice = np.array(lattice)
         self.basis_labels = basis_labels
-        self.cell_param = [np.abs(np.mean([np.linalg.norm(v) for v in self.lattice]))]
     else:
       # Read coords from file
       from .Util import qe_lattice
       if relax:
         from .Util import read_relax_file
-        read_relax_file(self, inputfile)
+        data = read_relax_file(inputfile)
+        self.ibrav,self.relax_poss = data[0],data[1]
+        self.relax_lattices,self.basis_labels = data[2],data[3]
+        self.cell_param,self.coord_type = data[4],data[5]
+        self.natoms = self.relax_poss.shape[1]
       else:
         from .Util import read_scf_file
-        read_scf_file(self, inputfile)
-      self.lattice = qe_lattice(self.ibrav, self.cell_param)
+        data = read_scf_file(inputfile)
+        self.ibrav,self.atoms = data[0],data[1]
+        self.basis_labels,cell_param = data[2],data[3]
+        self.coord_type = data[4]
+        self.natoms = self.atoms.shape[0]
 
       if relax:
         # Setup model to reflect the first relax position
-        self.relax_steps = len(self.relax_lattices)
-        if self.relax and self.relax_steps > 0:
+        relax_steps = len(self.relax_lattices)
+        if self.relax and relax_steps > 0:
           self.relax_index = 0
           self.lattice = self.relax_lattices[0]
         else:
           raise ValueError('No relax steps were found.')
 
         if 'angstrom' in self.coord_type:
-          for i in range(len(self.relax_poss)):
-            self.relax_poss[i] /= self.BOHR_TO_ANGSTROM
-          else:
-            self.relax_poss[i][:,:] = np.array([self.atomic_position(a) for a in self.relax_poss[i]])
+          self.relax_poss /= self.BOHR_TO_ANGSTROM
+        else:
+          for i in range(relax_steps):
+            self.relax_poss[i,:,:] = np.array([self.atomic_position(a,lattice=self.relax_lattices[i]) for a in self.relax_poss[i]])
         self.atoms = self.relax_poss[0]
 
       else:
+        self.lattice = qe_lattice(self.ibrav, cell_param)
         if 'angstrom' in self.coord_type:
           self.atoms = np.array(self.atoms) / self.BOHR_TO_ANGSTROM
         elif 'alat' in self.coord_type or 'crystal' in self.coord_type:
@@ -260,12 +264,58 @@ class XtraCrysPy:
 
     blender_xml(opjoin(directory,fname), self.natoms, self.spec, self.basis_labels, atom_positions, bonds, frame, self.cameras)
 
-  def start_cryspy_view ( self, title='', w_width=1000, w_height=750, perspective=False, f_color=(1,1,1), bg_color=(0,0,0), nx=1, ny=1, nz=1 ):
+  def start_cryspy_view ( self, title='', w_width=1000, w_height=750, perspective=False, f_color=None, bg_color=(0,0,0), nx=1, ny=1, nz=1 ):
+    '''
+    Arguments:
+      f_color (tuple): (R,G,B) color for the unit cell Frame. None defaults to white with no inital display.
+    '''
     from .View import View
-    frame = self.get_boundary_positions(nx=nx, ny=ny, nz=nz)
     atoms = self.atoms if not self.relax else self.relax_poss
-    model = [self.lattice, atoms, self.spec, self.basis_labels, self.bonds]
-    self.view = View(title,w_width,w_height,self.origin,model,self.coord_type,perspective,frame,f_color,bg_color,nx,ny,nz)
+    lattice = self.lattice if not self.relax else self.relax_lattices
+    model = [lattice, atoms, self.spec, self.basis_labels, self.bonds]
+    self.view = View(title,w_width,w_height,self.origin,model,perspective,f_color,bg_color,nx,ny,nz)
+
+  def plot_spin_texture ( self, fermi_fname, spin_fname, colors=None, e_up=1, e_dw=-1, title='', w_width=1000, w_height=750, f_color=(1,1,1), bg_color=(0,0,0)):
+    '''
+    Plots the spin texture read from the format output by PAOFLOW
+    Arguments:
+      fermi_fname (str): Name for Fermi surface file, representing energy eigenvalues in BZ for such band
+      spin_fname (str): Name for spin texture file, representing spin direction in BZ for such band
+      e_up (float): BZ points with energies higher than e_up wont be plotted
+      e_dw (float): BZ points with energies lower than e_dw wont be plotted 
+    '''
+    from scipy.fftpack import fftshift
+    from .View import View
+
+    self.recip_space = True
+    fdata,sdata = np.load(fermi_fname),np.load(spin_fname)
+    eig,spins = fdata['nameband'],sdata['spinband']
+
+    eig = fftshift(eig,axes=(0,1,2))
+    spins = np.moveaxis(np.real(spins[:,:,:,:]),spins.ndim-1,0)
+
+    colscale = np.mean(eig)
+    _,nx,ny,nz = spins.shape
+    vp_shift = .5 * np.array([1,1,1])
+    points,directions = [],[]
+    c_append = False
+    if colors is None:
+      colors = []
+      c_append = True
+    rlat = self.reciprocal_lattice(self.lattice)
+    for x in range(nx):
+      for y in range(ny):
+        for z in range(nz):
+          bv = eig[x,y,z]
+          if bv > e_dw and bv < e_up:
+            points.append(([x/nx,y/ny,z/nz]-vp_shift) @ rlat)
+            directions.append(spins[:,x,y,z])
+            if c_append:
+              colors.append([bv/colscale,.5,.1])
+
+    self.view = View(title,w_width,w_height,self.origin,None,False,f_color,bg_color,1,1,1)
+    self.view.draw_arrows(rlat, points, directions, colors, .01)
+
 
   def plot_bxsf ( self, fname, iso=[0], bands=[0], colors=[[0,1,0]], normals=True, title='', w_width=1000, w_height=750, perspective=False, f_color=(1,1,1), bg_color=(0,0,0), write_obj=False ):
     '''
@@ -292,7 +342,27 @@ class XtraCrysPy:
 
     if np.max(bands) >= data.shape[-1]:
       raise ValueError("'bands' contains an index too large for the dataset")
-    self.view = View(title,w_width,w_height,self.origin,None,self.coord_type,perspective,None,f_color,bg_color,1,1,1)
+    self.view = View(title,w_width,w_height,self.origin,None,perspective,f_color,bg_color,1,1,1)
 
-    self.view.draw_bxsf(b_vec, data, iso, bands, colors, normals, write_obj)
+    self.view.draw_surface(False, b_vec, data, iso, bands, colors, normals, write_obj)
 
+  def plot_xsf ( self, fname, iso=0, color=[0,1,0], normals=True, title='', w_width=1000, w_height=750, perspective=False, f_color=(1,1,1), bg_color=(0,0,0), write_obj=False ):
+    '''
+    Create the Brillouin Zone boundary and bsxf points at iso value for each band in the vpython window
+
+    Arguemnts:
+      fname (str): Name of bxsf file
+      iso (list): List of floats corresponding to the isosurface values for each respective band in 'bands'
+      bands (list): List of integers representing the index of the band to plot
+      colors (list): List of 3-d RGB color vectors for each band. If ignored, each band will be green
+      normals (bool): True adds normals to triangle vertices, improving surface visibility
+      write_obj (bool): True will write the triange vertex, face, and normal data to an obj file
+    '''
+    from .View import View
+    from .Util import read_xsf
+
+    pvec,pcoord,data = read_xsf(fname)
+
+    self.view = View(title,w_width,w_height,self.origin,None,perspective,f_color,bg_color,1,1,1)
+
+    self.view.draw_surface(True, pvec, data, [iso], [0], [color], normals, write_obj)

@@ -1,6 +1,6 @@
 import numpy as np
 
-def read_scf_file ( self, fname ):
+def read_scf_file ( fname ):
   '''
   Read necessary information from QE file. (Currently only input files are readable)
 
@@ -12,35 +12,36 @@ def read_scf_file ( self, fname ):
     strip_int = lambda s : int(re.search(r'\d+',s).group())
     strip_float = lambda s : float(re.search(r'\d+.\d+',s).group())
     natoms = 0
-    self.atoms = []
-    self.basis_labels = []
-    self.cell_param= 6*[0]
+    atoms = []
+    basis_labels = []
+    cell_param= 6*[0]
 
     line = f.readline()
     while line != '':
       for l in line.split(','):
         if 'ibrav' in l:
-          self.ibrav = strip_int(l)
+          ibrav = strip_int(l)
         elif 'celldm' in l:
           dm = strip_int(l) - 1
-          self.cell_param[dm] = strip_float(l)
+          cell_param[dm] = strip_float(l)
         elif 'nat' in l:
-          self.natoms = natoms = strip_int(l)
+          natoms = strip_int(l)
         elif 'ATOMIC_POSITIONS' in l:
           ls = l.split()
-          self.coord_type = ls[1] if len(ls)>1 else 'alat'
+          coord_type = ls[1] if len(ls)>1 else 'alat'
           while natoms > 0:
             ls = f.readline().split()
             if len(ls) > 0:
               natoms -= 1
-              self.basis_labels.append(ls[0])
-              self.atoms.append([float(v) for v in ls[1:4]])
+              basis_labels.append(ls[0])
+              atoms.append([float(v) for v in ls[1:4]])
       line = f.readline()
-    self.atoms = np.array(self.atoms)
-    self.cell_param[1] *= self.cell_param[0]
-    self.cell_param[2] *= self.cell_param[0]
+    cell_param[1] *= cell_param[0]
+    cell_param[2] *= cell_param[0]
 
-def read_relax_file ( self, fname ):
+    return ibrav,np.array(atoms),basis_labels,cell_param,coord_type
+
+def read_relax_file ( fname ):
   '''
   Read relax inputfile
 
@@ -48,47 +49,48 @@ def read_relax_file ( self, fname ):
     fname (str): Quantum Espresso inputfile name
   '''
   import re
-  self.relax_poss = []
-  self.cell_param = 6*[0]
-  self.relax_lattices = []
-  self.coord_type = 'relax'
+  relax_poss = []
+  cell_param = 6*[0]
+  relax_lattices = []
+  coord_type = 'relax'
   strip_int = lambda s : int(re.search(r'\d+',s).group())
   strip_float = lambda s : float(re.search(r'\d+.\d+',s).group())
   with open(fname) as f:
     l = f.readline()
     while l != '':
       if 'atoms/cell' in l:
-        self.natoms = int(l.split()[-1])
+        natoms = int(l.split()[-1])
       elif 'bravais' in l:
-        self.ibrav = int(l.split()[3])
+        ibrav = int(l.split()[3])
       elif 'celldm' in l:
         ls = l.split()
         for i in range(0,len(ls),2):
           ip = strip_int(ls[i])-1
-          self.cell_param[ip] = strip_float(ls[i+1])
+          cell_param[ip] = strip_float(ls[i+1])
       elif 'CELL_PARAMETERS' in l:
         alat = strip_float(l)
         avec = np.zeros((3,3), dtype=float)
         for i in range(3):
           ls = f.readline().split()
           avec[i] = np.array([alat*float(s) for s in ls])
-        self.relax_lattices.append(avec)
+        relax_lattices.append(avec)
       if 'ATOMIC_POSITIONS' in l:
-        if self.natoms is None:
+        if natoms is None:
           raise ValueError('natoms not found in relax file. Are you sure that a QE relax output file was provided?')
         ls = l.split()
         if len(ls) > 1:
-          self.coord_type = ls[1]
-        self.basis_labels = []
-        apos = np.zeros((self.natoms,3), dtype=float)
-        for i in range(self.natoms):
+          coord_type = ls[1]
+        basis_labels = []
+        apos = np.zeros((natoms,3), dtype=float)
+        for i in range(natoms):
           ls = f.readline().split()
-          self.basis_labels.append(ls[0])
+          basis_labels.append(ls[0])
           apos[i,:] = np.array([float(v) for v in ls[1:]])
-        self.relax_poss.append(apos)
+        relax_poss.append(apos)
       l = f.readline()
-  self.cell_param[1] *= self.cell_param[0]
-  self.cell_param[2] *= self.cell_param[0]
+  cell_param[1] *= cell_param[0]
+  cell_param[2] *= cell_param[0]
+  return ibrav,np.array(relax_poss),np.array(relax_lattices),basis_labels,cell_param,coord_type
 
 def read_bxsf ( fname ):
   '''
@@ -115,6 +117,55 @@ def read_bxsf ( fname ):
         break
       l = f.readline()
   return b_vec,bands
+
+def read_xsf ( fname ):
+  '''
+  Read XSF file, originally formatted for XCrysDen
+  '''
+  pcoord = {}
+  data = None
+  nx = ny = nz = None
+  pvec = np.empty((3,3), dtype=float)
+  with open(fname) as f:
+    l = f.readline()
+    while l != '':
+      if 'PRIMVEC' in l:
+        for i in range(3):
+          l = f.readline().split()
+          for j in range(3):
+            pvec[i,j] = float(l[j])
+      elif 'PRIMCOORD' in l:
+        l = f.readline().split()
+        nat,nty = int(l[0]),int(l[1])
+        for i in range(nat):
+          l = f.readline().split()
+          pos = [float(l[j]) for j in range(1,4)]
+          if l[0] in pcoord:
+            pcoord[l[0]].append(pos)
+          else:
+            pcoord[l[0]] = [pos]
+      elif 'BEGIN_BLOCK_DATAGRID_3D' in l:
+        l = f.readline()
+        while not 'DATAGRID_3D' in l:
+          l = f.readline()
+        l = f.readline().split()
+        nx,ny,nz = int(l[0]),int(l[1]),int(l[2])
+        l = f.readline().split()
+        origin = np.array([float(l[i]) for i in range(3)])
+        for i in range(3):
+          l = f.readline()
+        ind = 0
+        data = np.empty(nx*ny*nz, dtype=float, order='F')
+        l = f.readline().split()
+        while len(l) > 1:
+          for v in l:
+            data[ind] = float(v)
+            ind += 1
+          l = f.readline().split()
+      l = f.readline()
+  data = data.reshape((nx,ny,nz,1))
+  return pvec,pcoord,data
+
 
 def qe_lattice ( ibrav, cell_param ):
   '''

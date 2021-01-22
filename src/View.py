@@ -3,7 +3,7 @@ import numpy as np
 
 class View:
 
-  def __init__ ( self, cname, w_width, w_height, origin, model, coord_type, perspective, boundary, bnd_col, bg_col, nx, ny, nz ):
+  def __init__ ( self, cname, w_width, w_height, origin, model, perspective, bnd_col, bg_col, nx, ny, nz ):
     '''
     Initialize the CrysPy object, creating a canvas and computing the corresponding lattice
 
@@ -12,44 +12,52 @@ class View:
       cname (str): None or the String name of the canvas
       w_width (int): Width of the window
       w_height (int): Height of the window
+      origin (ndarray): 3-vector array, the system origin.
+      model (list): Model components: [lattice, atoms, species, atom labels, bonds]
       perspective (bool): Draw the view in perspective mode if True
-      bg_col (tuple): Background color (R,G,B)
+      bg_col (tuple): Background color (R,G,B). None defaults to white
       bnd_col (tuple): Brillouin Zone or Cell boundary color (R,G,B)
       nx (int): Number of cells to draw in x direction
       ny (int): Number of cells to draw in y direction
       nz (int): Number of cells to draw in z direction
-      coord_axes (bool): Draw the coordinate system
-      boundary (bool): Draw cell boundaries
-      bond_thickness (float): Thickness of the drawn bonds
-      atom_radii: (float or dict): Float to specify atom radius, or dict of form {'Species':radius}
     '''
 
-    self.model = model
-    self.relax_poss = None
+    self.model = model       # Model, containing lattice, species, and bond information
+    self.relax_poss = None   # Atomic positions for each relax step
+    self.relax_index = None  # Index of the current relax step being modeled
 
     if model != None:
       self.bonds = model[4]
-      self.lattice = model[0]
       self.species = model[2]
       self.basis_labels = model[3]
       if len(self.model[1].shape) == 3:
+        self.relax_index = 0
         self.relax_poss = self.model[1]
         self.atoms = self.relax_poss[0]
+        self.relax_lattices = self.model[0]
+        self.lattice = self.relax_lattices[0]
       else:
         self.atoms = model[1]
+        self.lattice = model[0]
       self.natoms = len(self.atoms)
     
-    self.boundary = boundary
     self.cell_dim = [nx,ny,nz]
-    self.coord_type = coord_type
     self.origin = np.array(origin)
     self.perspective = perspective
     self.bnd_thck = None
-    self.bnd_col = self.vector(bnd_col)
+    self.bnd_col = bnd_col
 
+    self.unit_anch = None
+    self.unit_menu = None
     self.eval_dist = False
     self.eval_angle = False
     self.recip_space = False
+
+    self.boundary = True
+    if self.bnd_col is None:
+      self.boundary = False
+      self.bnd_col = (1,1,1)
+    self.bnd_col = self.vector(self.bnd_col)
 
     self.arrows = None
     self.vAtoms = None
@@ -63,7 +71,7 @@ class View:
     self.selected_bonds = []
     self.selected_colors = []
 
-    self.setup_canvas(cname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective)
+    self.setup_canvas(cname, w_width, w_height, bg_col, nx, ny, nz, perspective)
 
     self.oFOV = self.canvas.fov
     if not perspective:
@@ -75,7 +83,7 @@ class View:
     if model != None:
       self.draw_cell()
 
-  def setup_canvas ( self, cname, w_width, w_height, bg_col, nx, ny, nz, boundary, perspective):
+  def setup_canvas ( self, cname, w_width, w_height, bg_col, nx, ny, nz, perspective):
     '''
     Create the Canvas object and initialize the caption text and buttons.
 
@@ -100,11 +108,12 @@ class View:
     self.canvas.caption = '\nOptions:\t\t\t\tTools:\n'
 
     text = 'Cell Boundaries'
-    self.sel_bounary = vp.checkbox(text=text, pos=anch, bind=self.toggle_boundary, checked=True)
+    self.sel_bounary = vp.checkbox(text=text, pos=anch, bind=self.toggle_boundary, checked=self.boundary)
 
     self.canvas.append_to_caption('     \t')
-    self.disp_menu = vp.menu(choices=['Atom Primary', 'Bond Primary'], pos=anch, bind=self.sel_disp_menu)
-    self.sel_menu = vp.menu(choices=['Select Atom', 'Distance', 'Angle'], pos=anch, bind=self.sel_menu_change)
+    self.disp_menu = vp.menu(choices=['Atom Primary','Bond Primary'], pos=anch, bind=self.sel_disp_menu)
+    self.sel_menu = vp.menu(choices=['Select Atom','Distance','Angle'], pos=anch, bind=self.sel_menu_change)
+    self.unit_menu = vp.menu(choices=['Units','Angstrom','Bohr','Degree','Radian'], pos=anch, bind=lambda m:None, selected='Units')
 
     if self.relax_poss is not None:
       self.canvas.append_to_caption('  \t')
@@ -131,7 +140,7 @@ class View:
       self.bond_radius = .07
     if m.selected == 'Bond Primary':
       self.atom_radius = .25
-      self.bond_radius = .15
+      self.bond_radius = .25
     self.draw_cell()
 
   def sel_menu_change ( self, m ):
@@ -187,6 +196,9 @@ class View:
     self.reset_selection()
     self.eval_dist = True
     self.eval_angle = False
+    unit = self.unit_menu.selected
+    if unit != 'Angstrom' and unit != 'Bohr':
+      self.unit_menu.selected = 'Bohr'
 
   def atom_angle ( self ):
     '''
@@ -195,6 +207,9 @@ class View:
     self.reset_selection()
     self.eval_dist = False
     self.eval_angle = True
+    unit = self.unit_menu.selected
+    if unit != 'Degree' and unit != 'Radian':
+      self.unit_menu.selected = 'Degree'
 
   def click ( self ):
     '''
@@ -270,11 +285,11 @@ class View:
       '''
       dist = b.pos - a.pos
       dist = dist.mag
-      if self.coord_type != 'manual':
+      if self.unit_menu.selected == 'Angstrom':
         dist *= .529177
         text = '%f angstroms'%dist
       else:
-        text = '%f units'%dist
+        text = '%f a.u.'%dist
       print('Distance = %s'%text)
       return text
 
@@ -288,8 +303,11 @@ class View:
     v1 = atoms[0].pos - atoms[1].pos
     v2 = atoms[2].pos - atoms[1].pos
     angle = np.arccos((v1.dot(v2))/(v1.mag*v2.mag))
-    text = '%f degrees'%np.degrees(angle)
-    print('Angle = %s (%f radians)'%(text,angle))
+    if self.unit_menu.selected == 'Degree':
+      text = '%f degrees'%np.degrees(angle)
+    else:
+      text = '%f radians'%angle
+    print('Angle is %s'%text)
     return text
 
   def get_cell_pos ( self, lat, ix, iy, iz ):
@@ -573,12 +591,14 @@ class View:
     draw_flag.visible = False
     del draw_flag
 
-  def draw_bxsf ( self, rlat, data, iso, bands, colors, normals, write_obj ):
+  def draw_surface ( self, r_space, lat, data, iso, bands, colors, normals, write_obj, ):
     '''
-    Create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
+    Draw a surface.
+    If in the reciprocal space, create the Brillouin Zone boundary and bsxf points between 'fermiup' and 'fermidw' in the vpython window
 
     Arguemnts:
-      rlat (list or ndarray): 3 3d vectors representing the reciprocal lattice
+      r_space (bool): True for real space, false for reciprocal.
+      lat (list or ndarray): 3 3d vectors representing the lattice or reciprocal lattice
       data (ndarray): eigenvalue data for each band and point in the BZ to plot
       iso (list): List of floats corresponding to the isosurface values for each respective band in 'bands'
       bands (list): List of integers representing the index of the band to plot
@@ -593,19 +613,34 @@ class View:
     draw_flag = vp.text(text='Drawing...', align='center', color=vp.vector(1,0,0))
     draw_flag.up = self.canvas.up
 
-    self.draw_BZ_boundary(rlat)
+    if r_space:
+      if self.boundary:
+        self.bound_curve = []
+        nx=ny=nz=1
+        for ix in range(nx):
+          for iy in range(ny):
+            for iz in range(nz):
+              corner = np.sum(lat, axis=0)
+              alines = [[3*[0],a] for a in lat]
+              alines += [[p,corner] for p in [lat[i]+lat[j] for i in range(3) for j in range(i+1,3)]]
+              alines += [[lat[k],lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
+              orig = self.get_cell_pos(lat,ix,iy,iz)
+              for i in range(3):
+                orig -= 0.5*lat[i]
+              orig = self.vector(orig)
+              self.bound_curve += [vp.curve(orig+self.vector(al[0]),orig+self.vector(al[1]),color=self.bnd_col) for al in alines]
+    else:
+      self.draw_BZ_boundary(lat)
 
     poss = []
     nx,ny,nz,nbnd = data.shape
-    data = fftshift(data, axes=(0,1,2))
 
-    from time import time
     self.vAtoms = []
     for i,b in enumerate(bands):
-      self.vAtoms += marching_cubes(data[:,:,:,b], iso[i], rlat, self.BZ_planes, colors[i], write_obj=write_obj)
+      self.vAtoms += marching_cubes(r_space, data[:,:,:,b], iso[i], lat, self.BZ_planes, colors[i], write_obj=write_obj)
 
     if not self.coord_axes is None:
-      self.draw_coord_axes(length=.1*np.linalg.norm(rlat[0]),offset=[-1,0,0])
+      self.draw_coord_axes(length=.1*np.linalg.norm(lat[0]),offset=[-1,0,0])
 
     draw_flag.visible = False
     del draw_flag
