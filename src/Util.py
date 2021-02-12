@@ -90,18 +90,19 @@ def read_relax_file ( self, fname ):
   self.cell_param[1] *= self.cell_param[0]
   self.cell_param[2] *= self.cell_param[0]
 
-def read_cube_file ( self, fname ):
+def read_cube_file ( self, fname, sparse=False ):
   '''
   Read GAUSSIAN cube files
 
   Arguments:
     fname (str): .cube formatted filename
   '''
+  from .model import cube_species_mapping
   ignore_lines = 2
   n = []
-  species = set()
   self.lattice = np.zeros((3, 3))
   self.ibrav = 0
+  self.basis_labels = []
   with open(fname) as f:
     for _ in range(ignore_lines):
       f.readline()
@@ -122,20 +123,30 @@ def read_cube_file ( self, fname ):
     for i in range(self.natoms):
       l = f.readline().split()
       # ignore charge for now..
-      species.add(int(l[0]))
+      self.basis_labels.append(cube_species_mapping[int(l[0])])
       self.atoms[i, :] = [float(v) for v in l[2:]]
     
-    # sort out species things (TODO add if needed)
-    #self.nspec = len(species)
-    #self.spec = dict()
-    
-    self.volume_data = np.zeros(tuple(n))
+    volume_shape = tuple(n)
+    s = 2
+    if sparse:
+      volume_shape = (volume_shape[0]//s, volume_shape[1]//s, volume_shape[2]//s)
+    self.volume_data = np.zeros(volume_shape)
     i = j = k = 0
     # only works if python > 3.8!
-    while l := f.readline().split():
+    #while l := f.readline().split():
+    while True:
+      l = f.readline().split()
+      if not l:
+        break
       for val in l:
         try:
-          self.volume_data[i, j, k] = float(val)
+          if sparse:
+            if i % s and j % s and k % s:
+              pass
+            else:
+              self.volume_data[i//s, j//s, k//s] = float(val)
+          else:
+            self.volume_data[i, j, k] = float(val)
         except IndexError:
           print("number of data points do not match up with grid dimensions")
           # debug this if it's encountered, for now just return
@@ -147,6 +158,8 @@ def read_cube_file ( self, fname ):
           if j >= n[1]:
             j = 0
             i += 1
+    # fortran stores axes in reverse order, just swap them here
+    np.swapaxes(self.volume_data, 0, 2)
 
 def read_bxsf ( fname ):
   '''
@@ -173,6 +186,13 @@ def read_bxsf ( fname ):
         break
       l = f.readline()
   return b_vec,bands
+
+def write_voxel ( voxel_data, fname ):
+  import pyopenvdb as vdb
+  grid = vdb.FloatGrid()
+  grid.name = "data"
+  grid.copyFromArray(voxel_data)
+  vdb.write(fname, grids=[grid])
 
 def qe_lattice ( ibrav, cell_param ):
   '''

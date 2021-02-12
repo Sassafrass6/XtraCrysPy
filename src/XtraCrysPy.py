@@ -1,3 +1,4 @@
+from os import write
 import vpython as vp
 import numpy as np
 
@@ -60,14 +61,17 @@ class XtraCrysPy:
       # Read coords from file
       from .Util import qe_lattice
       if self.ftype == "SCF":
-        from .Util import read_relax_file
-        read_relax_file(self, inputfile)
-      elif self.ftype == "RELAX":
         from .Util import read_scf_file
         read_scf_file(self, inputfile)
+      elif self.ftype == "RELAX":
+        from .Util import read_relax_file
+        read_relax_file(self, inputfile)
       elif self.ftype == "CUBE":
         from .Util import read_cube_file
         read_cube_file(self, inputfile)
+      elif self.ftype == "SPARSE_CUBE":
+        from .Util import read_cube_file
+        read_cube_file(self, inputfile, sparse=True)
       else:
         raise ValueError("format has not been implemented yet")
       if self.lattice is None:
@@ -305,6 +309,27 @@ class XtraCrysPy:
 
     self.view.draw_bxsf(b_vec, data, iso, bands, colors, normals, write_obj)
 
+  def shift_atoms( self, shift ):
+    '''
+    Shift the positions of the atoms and the volume object in order to better capture bonding
+    '''
+
+    from .Util import constrain_atoms_to_unit_cell
+
+    # discretize the shift in order to match the volume shift
+    shift = np.array(shift)
+    shape = np.array(self.volume_data.shape)
+    roll = tuple(np.round(shift * shape).astype(int))
+    shift = np.round(shift * shape) / shape
+
+    shift = self.lattice @ shift
+    self.atoms += shift
+
+    # constrain atoms again
+    self.atoms = constrain_atoms_to_unit_cell(self.lattice, self.atoms)
+    self.volume_data = np.roll(self.volume_data, roll, axis=(0, 1, 2))
+
+
   def draw_volume( self, iso ):
     '''
     Draw the volume object stored in self.volume defined by isosurfaces passed into the function and outputs
@@ -315,6 +340,80 @@ class XtraCrysPy:
     '''
 
     from .MarchingCubes import marching_cubes
-    print(self.lattice)
     for i in iso:
       marching_cubes(self.volume_data, i, self.lattice, None, [0, 1, 0], write_obj=True)
+
+  def make_polarization_voxel( self ):
+    from .Util import write_voxel
+    from time import time
+
+    print("making polarization voxel...")
+
+    start = time()
+    vox = self.volume_data
+    # normalize
+    vpositive = max(0.0, np.max(vox))
+    vnegative = abs(min(0.0, np.min(vox)))
+    if vnegative == 0:
+      # avoid div by zero condition
+      vnegative = 1
+    vox = np.where(vox > 0, vox / vpositive, vox / vnegative) / 2.0 + 0.5
+
+    import pdb; pdb.set_trace()
+
+    write_voxel(vox, './voxel.vdb')
+    print("made polarization voxel, time elapsed: {}".format(time() - start))
+
+  def make_color_voxel( self ):
+    from .Util import write_voxel
+    from time import time
+
+    print("making color voxel...")
+
+    start = time()
+    vox = self.volume_data
+    # normalize
+    vox -= np.min(vox)
+    vox /= np.max(vox)
+
+    # 1 - for this example (TODO maybe add math operations for these...)
+    vox = 1.0 - vox
+    #import pdb; pdb.set_trace()
+
+    write_voxel(vox, './color.vdb')
+    print("made color voxel, time elapsed: {}".format(time() - start))
+  
+  def make_emission_voxel( self, truncate=(float('-inf'), float('inf')), max_emission=0.5, tol=0.1, modifier="SIGMOID" ):
+    from .Util import write_voxel
+    from time import time
+
+    print("making emission voxel...")
+
+    start = time()
+    vox = np.copy(self.volume_data)
+    # truncate
+    np.clip(vox, truncate[0], truncate[1])
+    # normalize
+    vox -= np.min(vox)
+    vox /= np.max(vox)
+    # flip (NOTE: might want to make this an option...)
+    vox = 1.0 - vox
+
+    if modifier == "SIGMOID":
+      vox -= 0.5
+      vox *= 8.0
+      vox = np.exp(vox)
+      vox /= (vox + 1.)
+      np.clip(vox, 0., max_emission)
+      vox[vox < tol] = 0.0
+    elif modifier == "GRADIENT":
+      vox = (np.roll(vox, 1, axis=0) + np.roll(vox, 1, axis=1) + np.roll(vox, 1, axis=2)) / 3.0
+      vox = np.clip(vox, 0., max_emission)
+    else:
+      print("warning: modifier option not recognized")
+    
+    write_voxel(vox, './emission.vdb')
+    print("made emission voxel, time elapsed: {}".format(time() - start))
+
+
+    
