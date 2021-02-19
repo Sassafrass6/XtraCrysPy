@@ -23,8 +23,10 @@ def removeAll(type=None):
 def init_default_materials():
     materials = {}
     mat = bpy.data.materials.new('DefaultBondMaterial')
-    mat.diffuse_color = (0.4, 0.4, 0.4, 1.0)
-    mat.specular_intensity = 0
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    principled_bsdf = nodes.get("Principled BSDF")
+    principled_bsdf.inputs[0].default_value = (0.4, 0.4, 0.4, 1.0)
     materials["BOND"] = mat
     return materials
 
@@ -75,10 +77,11 @@ def camera_from_input(position, rotation, collection):
 
 def create_material(id, color):
     mat = bpy.data.materials.new('Material.{}'.format(id))
-    mat.diffuse_color = color
-    mat.specular_intensity = 0
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    principled_bsdf = nodes.get("Principled BSDF")
+    principled_bsdf.inputs[0].default_value = color
     return mat
-
 
 def lamp(origin=(0., 0., 0.), type='POINT', energy=1, color=(1,1,1), target=None):
     print('createLamp called')

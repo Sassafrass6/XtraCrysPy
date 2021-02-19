@@ -359,8 +359,6 @@ class XtraCrysPy:
       vnegative = 1
     vox = np.where(vox > 0, vox / vpositive, vox / vnegative) / 2.0 + 0.5
 
-    import pdb; pdb.set_trace()
-
     write_voxel(vox, './voxel.vdb')
     print("made polarization voxel, time elapsed: {}".format(time() - start))
 
@@ -378,7 +376,6 @@ class XtraCrysPy:
 
     # 1 - for this example (TODO maybe add math operations for these...)
     vox = 1.0 - vox
-    #import pdb; pdb.set_trace()
 
     write_voxel(vox, './color.vdb')
     print("made color voxel, time elapsed: {}".format(time() - start))

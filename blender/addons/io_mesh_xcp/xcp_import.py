@@ -127,6 +127,7 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, atom_dra
             xcp_draw.draw_duplivert_atom(xcp, atom_key_list, key, coll_atoms, def_origin, mtype=atom_draw_mode)
     else:
         for key, atom in xcp["ATOMS"].items():
+            print("atom", key)
             xcp["ATOMS"][key]["obj"] = xcp_draw.draw_atom(atom, key, coll_atoms, mtype=atom_draw_mode)
     # move into bond draw once we have methods to draw them in bulk
     if bond_dup:
@@ -136,6 +137,7 @@ def import_xcp(context, filepath, clear_world, default_view, join_mode, atom_dra
     else:
         for key in xcp["BONDS"]:
             bond = xcp["BONDS"][key]
+            print("bond", key)
             xcp["BONDS"][key]["obj"] = xcp_draw.draw_bond(bond, key, coll_atoms, default_materials["BOND"], bond_draw_mode, taper)
     if "CAMERA" in xcp["SCENE"]:
         # untested

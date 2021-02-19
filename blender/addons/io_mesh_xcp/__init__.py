@@ -5,6 +5,7 @@ bl_info = {
 }
 
 import bpy
+from bpy.props import PointerProperty
 from . import xcp_import
 from . import xcp_panel
 
@@ -12,17 +13,26 @@ from . import xcp_panel
 def menu_func_import(self, context):
     self.layout.operator(xcp_import.ImportXCP.bl_idname, text="XCP Importer")
 
+classes = (
+    xcp_import.ImportXCP,
+    xcp_panel.PanelProperties,
+    xcp_panel.XCP_OT_Material,
+    xcp_panel.XCP_PT_Material
+)
 
 def register():
-    bpy.utils.register_class(xcp_import.ImportXCP)
-    bpy.utils.register_class(xcp_panel.EditorPanel)
+    for cls in classes:
+        print("add {}".format(cls))
+        bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+    bpy.types.Scene.xcptool = PointerProperty(type=xcp_panel.PanelProperties)
 
 
 def unregister():
-    bpy.utils.unregister_class(xcp_import.ImportXCP)
-    bpy.utils.unregister_class(xcp_panel.EditorPanel)
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    del bpy.types.Scene.xcptool
 
 
 if __name__ == "__main__":
