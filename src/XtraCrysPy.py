@@ -63,8 +63,8 @@ class XtraCrysPy:
         from .Util import read_scf_file
         data = read_scf_file(inputfile)
         self.ibrav,self.atoms = data[0],data[1]
-        self.basis_labels,cell_param = data[2],data[3]
-        self.coord_type = data[4]
+        self.basis_labels,celldm,cell_param = data[2],data[3],data[4]
+        self.coord_type = data[5]
         self.natoms = self.atoms.shape[0]
 
       if relax:
@@ -84,7 +84,10 @@ class XtraCrysPy:
         self.atoms = self.relax_poss[0]
 
       else:
-        self.lattice = qe_lattice(self.ibrav, cell_param)
+        if self.ibrav == 0:
+          self.lattice = cell_param
+        else:
+          self.lattice = qe_lattice(self.ibrav, celldm)
         if 'angstrom' in self.coord_type:
           self.atoms = np.array(self.atoms) / self.BOHR_TO_ANGSTROM
         elif 'alat' in self.coord_type or 'crystal' in self.coord_type:

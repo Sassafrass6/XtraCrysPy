@@ -14,7 +14,8 @@ def read_scf_file ( fname ):
     natoms = 0
     atoms = []
     basis_labels = []
-    cell_param= 6*[0]
+    celldm= 6*[0]
+    cell_param = None
 
     line = f.readline()
     while line != '':
@@ -23,9 +24,15 @@ def read_scf_file ( fname ):
           ibrav = strip_int(l)
         elif 'celldm' in l:
           dm = strip_int(l) - 1
-          cell_param[dm] = strip_float(l)
+          celldm[dm] = strip_float(l)
         elif 'nat' in l:
           natoms = strip_int(l)
+        elif 'CELL_PARAMETERS' in l:
+          ls = l.split()
+          cell_param = np.empty((3,3), dtype=float)
+          coord_type = ls[1] if len(ls)>1 else 'alat'
+          for i in range(3):
+            cell_param[i,:] = np.array([float(v) for v in f.readline().split()])
         elif 'ATOMIC_POSITIONS' in l:
           ls = l.split()
           coord_type = ls[1] if len(ls)>1 else 'alat'
@@ -36,10 +43,10 @@ def read_scf_file ( fname ):
               basis_labels.append(ls[0])
               atoms.append([float(v) for v in ls[1:4]])
       line = f.readline()
-    cell_param[1] *= cell_param[0]
-    cell_param[2] *= cell_param[0]
+    celldm[1] *= celldm[0]
+    celldm[2] *= celldm[0]
 
-    return ibrav,np.array(atoms),basis_labels,cell_param,coord_type
+    return ibrav,np.array(atoms),basis_labels,celldm,cell_param,coord_type
 
 def read_relax_file ( fname ):
   '''
