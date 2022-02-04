@@ -6,9 +6,14 @@ class QE_Plot:
     print('Does this really need to be a class?')
 
   def plot_dos_QE ( self, fname, title=None, x_lim=None, y_lim=None, vertical=False, col='black' ):
-    #tit = 'DoS' if title is None else title
-    #fig.suptitle(tit)
-    pass
+    '''
+    '''
+    from .file_io import read_dos_QE
+    from .plot_functions import plot_dos
+
+    ef, es, dos = read_dos_QE(fname)
+    plot_dos(es-ef, dos, title, x_lim, y_lim, vertical, col)
+
 
   def plot_bands_QE ( self, fname, sym_points=None, title=None, y_lim=None, col='black' ):
     '''
