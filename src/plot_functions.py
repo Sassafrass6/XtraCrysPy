@@ -122,7 +122,6 @@ def plot_tensor ( enes, tensors, eles, title, x_lim, y_lim, x_lab, y_lab, col, m
     tval = np.empty(tensors.shape[0], dtype=float)
     for i,v in enumerate(tensors):
       tval[i] = np.sum([v[j,j] for j in range(3)])
-    print(col)
     col = col if type(col) is str else col[0]
     ax.plot(enes, tval, color=col)
   else:
@@ -149,6 +148,8 @@ def plot_tensor ( enes, tensors, eles, title, x_lim, y_lim, x_lab, y_lab, col, m
 
 
 def plot_tensor_vs_temperature( temps, temp, enes, tensors, eles, x_lim, y_lim, col ):
+  '''
+  '''
   pass
 
   fig.suptitle(tit)
@@ -157,10 +158,6 @@ def plot_tensor_vs_temperature( temps, temp, enes, tensors, eles, x_lim, y_lim, 
 
   enes,temps,tensors = read_transport_PAO(fname)
   
-  pass
-
-  '''
-  '''
 
   fig = plt.figure()
 
