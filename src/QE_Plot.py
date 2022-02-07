@@ -27,7 +27,7 @@ class QE_Plot:
       bands = read_bands_QE_agr(fname)
     elif ext == 'dat':
       from .file_io import read_bands_QE_dat
-      bands = read_bands_QE_dat(fname)
+      ks,bands = read_bands_QE_dat(fname)
     else:
       raise Exception('Cannot read band file with extension .{}'.format(ext))
 
