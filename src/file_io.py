@@ -92,7 +92,7 @@ def read_band_path_PAO ( fname ):
   ftags = []
   findex = [0]
   for i in range(len(tags)-1):
-    if tags[i] == 'gG':
+    if tags[i] == 'G':
       tags[i] = r'$\Gamma$'
 
     if npnts[i] == 0:
@@ -100,7 +100,7 @@ def read_band_path_PAO ( fname ):
     else:
       ftags.append(tags[i])
       findex.append(npnts[i] + findex[-1])
-  ftags.append(tags[-1])
+  ftags.append(tags[-1] if not tags[-1]=='G' else r'$\Gamma$')
     
   return findex, ftags
 

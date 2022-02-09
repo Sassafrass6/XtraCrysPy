@@ -3,7 +3,7 @@
 class QE_Plot:
 
   def __init__ ( self ):
-    print('Does this really need to be a class?')
+    pass
 
   def plot_dos_QE ( self, fname, title=None, x_lim=None, y_lim=None, vertical=False, col='black' ):
     '''
@@ -15,7 +15,7 @@ class QE_Plot:
     plot_dos(es-ef, dos, title, x_lim, y_lim, vertical, col)
 
 
-  def plot_bands_QE ( self, fname, sym_points=None, title=None, y_lim=None, col='black' ):
+  def plot_bands_QE ( self, fname, eF=0., sym_points=None, title=None, y_lim=None, col='black' ):
     '''
     '''
     from .plot_functions import plot_bands
@@ -31,10 +31,14 @@ class QE_Plot:
     else:
       raise Exception('Cannot read band file with extension .{}'.format(ext))
 
-    plot_bands(bands, sym_points, title, y_lim, col)
+    if type(eF) is str:
+      from .file_io import read_dos_QE
+      eF,_,_ = read_dos_QE(eF)
+
+    plot_bands(bands-eF, sym_points, title, y_lim, col)
 
 
-  def plot_dos_beside_bands_QE ( self, fn_dos, fn_bands, sym_points=None, title=None, x_lim=None, y_lim=None, col='black', dos_ticks=False ):
+  def plot_dos_beside_bands_QE ( self, fn_dos, fn_bands, align_eF=True, sym_points=None, title=None, x_lim=None, y_lim=None, col='black', dos_ticks=False ):
     '''
     '''
     from .file_io import read_dos_QE
@@ -53,7 +57,8 @@ class QE_Plot:
 
     ef, es, dos = read_dos_QE(fn_dos)
 
-    es -= ef
-    bands -= ef
+    if align_eF:
+      es -= ef
+      bands -= ef
 
     plot_dos_beside_bands(es, dos, bands, sym_points, title, x_lim, y_lim, col, dos_ticks)

@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 class PAO_Plot:
 
   def __init__ ( self ):
-    print('Should this really be a class?')
+    pass
 
   def plot_dos_PAO ( self, fname, title=None, x_lim=None, y_lim=None, vertical=False, col='black' ):
     '''
@@ -36,12 +36,12 @@ class PAO_Plot:
         y_lim (tuple): Pair of axis limits (y_min, y_max)
         col (str or tuple): A string recognized by matplotlib or a 3-tuple (R,G,B)
     '''
-    from .file_io import read_band_path_PAO
     from .plot_functions import plot_bands
+    from .file_io import read_bands_PAO
 
     if not sym_points is None:
       if type(sym_points) is str:
-        from .file_io import read_bands_PAO
+        from .file_io import read_band_path_PAO
         sym_points = read_band_path_PAO(sym_points)
     plot_bands(read_bands_PAO(fname), sym_points, title, y_lim, col)
 

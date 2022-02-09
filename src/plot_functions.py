@@ -50,7 +50,7 @@ def plot_bands ( bands, sym_points, title, y_lim, col ):
     ax.plot(b, color=col)
   if y_lim is None:
     y_lim = ax.get_ylim()
-  ax.set_xlim(0, bands.shape[0])
+  ax.set_xlim(0, bands.shape[1])
   ax.set_ylim(*y_lim)
   if sym_points is None:
     ax.xaxis.set_visible(False)
