@@ -270,7 +270,7 @@ def constrain_atoms_to_unit_cell ( lattice, atoms ):
     for i,l in enumerate(lattice):
       tvec = np.linalg.inv(lattice).T @ apos
       for v in tvec:
-        if v >= 1 or v < 0:
+        if v > 1 or v < 0:
           return False
     return True
 
