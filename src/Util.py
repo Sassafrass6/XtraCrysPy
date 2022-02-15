@@ -209,7 +209,7 @@ def qe_lattice ( ibrav, cell_param ):
     coords = np.array([[A,0,0],[0,A,0],[0,0,C]])
   elif ibrav == 7:
     A,C = cell_param[0],cell_param[2]
-    coords = .5 * np.array([A,-A,C],[A,A,C],[-A,-A,C])
+    coords = .5 * np.array([[A,-A,C],[A,A,C],[-A,-A,C]])
   elif ibrav == 8:
     A,B,C = cell_param[0],cell_param[1],cell_param[2]
     coords = np.array([[A,0,0],[0,B,0],[0,0,C]])
@@ -230,18 +230,18 @@ def qe_lattice ( ibrav, cell_param ):
     A,B,C = cell_param[0],cell_param[1],cell_param[2]
     if ibrav == 12:
       G = np.arccos(cell_param[3])
-      coords = np.array([A,0,0],[B*np.cos(G),B*np.sin(G),0],[0,0,C])
+      coords = np.array([[A,0,0],[B*np.cos(G),B*np.sin(G),0],[0,0,C]])
     else:
       G = np.arccos(cell_param[4])
-      coords = np.array([A,0,0],[0,B,0],[C*np.cos(G),0,C*np.sin(G)])
+      coords = np.array([[A,0,0],[0,B,0],[C*np.cos(G),0,C*np.sin(G)]])
   elif ibrav == (13 or -13):
     A,B,C = cell_param[0],cell_param[1],cell_param[2]
     if ibrav == 13:
       G = np.arccos(cell_param[3])
-      coords = np.array([A/2,0,-C/2],[B*np.cos(G),B*np.sin(G),0],[A/2,0,C/2])
+      coords = np.array([[A/2,0,-C/2],[B*np.cos(G),B*np.sin(G),0],[A/2,0,C/2]])
     else:
       G = np.arccos(cell_param[4])
-      coords = np.array([A/2,-B/2,0],[A/2,B/2,0],[C*np.cos(G),0,C*np.sin(G)])
+      coords = np.array([[A/2,-B/2,0],[A/2,B/2,0],[C*np.cos(G),0,C*np.sin(G)]])
   elif ibrav == 14:
     A,B,C,AB,AC,BC = tuple([cell_param[i] for i in range(6)])
     G0,G1,G2 = np.arccos(AB),np.arccos(AC),np.arccos(BC)
