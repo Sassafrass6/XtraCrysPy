@@ -41,7 +41,8 @@ class XtraCrysPy:
     if inputfile is None:
       self.coord_type = 'manual'
       if lattice is None or basis is None:
-        print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
+        #print('Lattice and Basis not defined. Only \'plot_bxsf\' will function.')
+        pass
       else:
         self.atoms = np.array(basis)
         self.spec = species
