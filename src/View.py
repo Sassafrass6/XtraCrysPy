@@ -551,8 +551,7 @@ class View:
     '''
     self.clear_canvas()
 
-    if self.BZ_planes is None:
-      self.draw_BZ_boundary(b_vec=rlat)
+    self.draw_BZ_boundary(b_vec=rlat)
 
     col = vp.vector(1,1,1) if color is None else self.vector(color)
     points = [self.vector(p) for p in points]
