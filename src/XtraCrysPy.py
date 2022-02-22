@@ -275,7 +275,12 @@ class XtraCrysPy:
     from .View import View
     atoms = self.atoms if not self.relax else self.relax_poss
     lattice = self.lattice if not self.relax else self.relax_lattices
-    model = [lattice, atoms, self.spec, self.basis_labels, self.bonds]
+
+    if atoms is None:
+      model = None
+    else:
+      model = [lattice, atoms, self.spec, self.basis_labels, self.bonds]
+
     self.view = View(title,w_width,w_height,self.origin,model,perspective,f_color,bg_color,nx,ny,nz)
 
   def plot_spin_texture ( self, fermi_fname, spin_fname, colors=None, e_up=1, e_dw=-1, title='', w_width=1000, w_height=750, f_color=(1,1,1), bg_color=(0,0,0)):
