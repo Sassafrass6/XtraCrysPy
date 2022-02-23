@@ -16,6 +16,7 @@ class XtraCrysPy:
       species (list): List of N species strings corresponding to atoms in 'basis' (e.g. ['Si','Si'])
       bonds (dict): Maximum bond distance or dictionary of form {'Sp1_Sp2':max_bond_dist}
     '''
+    from .Util import constrain_atoms_to_unit_cell
 
     self.spec = {}           # Dicitonary of atomic species
     self.nspec = 0           # Number of species
@@ -50,6 +51,7 @@ class XtraCrysPy:
         self.natoms = len(basis)
         self.lattice = np.array(lattice)
         self.basis_labels = basis_labels
+        self.atoms = constrain_atoms_to_unit_cell(self.lattice, self.atoms)
     else:
       # Read coords from file
       from .Util import qe_lattice
@@ -70,18 +72,23 @@ class XtraCrysPy:
 
       if relax:
         # Setup model to reflect the first relax position
-        relax_steps = len(self.relax_lattices)
-        if self.relax and relax_steps > 0:
+        relax_steps = len(self.relax_poss)
+        if relax_steps > 0:
           self.relax_index = 0
-          self.lattice = self.relax_lattices[0]
         else:
           raise ValueError('No relax steps were found.')
+        self.lattice = self.relax_lattices[0]
 
-        if 'angstrom' in self.coord_type:
-          self.relax_poss /= self.BOHR_TO_ANGSTROM
-        else:
-          for i in range(relax_steps):
-            self.relax_poss[i,:,:] = np.array([self.atomic_position(a,lattice=self.relax_lattices[i]) for a in self.relax_poss[i]])
+        nlat = len(self.relax_lattices)
+        for i in range(relax_steps):
+          lat = self.lattice
+          if nlat > 1:
+            lat = self.relax_lattices[i]
+          if 'angstrom' in self.coord_type:
+            self.relax_poss[i] /= self.BOHR_TO_ANGSTROM
+          else:
+            self.relax_poss[i,:,:] = np.array([self.atomic_position(a,lattice=lat) for a in self.relax_poss[i]])
+          self.relax_poss[i] = constrain_atoms_to_unit_cell(lat, self.relax_poss[i])
         self.atoms = self.relax_poss[0]
 
       else:
@@ -131,9 +138,9 @@ class XtraCrysPy:
       self.bonds = {'%s_%s'%tuple(sorted(k.split('_'))):bonds[k] for k in bonds.keys()}
 
     # Tranlsate atoms lying outside the unti cell back inside
-    if self.lattice is not None and self.atoms is not None and not self.ibrav == 1:
-      from .Util import constrain_atoms_to_unit_cell
-      self.atoms = constrain_atoms_to_unit_cell(self.lattice, self.atoms)
+#    if self.lattice is not None and self.atoms is not None and not self.ibrav == 1:
+#      from .Util import constrain_atoms_to_unit_cell
+#      self.atoms = constrain_atoms_to_unit_cell(self.lattice, self.atoms)
 
   def reciprocal_lattice ( self, lattice=None ):
     '''

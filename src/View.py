@@ -241,7 +241,7 @@ class View:
       self.relax_index += sgn
       self.relax_text.text = 'Step: %d'%self.relax_index
       self.atoms = self.relax_poss[self.relax_index]
-      if len(self.relax_lattices) > 0:
+      if len(self.relax_lattices) > 1:
         self.lattice = self.relax_lattices[self.relax_index]
 
       self.draw_cell()

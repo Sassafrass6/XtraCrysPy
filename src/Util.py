@@ -56,6 +56,7 @@ def read_relax_file ( fname ):
     fname (str): Quantum Espresso inputfile name
   '''
   import re
+  flattice = []
   relax_poss = []
   cell_param = 6*[0]
   relax_lattices = []
@@ -74,6 +75,10 @@ def read_relax_file ( fname ):
         for i in range(0,len(ls),2):
           ip = strip_int(ls[i])-1
           cell_param[ip] = strip_float(ls[i+1])
+      elif 'crystal axes' in l:
+        for _ in range(3):
+          l = f.readline()
+          flattice.append(np.array([float(v) for v in l.split()[3:6]]))
       elif 'CELL_PARAMETERS' in l:
         alat = strip_float(l)
         avec = np.zeros((3,3), dtype=float)
@@ -97,6 +102,8 @@ def read_relax_file ( fname ):
       l = f.readline()
   cell_param[1] *= cell_param[0]
   cell_param[2] *= cell_param[0]
+  if len(relax_lattices) == 0:
+    relax_lattices = [cell_param[0]*np.array(flattice)]
   return ibrav,np.array(relax_poss),np.array(relax_lattices),basis_labels,cell_param,coord_type
 
 def read_bxsf ( fname ):
