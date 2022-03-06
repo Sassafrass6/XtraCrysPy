@@ -1,35 +1,25 @@
-from XtraCrysPy import XtraCrysPy as XCP
+from XtraCrysPy import XtraCrysPy,Model
 import numpy as np
 
 if '__main__' == __name__:
 
-  # Define params
-  a = 20.
-
-  # Unit origin
-  origin = [0,0,0]
-
-  # Cell parameters (Normalized)
-  fcc_vecs = [[a,0,0], [0,a,0], [0,0,a]]
+  # Cell parameters
+  cubic_vecs = np.array([[7.33,0,0],[0.,6.36,0],[0,0,1.80]])
 
   # Atomic basis
-  atoms = 2*(np.array([[0.47,-3.1271,-0.9686,2.2182,-1.3477,1.4119,0.8579,0.3897,0.0307,-1.9061,2.5032,-1.4276,3.1926,-2.2969,3.5163,-1.0451,-2.5186,-1.0447,4.1992,3.0468,3.0466,-1.8087,-2.9322,-2.9346],[2.5688,-0.4436,-1.3125,0.1412,1.0797,-1.9372,0.2592,-1.0264,1.422,-0.2495,-1.1998,-2.696,1.2061,2.1881,-1.5787,-3.1973,-2.7596,-3.1963,0.7801,1.8092,1.8083,3.1651,2.1027,2.1021],[0.0006,-0.0003,0,-0.0003,-0.0001,0.0002,-0.0008,-0.0004,-0.0006,-0.0004,0.0003,0.0008,0.0003,0.0007,0.0008,-0.8937,0.0011,0.8957,0.0002,-0.8992,0.9004,-0.0003,0.8881,-0.8849]]).T+5)
+  atoms = np.array([[0.49,0.91,0.5],[0.0,0.43,0.5],[0.29,0.3,0.5],[0.73,0.52,0.5],[0.24,0.67,0.5],[0.62,0.2,0.5],[0.54,0.54,0.5],[0.48,0.34,0.5],[0.43,0.73,0.5],[0.17,0.46,0.5],[0.77,0.31,0.5],[0.23,0.08,0.5],[0.86,0.69,0.5],[0.11,0.85,0.5],[0.91,0.25,0.5],[0.28,0.0,0.0],[0.08,0.07,0.5],[0.28,0.0,1.0],[1.0,0.63,0.5],[0.84,0.79,0.0],[0.84,0.79,1.0],[0.18,1.0,0.5],[0.03,0.83,0.99],[0.03,0.83,0.01]])
 
   # Label for each atom and colors
   labels = ['O']*2 + ['N']*4 + ['C']*8 + ['H']*10
 
-  # Bond distance between Ga and As, in ????
-  bonds = {'C_C':1.46*2, 'C_N':1.46*2, 'C_O':1.47*2, 'C_H':1.1*2}
+  # Bond distance in Angstrom
+  bonds = {'C_C':1.5, 'C_N':1.5, 'C_O':1.5, 'C_H':1.2}
 
-  # Species information, including radius and color
+  # Visual information: species, lattice, atoms, bonds, units
+  a_info = {'species':labels, 'lattice':cubic_vecs, 'abc':atoms, 'bonds':bonds, 'units':'angstrom'}
 
-  species = {'O':{'color':(1,0,0,1),'radius':.7}, 'C':{'color':(0.1,0.1,0.1,1),'radius':.8}, 'N':{'color':(0,0,1,1),'radius':.8},'H':{'color':(1,1,1,1),'radius':.5}}
+  model = Model.Model(params=a_info)
+  xcp = XtraCrysPy.XCP_Atoms()
+  xcp.render_atomic_model(model)#, bond_type='primary')
+  xcp.start_crystal_view()
 
-  
-  # Construct model with XtraCrysPy
-  xcpy = XCP.XtraCrysPy(lattice=fcc_vecs, basis=atoms, basis_labels=labels, species=species, bonds=bonds, origin=origin)
-
-  # Write an XML file for blender
-  #xcpy.write_blender_xml(fname='Caffeine_Ball.xml')
-
-  xcpy.start_cryspy_view()

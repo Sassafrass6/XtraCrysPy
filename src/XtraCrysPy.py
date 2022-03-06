@@ -13,7 +13,10 @@ class XtraCrysPy:
     self.picker = None
     self.sel_inds = []
     self.sel_cols = []
-    self.stype = 'info'
+    self.sel_bnds = []
+    self.units = 'bohr'
+    self.runits = 'degree'
+    self.sel_type = 'distance'
     self.scolor = np.array((0,210,210))
 
     self.scene = window.Scene()
@@ -100,15 +103,51 @@ class XtraCrysPy:
 class XCP_Atoms ( XtraCrysPy ):
 
 
+  def angle ( self, ai0, ai1, ai2 ):
+    from numpy.linalg import norm
+
+    v1 = self.aposs[ai0] - self.aposs[ai1]
+    v2 = self.aposs[ai2] - self.aposs[ai1]
+    conv = 1 if self.runits == 'radian' else 180/np.pi
+    return conv * np.arccos((v1.dot(v2))/(norm(v1)*norm(v2)))
+
+
+  def distance ( self, ai1, ai2 ):
+    dist = np.sqrt(np.sum((self.aposs[ai2]-self.aposs[ai1])**2))
+    if self.units == 'angstrom':
+      from .conversion import BOHR_ANG
+      dist *= BOHR_ANG
+    else:
+      pass # Bohr
+    return dist
+
+
   def set_atom_color ( self, mem, index, nvert, col ):
     for i in range(index*nvert, (index+1)*nvert):
       mem[i] = np.array(col)
 
 
-  def push_atom ( self, mem, index, nvert ):
-    self.sel_inds.append(index)
-    self.sel_cols.append(mem[index*nvert].copy())
-    self.set_atom_color(mem, index, nvert, self.scolor)
+  def pop_sbond ( self ):
+    tbond = self.sel_bnds.pop()
+    self.scene.rm(tbond)
+
+
+  def push_sbond ( self, ai1, ai2 ):
+    from fury import actor
+
+    conn = self.aposs[ai1] - self.aposs[ai2]
+    dist = np.linalg.norm(conn)
+    cent = (self.aposs[ai1] + self.aposs[ai2]) / 2
+
+    if self.bond_type == 'stick':
+      brad = 0.01 + 1 / (4 * dist)
+    elif self.bond_type == 'primary':
+      prad = np.min([r for k,r in self.model.radii.items()])
+      brad = 0.01 + 1.5 * prad / (2 * dist)
+    tbond = actor.cylinder([cent], [conn], [self.scolor/255], radius=brad, heights=dist, resolution=20)
+
+    self.scene.add(tbond)
+    self.sel_bnds.append(tbond)
 
 
   def pop_atom ( self, mem, index, nvert ):
@@ -118,22 +157,56 @@ class XCP_Atoms ( XtraCrysPy ):
     self.set_atom_color(mem, index, nvert, col)
 
 
+  def push_atom ( self, mem, index, nvert ):
+    self.sel_inds.append(index)
+    self.sel_cols.append(mem[index*nvert].copy())
+    self.set_atom_color(mem, index, nvert, self.scolor)
+
+
   def selection_logic ( self, colors, index, nvert ):
 
-    if self.stype == 'info':
-      if index in self.sel_inds:
-        self.pop_atom(colors, index, nvert)
-      else:
+    if index in self.sel_inds:
+      nsi = len(self.sel_inds)
+      sind = self.sel_inds.index(index)
+      npop = nsi - sind
+      if nsi == 1 or sind == 0:
+        npop -= 1
+        self.pop_atom(colors, self.sel_inds[-1], nvert)
+      for _ in range(npop):
+        self.pop_sbond()
+        self.pop_atom(colors, self.sel_inds[-1], nvert)
+
+    else:
+      if self.sel_type == 'info':
         self.push_atom(colors, index, nvert)
-    elif self.stype == 'distance':
-      if index in self.sel_inds:
-        self.pop_atom(colors, index, nvert)
-      elif len(self.sel_inds) == 0:
-        self.push_atom(colors, index, nvert)
-      elif len(self.sel_inds) == 1:
-        self.push_atom(colors, index, nvert)
-        ## Draw Line
-        ## Compute Distance
+
+      elif self.sel_type == 'distance':
+        if len(self.sel_inds) == 0:
+          self.push_atom(colors, index, nvert)
+        elif len(self.sel_inds) == 1:
+          self.push_atom(colors, index, nvert)
+          self.push_sbond(*self.sel_inds)
+          dist = self.distance(*self.sel_inds)
+          print('Distance between atoms {} and {}:'.format(*self.sel_inds))
+          print('{} {}\n'.format(self.distance(*self.sel_inds),self.units))
+
+      elif self.sel_type == 'angle':
+        if len(self.sel_inds) == 0:
+          self.push_atom(colors, index, nvert)
+        elif len(self.sel_inds) in [1,2]:
+          self.push_atom(colors, index, nvert)
+          self.push_sbond(*self.sel_inds[-2:])
+          if len(self.sel_inds) == 3:
+            ## Do the stuff
+            print('Angle between atoms {}, {}, and {}:'.format(*self.sel_inds))
+            print('{} {}\n'.format(self.angle(*self.sel_inds),self.runits))
+
+      elif self.sel_type == 'chain':
+        if len(self.sel_inds) == 0:
+          self.push_atom(colors, index, nvert)
+        else:
+          self.push_atom(colors, index, nvert)
+          self.push_sbond(*self.sel_inds[-2:])
 
 
   def left_click ( self, obj, event ):
@@ -158,8 +231,14 @@ class XCP_Atoms ( XtraCrysPy ):
     from fury import actor
     import numpy as np
 
+    self.bond_type = bond_type
+
+    if model.units != self.units:
+      self.units = model.units
+
     ainfo,binfo = model.lattice_atoms_bonds(*nsc, bond_type)
  
+    self.model = model
     self.aposs = ainfo[0]
     self.natoms = ainfo[0].shape[0]
     if self.natoms > 0:
