@@ -76,13 +76,14 @@ class Model:
     '''
     '''
 
+    nsc = (nc1,nc2,nc3)
     nat = self.atoms.shape[0]
 
     if self.bond_type is None:
       self.bond_type = bond_type
 
     lattice = self.lattice.copy()
-    for i,n in enumerate([nc1,nc2,nc3]):
+    for i,n in enumerate(nsc):
       lattice[:,i] *= n
 
     atoms = []
@@ -100,7 +101,7 @@ class Model:
     atoms = np.array(atoms)
     acols = np.array(acols)
     radii = np.array(radii)
-    for i,n in enumerate([nc1,nc2,nc3]):
+    for i,n in enumerate(nsc):
       atoms[:,i] /= n
     atoms = atoms @ lattice
 
@@ -150,4 +151,18 @@ class Model:
     brads = np.array(brads)
     bheight = np.array(bheight)
 
-    return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight)
+    lines = []
+    lat = lattice
+    for ix in range(nc1):
+      for iy in range(nc2):
+        for iz in range(nc3):
+          orig = np.array([ix,iy,iz]) @ lat
+          corner = np.sum(lat, axis=0) + orig
+          lines += [[orig,orig+a] for a in lat]
+          lines += [[orig+p,corner] for p in [lat[i]+lat[j] for i in range(3) for j in range(i+1,3)]]
+          lines += [[orig+lat[k],orig+lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
+    lines = np.array(lines)
+    for i,n in enumerate(nsc):
+      lines[:,:,i] /= n
+
+    return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight), (lines)

@@ -188,7 +188,6 @@ def struct_from_inputfile ( fname:str ) -> dict:
 
   nf = len(fstr)
   if cl == 0:
-    cl = il + struct['nat']
     while cl < nf and not 'CELL_PARAM' in fstr[cl]:
       cl += 1
 
@@ -198,7 +197,7 @@ def struct_from_inputfile ( fname:str ) -> dict:
     cl += 1
     struct['lattice'] = np.array([np.array([float(v) for v in fstr[cl+c].split()]) for c in range(3)])
 
-  if not 'lattice' in struct:
+  if 'lattice' not in struct:
     from .lattice_format import lattice_format_QE
     struct['lattice'] = lattice_format_QE(struct['ibrav'], struct['celldm'])
 

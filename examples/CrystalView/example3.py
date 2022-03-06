@@ -1,6 +1,5 @@
 from XtraCrysPy import XtraCrysPy,Model
 
-
 if '__main__' == __name__:
 
   # 2D SnTe with colors red & blue for Sn & Te respectively.
