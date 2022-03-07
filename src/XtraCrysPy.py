@@ -19,7 +19,7 @@ class XtraCrysPy:
     self.smanager.initialize()
 
     checkbox = ['Boundary']
-    self.frame_checkbox = ui.Checkbox(checkbox, checkbox, font_size=18, font_family='Arial', position=(5,self.wsize[1]-25))
+    self.frame_checkbox = ui.Checkbox(checkbox, checkbox, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
     self.scene.add(self.frame_checkbox)
     self.frame_checkbox.on_change = self.toggle_frame
 
@@ -65,7 +65,7 @@ class XtraCrysPy:
 
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()
-    self.frame_checkbox.position = (5, y-25)
+    self.frame_checkbox.position = (10, y-35)
 
   def update_axes ( self, caller, event ):
 

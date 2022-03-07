@@ -97,7 +97,7 @@ class Model:
     '''
     def inside_cell ( apos ):
       for v in apos:
-        if v >= 1 or v < 0:
+        if v > 1 or v < 0:
           return False
       return True
 

@@ -4,8 +4,10 @@ import numpy as np
 
 class XCP_Atoms ( XtraCrysPy ):
 
-  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False, model=None, params={}, relax=False, nsc=(1,1,1), bond_type='stick', sel_type='chain' ):
+  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False, model=None, params={}, relax=False, nsc=(1,1,1), bond_type='stick', sel_type='Chain' ):
+    from fury.data import read_viz_icons
     from .Model import Model
+    from fury import ui
     super().__init__(size, axes, perspective)
 
     self.nsc = nsc
@@ -35,28 +37,46 @@ class XCP_Atoms ( XtraCrysPy ):
     else:
       raise Exception('Must specify model or params arguments')
 
+    self._icons = [('left',read_viz_icons(fname='circle-left.png')), 
+                   ('down',read_viz_icons(fname='circle-down.png')),
+                   ('right',read_viz_icons(fname='circle-right.png'))]
+
+    self.sel_type_button = ui.Button2D(icon_fnames=self._icons[2:0:-1], size=(40,40))
+
+    sel_types = ['Chain', 'Info', 'Angle', 'Distance']
+    if sel_type not in sel_types:
+      raise ValueError('{} is not a valid selection type. Choose from:\n  Info, Angle Chain, or Distance.')
+    self.sel_type_menu = ui.ListBox2D(sel_types, multiselection=False,
+                 font_size=24, line_spacing=2, background_opacity=.9, size=(150,220))
+    self.sel_type_menu.select(self.sel_type_menu.slots[sel_types.index(sel_type)])
+    self.sel_type_menu.on_change = self.update_selection_type
+
+    self.sel_menu_vis = False
+    self.sel_type_menu.set_visibility(False)
+    self.sel_type_button.on_left_mouse_button_clicked = self.toggle_sel_menu
+
+    self.sel_panel = ui.Panel2D((40,40), (10, size[1]-75), opacity=0)
+    self.sel_panel.add_element(self.sel_type_button, (0,0))
+    self.sel_panel.add_element(self.sel_type_menu, (50,-210))
+
+    self.scene.add(self.sel_panel)
+
     self.model = model
     self.relax = relax
     self.relax_index = 0
     self.nrelax = self.model.atoms.shape[0]
     if relax:
-      from fury import ui
-      from fury.data import read_viz_icons
 
-      left_icon = [('left',read_viz_icons(fname='circle-left.png'))]
-      left_button = ui.Button2D(icon_fnames=left_icon, size=(50,50))
+      left_button = ui.Button2D(icon_fnames=[self._icons[0]], size=(50,50))
       left_button.on_left_mouse_button_clicked = self.relax_backward
 
-      right_icon = [('right',read_viz_icons(fname='circle-right.png'))]
-      right_button = ui.Button2D(icon_fnames=right_icon, size=(50,50))
+      right_button = ui.Button2D(icon_fnames=[self._icons[2]], size=(50,50))
       right_button.on_left_mouse_button_clicked = self.relax_forward
 
       self.relax_panel = ui.Panel2D((110,50), (size[0]-120,size[1]-60), (0,0,0))
       self.relax_panel.add_element(left_button, (0,0))
       self.relax_panel.add_element(right_button, (60,0))
       self.scene.add(self.relax_panel)
-      # Setup buttons
-      pass
 
     self.render_atomic_model()
 
@@ -65,6 +85,25 @@ class XCP_Atoms ( XtraCrysPy ):
     super().update_buttons(caller, event)
     x,y = self.scene.GetSize()
     self.relax_panel.position = (x-120, y-60)
+    self.sel_panel.position = (10, y-75)
+
+
+  def update_selection_type ( self ):
+    self.sel_type = self.sel_type_menu.selected[0] 
+    for _ in range(len(self.sel_bnds)):
+      self.pop_sbond()
+    colors = colors_from_actor(self.atoms)
+    nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
+    for i in self.sel_inds.copy():
+      self.pop_atom(colors, i, nvert)
+    update_actor(self.atoms)
+
+
+  def toggle_sel_menu ( self, iren, caller, event ):
+    self.sel_menu_vis = not self.sel_menu_vis
+    self.sel_type_menu.set_visibility(self.sel_menu_vis)
+    self.sel_type_button.next_icon()
+    self.smanager.render()
 
 
   def angle ( self, ai0, ai1, ai2 ):
@@ -144,35 +183,40 @@ class XCP_Atoms ( XtraCrysPy ):
   def selection_logic ( self, colors, index, nvert ):
 
     if index in self.sel_inds:
-      nsi = len(self.sel_inds)
-      sind = self.sel_inds.index(index)
-      npop = nsi - sind
 
-      if nsi == 1:
-        self.pop_atom(colors, self.sel_inds[0], nvert)
-      elif nsi == 2:
+      if self.sel_type == 'Info':
         self.pop_atom(colors, index, nvert)
-        self.pop_sbond()
       else:
-        mid = nsi - sind - 1
-        if mid >= nsi-mid:
-          rng = (0, sind+1)
-          self.sel_forward = False
+        nsi = len(self.sel_inds)
+        sind = self.sel_inds.index(index)
+        npop = nsi - sind
+
+        if nsi == 1: 
+          self.pop_atom(colors, self.sel_inds[0], nvert)
+        elif nsi == 2:
+          self.pop_atom(colors, index, nvert)
+          self.pop_sbond()
         else:
-          rng = (sind, nsi)
-          self.sel_forward = True
-        for _ in range(rng[0], rng[1]):
-          self.pop_atom(colors, self.sel_inds[rng[0]], nvert)
-          if rng[0] == 0:
-            self.pop_sbond(ind=rng[0])
+          mid = nsi - sind - 1
+          if mid >= nsi-mid:
+            rng = (0, sind+1)
+            self.sel_forward = False
           else:
-            self.pop_sbond(ind=rng[0]-1)
+            rng = (sind, nsi)
+            self.sel_forward = True
+          for _ in range(rng[0], rng[1]):
+            self.pop_atom(colors, self.sel_inds[rng[0]], nvert)
+            if rng[0] == 0:
+              self.pop_sbond(ind=rng[0])
+            else:
+              self.pop_sbond(ind=rng[0]-1)
 
     else:
-      if self.sel_type == 'info':
+      if self.sel_type == 'Info':
         self.push_atom(colors, index, nvert)
+        print('Atom {} : {}'.format(index, self.model.species[index%self.natoms]))
 
-      elif self.sel_type == 'distance':
+      elif self.sel_type == 'Distance':
         if len(self.sel_inds) == 0:
           self.push_atom(colors, index, nvert)
         elif len(self.sel_inds) == 1:
@@ -182,7 +226,7 @@ class XCP_Atoms ( XtraCrysPy ):
             print('Distance between atoms {} and {}:'.format(*self.sel_inds))
             print('{} {}\n'.format(self.distance(*self.sel_inds),self.units))
 
-      elif self.sel_type == 'angle':
+      elif self.sel_type == 'Angle':
         if len(self.sel_inds) == 0:
           self.push_atom(colors, index, nvert)
         elif len(self.sel_inds) in [1,2]:
@@ -192,7 +236,7 @@ class XCP_Atoms ( XtraCrysPy ):
               print('Angle between atoms {}, {}, and {}:'.format(*self.sel_inds))
               print('{} {}\n'.format(self.angle(*self.sel_inds),self.runits))
 
-      elif self.sel_type == 'chain':
+      elif self.sel_type == 'Chain':
         if self.push_atom(colors, index, nvert) and len(self.sel_inds) > 1:
           self.push_sbond()
 
@@ -259,13 +303,12 @@ class XCP_Atoms ( XtraCrysPy ):
 
 
     if self.model.units != self.units:
-      self.units = model.units
+      self.units = self.model.units
 
     ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc, self.bond_type, self.relax_index)
  
     self.aposs = ainfo[0]
     self.natoms = ainfo[0].shape[0]
-    self.atoms = []
     if self.natoms > 0:
       self.atoms = actor.sphere(centers=ainfo[0], colors=ainfo[1], radii=ainfo[2])
       self.scene.add(self.atoms)
