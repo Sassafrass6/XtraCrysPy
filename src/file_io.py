@@ -343,9 +343,10 @@ def infer_file_type ( fname:str ):
 
   extension = fname.split('.')
   if len(extension) == 1:
-    raise ValueError('Cannot infer file type without an extension')
-  extension = extension[1].lower()
-  if extension == 'in':
+    print('Cannot infer file type without an extension. Assuming qe')
+    return 'qe'
+  extension = extension[-1].lower()
+  if extension == 'in' or extension == 'out':
     ftype = 'qe'
   else:
     ftype = extension
@@ -353,7 +354,7 @@ def infer_file_type ( fname:str ):
   return ftype
 
 
-def read_relaxed_coordinates ( fname:str ):
+def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
   '''
     Assumed that the file type is a QE relax output file
   '''
@@ -362,7 +363,7 @@ def read_relaxed_coordinates ( fname:str ):
     ftype = infer_file_type(fname)
 
   if ftype == 'qe':
-    struct = read_relaxed_coordinates_QE(fname)
+    return read_relaxed_coordinates_QE(fname)
   else:
     raise ValueError('Cannot read relax file type {}'.format(ftype))
 
@@ -376,9 +377,9 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
 
   try:
     if ftype == 'qe':
-      struct = struct_from_inputfile_QE(fname)
+      return struct_from_inputfile_QE(fname)
     elif ftype == 'cif':
-      struct = struct_from_inputfile_CIF(fname)
+      return struct_from_inputfile_CIF(fname)
     else:
       raise ValueError('Cannot read file type {}'.format(ftype))
 
