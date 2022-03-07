@@ -12,10 +12,10 @@ class Model:
     self.relax = relax
     if fname is not None:
       if relax:
-        from .dft_file_io import read_relaxed_coordinates
+        from .file_io import read_relaxed_coordinates
         params.update(read_relaxed_coordinates(fname))
       else:
-        from .dft_file_io import struct_from_inputfile
+        from .file_io import struct_from_inputfile
         params.update(struct_from_inputfile(fname))
 
     elif relax:
