@@ -16,6 +16,7 @@ class XCP_Atoms ( XtraCrysPy ):
     self.sel_forward = True
     self.sel_type = sel_type
     self.bond_type = bond_type
+    self.constrain_atoms = True
 
     self.sel_inds = []
     self.sel_cols = []
@@ -55,7 +56,12 @@ class XCP_Atoms ( XtraCrysPy ):
     self.sel_type_menu.set_visibility(False)
     self.sel_type_button.on_left_mouse_button_clicked = self.toggle_sel_menu
 
-    self.sel_panel = ui.Panel2D((40,40), (10, size[1]-75), opacity=0)
+    checkbox = ['Constrain']
+    self.constrain_checkbox = ui.Checkbox(checkbox, checkbox, font_size=24, font_family='Arial', position=(10,self.wsize[1]-65))
+    self.scene.add(self.constrain_checkbox)
+    self.constrain_checkbox.on_change = self.update_constrain
+
+    self.sel_panel = ui.Panel2D((40,40), (10, size[1]-110), opacity=0)
     self.sel_panel.add_element(self.sel_type_button, (0,0))
     self.sel_panel.add_element(self.sel_type_menu, (50,-210))
 
@@ -84,8 +90,9 @@ class XCP_Atoms ( XtraCrysPy ):
   def update_buttons ( self, caller, event ):
     super().update_buttons(caller, event)
     x,y = self.scene.GetSize()
+    self.sel_panel.position = (10, y-110)
     self.relax_panel.position = (x-120, y-60)
-    self.sel_panel.position = (10, y-75)
+    self.constrain_checkbox.position = (10, y-65)
 
 
   def update_selection_type ( self ):
@@ -97,6 +104,11 @@ class XCP_Atoms ( XtraCrysPy ):
     for i in self.sel_inds.copy():
       self.pop_atom(colors, i, nvert)
     update_actor(self.atoms)
+
+
+  def update_constrain ( self, checkboxes ):
+    self.constrain_atoms = not self.constrain_atoms
+    self.update_atomic_model()
 
 
   def toggle_sel_menu ( self, iren, caller, event ):
@@ -305,7 +317,7 @@ class XCP_Atoms ( XtraCrysPy ):
     if self.model.units != self.units:
       self.units = self.model.units
 
-    ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc, self.bond_type, self.relax_index)
+    ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc, self.bond_type, self.relax_index, self.constrain_atoms)
  
     self.aposs = ainfo[0]
     self.natoms = ainfo[0].shape[0]

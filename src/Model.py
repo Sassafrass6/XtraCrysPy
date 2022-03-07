@@ -116,7 +116,7 @@ class Model:
     '''
     '''
 
-    oatoms = self.atoms if not self.relax else self.atoms[relax_index]
+    oatoms = self.atoms.copy() if not self.relax else self.atoms[relax_index].copy()
 
     lattice = self.lattice
     if self.relax:
