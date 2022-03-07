@@ -8,6 +8,7 @@ class XCP_BZ ( XtraCrysPy ):
     super().__init__(size, axes, perspective)
 
     self.model = model
+    self.point_actors = []
     self.frame_width = frame_width
     if model is not None:
       if isinstance(model, dict):
@@ -31,6 +32,30 @@ class XCP_BZ ( XtraCrysPy ):
         raise ValueError('Argument \'model\' must be a Model object or a dictionary.')
 
       self.bravais_boundaries()
+
+
+  def display_points ( self, points, colors=(1,1,1), radii=0.04 ):
+    from fury import actor
+
+    points = np.array(points)
+
+    colors = np.array(colors)
+    if len(colors.shape) == 1:
+      colors = np.array([colors]*points.shape[0])
+    if colors.shape != (points.shape[0], 3):
+      raise ValueError('Argument colors should be either single valued or the same shape as points.')
+
+    if isinstance(radii, (float,int)):
+      radii = np.array([radii]*points.shape[0])
+    else:
+      radii = np.array(radii)
+      if len(radii.shape) != 1 or radii.shape[0] != points.shape[0]:
+        raise ValueError('Argument radii should be either single valued or have one radius for each point.')
+
+    p_actors = actor.sphere(points, colors, radii)
+
+    self.scene.add(p_actors)
+    self.point_actors.append(p_actors)
 
 
   def bravais_boundaries ( self ):
