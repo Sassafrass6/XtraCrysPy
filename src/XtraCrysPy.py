@@ -12,18 +12,16 @@ class XtraCrysPy:
     self.wsize = size
     self.frame = None
     self.picker = None
-    self.sel_inds = []
-    self.sel_cols = []
-    self.sel_bnds = []
-    self.units = 'bohr'
-    self.runits = 'degree'
-    self.sel_type = 'chain'
-    self.scolor = np.array((0,210,210))
 
     self.scene = window.Scene()
     #self.scene.projection('parallel')
     self.smanager = window.ShowManager(self.scene, size=size, order_transparent=True)
     self.smanager.initialize()
+
+    checkbox = ['Boundary']
+    self.frame_checkbox = ui.Checkbox(checkbox, checkbox, font_size=18, font_family='Arial', position=(5,self.wsize[1]-25))
+    self.scene.add(self.frame_checkbox)
+    self.frame_checkbox.on_change = self.toggle_frame
 
     self.axes = axes
     if axes:
@@ -57,6 +55,17 @@ class XtraCrysPy:
   def left_click ( self, obj, event ):
     pass
 
+
+  def toggle_frame ( self, checkboxes ):
+    if self.frame is not None:
+      if 'Boundary' in checkboxes.checked_labels:
+        self.scene.add(self.frame)
+      else:
+        self.scene.rm(self.frame)
+
+  def update_buttons ( self, caller, event ):
+    x,y = self.scene.GetSize()
+    self.frame_checkbox.position = (5, y-25)
 
   def update_axes ( self, caller, event ):
 
@@ -96,6 +105,7 @@ class XtraCrysPy:
     from fury import pick
 
     self.picker = pick.PickingManager()
+    self.smanager.iren.AddObserver('WindowResizeEvent', self.update_buttons)
     if self.axes:
       self.smanager.iren.AddObserver('InteractionEvent', self.update_axes)
     self.smanager.start()

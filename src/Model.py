@@ -9,13 +9,17 @@ class Model:
     '''
     from .defaults import atom_defaults
 
+    self.relax = relax
     if fname is not None:
       if relax:
-        # Read DFT output file
-        pass
+        from .dft_file_io import read_relaxed_coordinates
+        params.update(read_relaxed_coordinates(fname))
       else:
         from .dft_file_io import struct_from_inputfile
         params.update(struct_from_inputfile(fname))
+
+    elif relax:
+      raise ValueError('Relax mode only supported for QE output files.')
 
     try:
       self.units = 'bohr'
@@ -27,12 +31,18 @@ class Model:
       print('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
       raise e
 
-    self.volume = self.lattice[0].dot(np.cross(self.lattice[1], self.lattice[2]))
+    if not relax:
+      self.volume = self.lattice[0].dot(np.cross(self.lattice[1], self.lattice[2]))
 
-    self.rlattice = np.empty_like(self.lattice)
-    for i in range(3):
-      self.rlattice[i,:] = np.cross(self.lattice[i-2], self.lattice[i-1])
-    self.rlattice *= 2 * np.pi / self.volume
+      self.rlattice = np.empty_like(self.lattice)
+      for i in range(3):
+        self.rlattice[i,:] = np.cross(self.lattice[i-2], self.lattice[i-1])
+      self.rlattice *= 2 * np.pi / self.volume
+
+      mins = np.min(self.atoms, axis=0)
+      maxs = np.max(self.atoms, axis=0)
+      if not np.all([mi>=-1 and ma<=1 for mi,ma in zip(mins,maxs)]):
+        print('WARNING: \'abc\' requires crystal coordinates. Specify \'xyz\' for custom units..')
 
     if 'units' in params:
       self.units = params['units']
@@ -61,11 +71,6 @@ class Model:
         for k in self.bonds.keys():
           self.bonds[k] *= conv
 
-    mins = np.min(self.atoms, axis=0)
-    maxs = np.max(self.atoms, axis=0)
-    if not np.all([mi>=-1 and ma<=1 for mi,ma in zip(mins,maxs)]):
-      print('WARNING: \'abc\' requires crystal coordinates. Specify \'xyz\' for custom units..')
-
     for s in self.species:
       if not s in self.colors:
         if s in atom_defaults:
@@ -79,17 +84,54 @@ class Model:
           self.radii[s] = 1
 
 
-  def lattice_atoms_bonds ( self, nc1, nc2, nc3, bond_type='stick' ):
+  def constrain_atoms_to_unit_cell ( self, lattice, atoms ):
+    '''
+    Force atoms to lie inside of the unit cell.
+
+    Arguments:
+      lattice (ndarray): 3x3 array of lattice vectors
+      atoms (list): List of 3 component vectors representing the atomic basis
+
+    Returns:
+      (list): Updated list of atomic positions
+    '''
+    def inside_cell ( apos ):
+      for v in apos:
+        if v >= 1 or v < 0:
+          return False
+      return True
+
+    for i,a in enumerate(atoms):
+      while not inside_cell(atoms[i]):
+        for j,n in enumerate(atoms[i]):
+          if n < 0:
+            atoms[i][j] += 1
+          elif n >= 1:
+            atoms[i][j] -= 1
+
+    return atoms
+
+
+  def lattice_atoms_bonds ( self, nc1, nc2, nc3, bond_type='stick', relax_index=0, constrain_atoms=True ):
     '''
     '''
 
+    oatoms = self.atoms if not self.relax else self.atoms[relax_index]
+
+    lattice = self.lattice
+    if self.relax:
+      lattice = lattice[(0 if lattice.shape[0]==1 else relax_index)]
+    lattice = lattice.copy()
+
+    if constrain_atoms:
+      oatoms = self.constrain_atoms_to_unit_cell(lattice, oatoms)
+
     nsc = (nc1,nc2,nc3)
-    nat = self.atoms.shape[0]
+    nat = oatoms.shape[0]
 
     if self.bond_type is None:
       self.bond_type = bond_type
 
-    lattice = self.lattice.copy()
     for i,n in enumerate(nsc):
       lattice[:,i] *= n
 
@@ -100,7 +142,7 @@ class Model:
       for n2 in range(nc2):
         for n3 in range(nc3):
           origin = np.array([n1,n2,n3])
-          for i,a in enumerate(self.atoms):
+          for i,a in enumerate(oatoms):
             spec = self.species[i]
             atoms.append(origin + a)
             radii.append(self.radii[spec])

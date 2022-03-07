@@ -4,7 +4,68 @@ import numpy as np
 
 class XCP_Atoms ( XtraCrysPy ):
 
-  sel_forward = True
+  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False, model=None, params={}, relax=False, nsc=(1,1,1), bond_type='stick', sel_type='chain' ):
+    from .Model import Model
+    super().__init__(size, axes, perspective)
+
+    self.nsc = nsc
+    self.units = 'bohr'
+    self.runits = 'degree'
+    self.sel_forward = True
+    self.sel_type = sel_type
+    self.bond_type = bond_type
+
+    self.sel_inds = []
+    self.sel_cols = []
+    self.sel_bnds = []
+    self.scolor = np.array((0,210,210))
+
+    if model is not None:
+      if isinstance(model, Model):
+        pass
+      elif isinstance(model, str):
+        from os.path import isfile
+        if not isfile(model):
+          raise FileNotFoundError('File {} not found'.format(model))
+        model = Model(params, fname=model, relax=relax)
+      else:
+        raise TypeError('Argument \'model\' must be a file name or a Model object.')
+    elif params:
+      model = Model(params, fname=None, relax=relax)
+    else:
+      raise Exception('Must specify model or params arguments')
+
+    self.model = model
+    self.relax = relax
+    self.relax_index = 0
+    self.nrelax = self.model.atoms.shape[0]
+    if relax:
+      from fury import ui
+      from fury.data import read_viz_icons
+
+      left_icon = [('left',read_viz_icons(fname='circle-left.png'))]
+      left_button = ui.Button2D(icon_fnames=left_icon, size=(50,50))
+      left_button.on_left_mouse_button_clicked = self.relax_backward
+
+      right_icon = [('right',read_viz_icons(fname='circle-right.png'))]
+      right_button = ui.Button2D(icon_fnames=right_icon, size=(50,50))
+      right_button.on_left_mouse_button_clicked = self.relax_forward
+
+      self.relax_panel = ui.Panel2D((110,50), (size[0]-120,size[1]-60), (0,0,0))
+      self.relax_panel.add_element(left_button, (0,0))
+      self.relax_panel.add_element(right_button, (60,0))
+      self.scene.add(self.relax_panel)
+      # Setup buttons
+      pass
+
+    self.render_atomic_model()
+
+
+  def update_buttons ( self, caller, event ):
+    super().update_buttons(caller, event)
+    x,y = self.scene.GetSize()
+    self.relax_panel.position = (x-120, y-60)
+
 
   def angle ( self, ai0, ai1, ai2 ):
     from numpy.linalg import norm
@@ -136,7 +197,19 @@ class XCP_Atoms ( XtraCrysPy ):
           self.push_sbond()
 
 
-  def left_click ( self, obj, event ):
+  def relax_forward ( self, iren, obj, event ):
+    if self.relax_index < self.nrelax-1:
+      self.relax_index += 1
+      self.update_atomic_model()
+
+
+  def relax_backward ( self, iren, obj, event ):
+    if self.relax_index > 0:
+      self.relax_index -= 1
+      self.update_atomic_model()
+
+
+  def pick_atom ( self, obj, event ):
 
     pos = self.picker.event_position(self.smanager.iren)
     pinfo = self.picker.pick(pos, self.smanager.scene)
@@ -152,25 +225,51 @@ class XCP_Atoms ( XtraCrysPy ):
     update_actor(obj)
 
 
-  def render_atomic_model ( self, model, nsc=(1,1,1), bond_type='stick' ):
+  def update_atomic_model ( self ):
+    from fury.utils import update_actor
+
+    self.scene.rm(self.frame)
+    self.scene.rm(self.atoms)
+    for b in self.bonds:
+      self.scene.rm(b)
+    for b in self.sel_bnds:
+      self.scene.rm(b)
+
+    self.render_atomic_model()
+
+    self.sel_forward = True
+    sel_inds = self.sel_inds.copy()
+    colors = colors_from_actor(self.atoms, 'colors')
+    nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
+
+    self.sel_inds = []
+    self.sel_cols = []
+    self.sel_bnds = []
+    for ind in sel_inds:
+      self.selection_logic(colors, ind, nvert)
+
+    self.smanager.render()
+
+
+  def render_atomic_model ( self ):
     '''
     '''
     from fury import actor
     import numpy as np
 
-    self.bond_type = bond_type
 
-    if model.units != self.units:
+    if self.model.units != self.units:
       self.units = model.units
 
-    ainfo,binfo,linfo = model.lattice_atoms_bonds(*nsc, bond_type)
+    ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc, self.bond_type, self.relax_index)
  
-    self.model = model
     self.aposs = ainfo[0]
     self.natoms = ainfo[0].shape[0]
+    self.atoms = []
     if self.natoms > 0:
       self.atoms = actor.sphere(centers=ainfo[0], colors=ainfo[1], radii=ainfo[2])
       self.scene.add(self.atoms)
+      self.atoms.AddObserver('LeftButtonPressEvent', self.pick_atom, 1)
 
     self.bonds = []
     for i in range(binfo[0].shape[0]):

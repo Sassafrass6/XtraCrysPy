@@ -1,7 +1,7 @@
 from numpy import ndarray
 
 
-def read_relaxed_coordinates ( fname:str, vcrelax=False, read_all=False ):
+def read_relaxed_coordinates ( fname:str ):
   '''
     Reads relaxed atomic positions from a QE .out file. If vcrelax is set True, the crystal coordinates are also read.
 
@@ -20,53 +20,82 @@ def read_relaxed_coordinates ( fname:str, vcrelax=False, read_all=False ):
   if not isfile(fname):
     raise FileNotFoundError('File {} does not exist.'.format(join(getcwd(),fname)))
 
-  apos = []
-  coord = [] if vcrelax else None 
+  abc = []
+  ibrav = 0
+  species = []
+  cell_params = []
+  celldm = np.empty(6, dtype=float)
   with open(fname, 'r') as f:
     lines = f.readlines()
 
     eL = 0
     nL = len(lines)
 
-    if not read_all:
-      while eL < nL and 'Begin final coordinates' not in lines[eL]:
-        eL += 1
-      if eL == nL:
-        raise EOFError('Reached end of file before finding final coordinates.')
-
     try:
+      def read_apos ( sind ):
+        apos = []
+        while lines[sind] != '\n' and not 'End final coordinates' in lines[sind]:
+          apos.append([float(v) for v in lines[sind].split()[1:4]])
+          sind += 1
+        return sind, apos
+
+      while 'bravais-lattice' not in lines[eL]:
+        eL += 1
+      ibrav = int(lines[eL].split()[3])
+
+
+      while  'celldm' not in lines[eL]:
+        eL += 1
+      celldm[:3] = [float(v) for i,v in enumerate(lines[eL].split()) if i%2==1]
+      celldm[3:] = [float(v) for i,v in enumerate(lines[eL+1].split()) if i%2==1]
+
+      if ibrav != 0:
+        from .lattice_format import lattice_format_QE
+        cell_params.append(lattice_format_QE(ibrav, celldm))
+      else:
+        while 'crystal axes' not in lines[eL]:
+          eL += 1
+        coord = []
+        for l in lines[eL+1:eL+4]:
+          coord.append([celldm[0]*float(v) for v in l.split()[3:6]])
+        cell_params.append(coord)
+
+      while 'site n.' not in lines[eL]:
+        eL += 1
+      eL += 1
+      apos = []
+      while 'End' not in lines[eL] and lines[eL] != '\n':
+        line = lines[eL].split()
+        species.append(line[1])
+        apos.append([float(v) for v in line[6:9]])
+        eL += 1
+      abc.append(apos)
+
       while eL < nL:
-        if vcrelax:
-          while 'CELL_PARAMETERS' not in lines[eL]:
-            eL += 1
+        while eL < nL and 'CELL_PARAMETERS' not in lines[eL] and 'ATOMIC_POSITIONS' not in lines[eL]:
+          eL += 1
+        if eL >= nL:
+          break
+        if 'ATOMIC_POSITIONS' in lines[eL]:
+          eL,apos = read_apos(eL+1)
+          abc.append(apos)
+        elif 'CELL_PARAMETERS' in lines[eL]:
           coord = []
           for l in lines[eL+1:eL+4]:
             coord.append(np.array([float(v) for v in l.split()]))
+          cell_params.append(coord)
           eL += 4
 
-        while 'ATOMIC_POSITIONS' not in lines[eL]:
-          eL += 1
-        eL += 1
+          while 'ATOMIC_POSITIONS' not in lines[eL]:
+            eL += 1
+          eL,apos = read_apos(eL+1)
+          abc.append(apos)
 
-        apos = []
-        while lines[eL] != '\n' and not 'End final coordinates' in lines[eL]:
-          apos.append(np.array([float(v) for v in lines[eL].split()[1:4]]))
-          eL += 1
-
-        if 'End final coordinates' in lines[eL]:
-          break
     except Exception as e:
-      if not vcrelax:
-        print('WARNING: Reached EoF without finding Final Coordinates.', flush=True)
-      if len(apos) == 0:
-        print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
-        return {}
+      print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
+      raise e
 
-  cdict = {'apos':np.array(apos)}
-  if vcrelax:
-    cdict['coord'] = np.array(coord)
-
-  return cdict
+  return {'species':species, 'lattice':np.array(cell_params), 'abc':np.array(abc)}
 
 
 def struct_from_inputfile ( fname:str ) -> dict:
