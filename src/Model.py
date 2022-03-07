@@ -27,6 +27,13 @@ class Model:
       print('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
       raise e
 
+    self.volume = self.lattice[0].dot(np.cross(self.lattice[1], self.lattice[2]))
+
+    self.rlattice = np.empty_like(self.lattice)
+    for i in range(3):
+      self.rlattice[i,:] = np.cross(self.lattice[i-2], self.lattice[i-1])
+    self.rlattice *= 2 * np.pi / self.volume
+
     if 'units' in params:
       self.units = params['units']
 

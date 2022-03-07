@@ -101,10 +101,13 @@ def struct_from_inputfile ( fname:str ) -> dict:
     fstr = f.read()
     matches = pattern.findall(fstr.replace(' ', '').replace('\n', '@ '))
     for m in matches:
-      m = [nocomma(s.replace(' ', '')) for s in re.split(', |@', m)]
-      block = m.pop(0)
+      m = [s.replace(' ', '') for s in re.split(', |@', m)]
+      mf = []
+      for v in m:
+        mf += v.split(',')
+      block = mf.pop(0)
       if 'control' in block:
-        for s in m:
+        for s in mf:
           if 'calculation' in s:
             struct['calc'] = inquote(s)
           elif 'outdir' in s:
@@ -118,7 +121,7 @@ def struct_from_inputfile ( fname:str ) -> dict:
           elif 'tprnfor' in s:
             struct['tprnfor'] = qebool(s)
       elif 'system' in block:
-        for s in m:
+        for s in mf:
           if 'ibrav' in s:
             struct['ibrav'] = qeint(s)
           if 'nat' in s:
@@ -138,7 +141,7 @@ def struct_from_inputfile ( fname:str ) -> dict:
             dm = int(cpattern.findall(s)[0]) - 1
             celldm[dm] = qefloat(s)
       elif 'electrons' in block:
-        for s in m:
+        for s in mf:
           if 'conv_thr' in s:
             struct['conv_thr'] = qefloat(s)
       elif 'ions' in block:

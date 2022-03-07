@@ -178,9 +178,5 @@ class XCP_Atoms ( XtraCrysPy ):
       self.scene.add(tbond)
       self.bonds.append(tbond)
 
-    #Draw Frame
-    #self.lines = []
-    #for l in linfo:
-    #  print(l)
-    line_actor = actor.streamtube(linfo, colors=(1,1,1), linewidth=0.1)
-    self.scene.add(line_actor)
+    self.frame = actor.streamtube(linfo, colors=(1,1,1), linewidth=0.1)
+    self.scene.add(self.frame)

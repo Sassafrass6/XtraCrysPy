@@ -96,7 +96,6 @@ class XtraCrysPy:
     from fury import pick
 
     self.picker = pick.PickingManager()
-    self.atoms.AddObserver('LeftButtonPressEvent', self.left_click, 1)
     if self.axes:
       self.smanager.iren.AddObserver('InteractionEvent', self.update_axes)
     self.smanager.start()

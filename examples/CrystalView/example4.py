@@ -1,4 +1,11 @@
-from XtraCrysPy import XtraCrysPy as XCP
+from XtraCrysPy import XCP_BZ,Model
 
-cpy = XCP.XtraCrysPy(inputfile='SnTe_data/SnTe.scf.in')
-cpy.plot_spin_texture ( 'SnTe_data/Fermi_surf_band_4_0.npz', 'SnTe_data/spin_text_band_4.npz', colors=None, e_up=2, e_dw=-2, title='', w_width=1000, w_height=750, f_color=(1,1,1), bg_color=(0,0,0))
+if '__main__' == __name__:
+
+  # 2D SnTe with colors red & blue for Sn & Te respectively.
+  # Bonds are drawn between Sn & Te atoms if they are closer together than 6 angstrom
+  #a_info = {'colors':{'Sn':(1,0,0),'Te':(0,0,1)}, 'radii':{'Sn':1,'Te':1.1}}
+  model = Model.Model(fname='Fe.scf.in')
+  xcp = XCP_BZ.XCP_BZ(model=model)
+  xcp.start_crystal_view()
+
