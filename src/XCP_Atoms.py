@@ -183,11 +183,14 @@ class XCP_Atoms ( XtraCrysPy ):
   def push_atom ( self, mem, index, nvert ):
     if index == -1:
       return False
+
+    color = mem[index*nvert].copy()
     if self.sel_forward:
       self.sel_inds.append(index)
+      self.sel_cols.append(color)
     else:
       self.sel_inds.insert(0, index)
-    self.sel_cols.append(mem[index*nvert].copy())
+      self.sel_cols.insert(0, color)
     self.set_atom_color(mem, index, nvert, self.scolor)
     return True
 

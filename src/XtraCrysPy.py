@@ -25,23 +25,27 @@ class XtraCrysPy:
 
     self.axes = axes
     if axes:
-      self.axis_eles = [None]*3
-      self.axis_lines = [None]*3
-      self.axis_width = ax_wid = 200
-      self.ax_panel = ui.Panel2D(size=(ax_wid,ax_wid), color=(0,0,0))
-      self.ax_panel.center = (ax_wid/2, ax_wid/2)
-      self.scene.add(self.ax_panel)
+      try:
+        self.axis_eles = [None]*3
+        self.axis_lines = [None]*3
+        self.axis_width = ax_wid = 200
+        self.ax_panel = ui.Panel2D(size=(ax_wid,ax_wid), color=(0,0,0))
+        self.ax_panel.center = (ax_wid/2, ax_wid/2)
+        self.scene.add(self.ax_panel)
 
-      axis_vecs = np.array([[1,0,0],[0,1,0],[0,0,1]])
-      centers = self.axis_endpoint_positions(axis_vecs)
-      for i in range(3):
-        self.axis_eles[i] = ui.Disk2D(outer_radius=8, center=centers[i], color=axis_vecs[i])
-        self.axis_lines[i] = ui.Line2D((ax_wid/2,ax_wid/2), centers[i], color=axis_vecs[i])
-        self.axis_lines[i].width = 5
+        axis_vecs = np.array([[1,0,0],[0,1,0],[0,0,1]])
+        centers = self.axis_endpoint_positions(axis_vecs)
+        for i in range(3):
+          self.axis_eles[i] = ui.Disk2D(outer_radius=8, center=centers[i], color=axis_vecs[i])
+          self.axis_lines[i] = ui.Line2D((ax_wid/2,ax_wid/2), centers[i], color=axis_vecs[i])
+          self.axis_lines[i].width = 5
 
-        self.scene.add(self.axis_eles[i])
-        self.scene.add(self.axis_lines[i])
-
+          self.scene.add(self.axis_eles[i])
+          self.scene.add(self.axis_lines[i])
+      except:
+        print('Could not import Line2D from fury. Instal Line2D branch from Sassafrass6 GitHub')
+        print('Will not display coordinate axes')
+        self.axes = False
 
   def axis_endpoint_positions ( self, vecs ):
     import numpy as np
