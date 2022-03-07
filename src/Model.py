@@ -161,8 +161,16 @@ class Model:
     bheight = []
     natsc = atoms.shape[0]
     skey = lambda v1,v2 : v1 + '_' + v2
-    if bond_type != 'sphere':
-      if bond_type == 'primary':
+    if bond_type == 'Sphere':
+      dist_min = 1e5
+      for i1 in range(natsc-1):
+        for i2 in range(i1+1, natsc):
+          dist = np.linalg.norm(atoms[i2]-atoms[i1])
+          if dist < dist_min:
+            dist_min = dist
+      radii *= 1.3 * dist_min
+    else:
+      if bond_type == 'Primary':
         prad = np.min([r for k,r in self.radii.items()])
       for i1 in range(natsc-1):
         for i2 in range(i1+1, natsc):
@@ -186,12 +194,12 @@ class Model:
               bdir = conn/dist
               bdirs.append([bdir]*2)
               bcols.append([self.colors[t1], self.colors[t2]])
-              if bond_type == 'stick':
+              if bond_type == 'Stick':
                 brad = .5 / dist
-              elif bond_type == 'primary':
+              elif bond_type == 'Primary':
                 brad = 1.5 * prad / dist
               else:
-                raise ValueError('Bond types are \'stick\' and \'primary\'')
+                raise ValueError('Bond types are Stick, Primary, and Sphere')
               brads.append(brad)
               bheight.append(dist/2)
     bonds = np.array(bonds)

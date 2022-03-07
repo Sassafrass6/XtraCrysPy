@@ -4,7 +4,7 @@ import numpy as np
 
 class XCP_Atoms ( XtraCrysPy ):
 
-  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False, model=None, params={}, relax=False, nsc=(1,1,1), bond_type='stick', sel_type='Chain' ):
+  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False, model=None, params={}, relax=False, nsc=(1,1,1), bond_type='Stick', sel_type='Chain' ):
     from fury.data import read_viz_icons
     from .Model import Model
     from fury import ui
@@ -159,12 +159,16 @@ class XCP_Atoms ( XtraCrysPy ):
     dist = np.linalg.norm(conn)
     cent = (self.aposs[ai1] + self.aposs[ai2]) / 2
 
-    if self.bond_type == 'stick':
-      brad = 0.01 + 1 / (4 * dist)
-    elif self.bond_type == 'primary':
-      prad = np.min([r for k,r in self.model.radii.items()])
-      brad = 0.01 + 1.5 * prad / (2 * dist)
-    tbond = actor.cylinder([cent], [conn], [self.scolor/255], radius=brad, heights=dist, resolution=20)
+    if self.bond_type != 'Sphere':
+      if self.bond_type == 'Stick':
+        brad = 0.01 + 1 / (4 * dist)
+      elif self.bond_type == 'Primary':
+        prad = np.min([r for k,r in self.model.radii.items()])
+        brad = 0.01 + 1.5 * prad / (2 * dist)
+      tbond = actor.cylinder([cent], [conn], [self.scolor/255], radius=brad, heights=dist, resolution=20)
+    else:
+      ends = [[self.aposs[ai2], self.aposs[ai1]]]
+      tbond = actor.streamtube(ends, colors=self.scolor, linewidth=0.1)
 
     self.scene.add(tbond)
     if self.sel_forward:
