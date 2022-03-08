@@ -1,11 +1,9 @@
-from XtraCrysPy import XCP_BZ,Model
+from XtraCrysPy import XCP_Atoms as XCP
 
 if '__main__' == __name__:
 
-  # 2D SnTe with colors red & blue for Sn & Te respectively.
-  # Bonds are drawn between Sn & Te atoms if they are closer together than 6 angstrom
-  #a_info = {'colors':{'Sn':(1,0,0),'Te':(0,0,1)}, 'radii':{'Sn':1,'Te':1.1}}
-  model = Model.Model(fname='Fe.scf.in')
-  xcp = XCP_BZ.XCP_BZ(model=model)
+  # Relaxation
+  a_info = {'colors':{'Ca':(0,1,0),'Al':(0,0,1),'P':(1,0,0)}, 'bonds':{'Al_P':5, 'Ca_Al':5, 'Ca_P':5}}
+  xcp = XCP.XCP_Atoms(params=a_info, model='data_files/CaAlP.relax.out', relax=True, sel_type='Chain')
   xcp.start_crystal_view()
 

@@ -1,8 +1,9 @@
-from XtraCrysPy import XtraCrysPy as XCP
+from XtraCrysPy import XCP_BZ,Model
 
 if '__main__' == __name__:
 
-  # Draw the unit cell for Iron with modified background and boundary colors.
-  #    Tuples formatted as (R,G,B)
-  crystal = XCP.XtraCrysPy(inputfile='Fe.scf.in')
-  crystal.start_cryspy_view(title='Fe', bg_color=(1,1,1), f_color=(0,0,0))
+  # BZ for FCC Iron, from a QE inputfile
+  model = Model.Model(fname='data_files/Fe.scf.in')
+  xcp = XCP_BZ.XCP_BZ(model=model)
+  xcp.start_crystal_view()
+
