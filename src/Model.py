@@ -18,6 +18,12 @@ class Model:
         from .file_io import struct_from_inputfile
         params.update(struct_from_inputfile(fname))
 
+      if params['lunit'] == 'angstrom':
+        params['lattice'] *= 1.88973
+
+      if params['aunit'] == 'angstrom':
+        params['abc'] *= 1.88973
+
     elif relax:
       raise ValueError('Relax mode only supported for QE output files.')
 
@@ -88,6 +94,8 @@ class Model:
         else:
           self.radii[s] = 1
 
+    self.primary_radius = np.min([r for k,r in self.radii.items()])
+
 
   def constrain_atoms_to_unit_cell ( self, lattice, atoms ):
     '''
@@ -122,7 +130,7 @@ class Model:
     if bond_type == 'Stick':
       brad = .5 / dist
     elif bond_type == 'Primary':
-      brad = 1.5 * prad / dist
+      brad = 1.5 * self.primary_radius / dist
     elif bond_type != 'Sphere':
       raise ValueError('Bond types are Stick, Primary, and Sphere')
     s1 = self.species[aind1%self.natoms]
@@ -188,8 +196,6 @@ class Model:
             dist_min = dist
       radii *= 1.3 * dist_min
     else:
-      if bond_type == 'Primary':
-        prad = np.min([r for k,r in self.radii.items()])
       for i1 in range(natsc-1):
         for i2 in range(i1+1, natsc):
           a1 = atoms[i1]
@@ -212,12 +218,6 @@ class Model:
               bdir = conn/dist
               bdirs.append([bdir]*2)
               bcols.append([self.colors[t1], self.colors[t2]])
-              if bond_type == 'Stick':
-                brad = .5 / dist
-              elif bond_type == 'Primary':
-                brad = 1.5 * prad / dist
-              else:
-                raise ValueError('Bond types are Stick, Primary, and Sphere')
               brads.append(self.bond_radius(dist,i1,i2,self.bond_type))
               bheight.append(dist/2)
     bonds = np.array(bonds)
