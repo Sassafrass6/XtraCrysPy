@@ -25,6 +25,7 @@ def read_relaxed_coordinates_QE ( fname:str ):
   species = []
   cell_params = []
   celldm = np.empty(6, dtype=float)
+  struct = {'lunit':'bohr', 'aunit':'alat'}
   with open(fname, 'r') as f:
     lines = f.readlines()
 
@@ -77,10 +78,16 @@ def read_relaxed_coordinates_QE ( fname:str ):
         if eL >= nL:
           break
         if 'ATOMIC_POSITIONS' in lines[eL]:
+          unit = lines[eL].split()[1].strip('(){{}}')
+          if len(unit) > 1:
+            struct['aunit'] = unit
           eL,apos = read_apos(eL+1)
           abc.append(apos)
         elif 'CELL_PARAMETERS' in lines[eL]:
           coord = []
+          unit = lines[eL].split()[1].strip('(){{}}')
+          if len(unit) > 1:
+            struct['lunit'] = unit
           for l in lines[eL+1:eL+4]:
             coord.append(np.array([float(v) for v in l.split()]))
           cell_params.append(coord)
@@ -95,7 +102,11 @@ def read_relaxed_coordinates_QE ( fname:str ):
       print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
       raise e
 
-  return {'species':species, 'lattice':np.array(cell_params), 'abc':np.array(abc)}
+  struct['species'] = species
+  struct['lattice'] = np.array(cell_params)
+  struct['abc'] = np.array(abc)
+
+  return struct
 
 
 def struct_from_inputfile_QE ( fname:str ) -> dict:
