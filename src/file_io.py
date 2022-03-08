@@ -252,7 +252,7 @@ def struct_from_inputfile_CIF ( fname:str ):
   lines = []
   struct = {}
   with open(fname, 'r') as f:
-    lines = ' '.join([s.replace('\n', ' ') for s in f.readlines()]).split()
+    lines = ' '.join([s.replace('\n', ' ') for s in f.readlines() if not s[0]=='#']).split()
 
   i = 0
   flines = []
@@ -280,12 +280,14 @@ def struct_from_inputfile_CIF ( fname:str ):
   nL = len(lines)
   data_blocks = {}
   while eL < nL:
-    while eL < nL and 'data' not in lines[eL]:
+    while eL < nL and 'data_' not in lines[eL]:
       eL += 1
     if eL == nL:
       break
 
+    print(lines[eL])
     prefix = '_'.join(lines[eL].split('_')[1:])
+    print(prefix)
     
     eL += 1
     data = {}

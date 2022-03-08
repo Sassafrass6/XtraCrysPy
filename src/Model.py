@@ -31,6 +31,10 @@ class Model:
       print('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
       raise e
 
+    self.natoms = len(self.species)
+    if self.natoms != self.atoms.shape[0]:
+      raise ValueError('Number of atoms and species do not match')
+
     if not relax:
       self.volume = self.lattice[0].dot(np.cross(self.lattice[1], self.lattice[2]))
 
@@ -110,6 +114,19 @@ class Model:
             atoms[i][j] -= 1
 
     return atoms
+
+
+  def bond_radius ( self, dist, aind1, aind2, bond_type ):
+    brad = .1
+    if bond_type == 'Stick':
+      brad = .5 / dist
+    elif bond_type == 'Primary':
+      brad = 1.5 * prad / dist
+    elif bond_type != 'Sphere':
+      raise ValueError('Bond types are Stick, Primary, and Sphere')
+    s1 = self.species[aind1%self.natoms]
+    s2 = self.species[aind2%self.natoms]
+    return np.min([brad, 0.9*np.min([self.radii[s1], self.radii[s2]])])
 
 
   def lattice_atoms_bonds ( self, nc1, nc2, nc3, bond_type='stick', relax_index=0, constrain_atoms=True ):
@@ -200,7 +217,7 @@ class Model:
                 brad = 1.5 * prad / dist
               else:
                 raise ValueError('Bond types are Stick, Primary, and Sphere')
-              brads.append(brad)
+              brads.append(self.bond_radius(dist,i1,i2,self.bond_type))
               bheight.append(dist/2)
     bonds = np.array(bonds)
     bdirs = np.array(bdirs)
