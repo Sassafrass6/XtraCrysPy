@@ -7,6 +7,7 @@ class XtraCrysPy:
     '''
     Arguments:
     '''
+    from .Line2D import Line2D
     from fury import ui,window
 
     self.wsize = size
@@ -37,12 +38,13 @@ class XtraCrysPy:
         centers = self.axis_endpoint_positions(axis_vecs)
         for i in range(3):
           self.axis_eles[i] = ui.Disk2D(outer_radius=8, center=centers[i], color=axis_vecs[i])
-          self.axis_lines[i] = ui.Line2D((ax_wid/2,ax_wid/2), centers[i], color=axis_vecs[i])
+          self.axis_lines[i] = Line2D((ax_wid/2,ax_wid/2), centers[i], color=axis_vecs[i])
           self.axis_lines[i].width = 5
 
           self.scene.add(self.axis_eles[i])
           self.scene.add(self.axis_lines[i])
-      except:
+      except Exception as e:
+        print(e)
         print('Could not import Line2D from fury. Instal Line2D branch from Sassafrass6 GitHub')
         print('Will not display coordinate axes')
         self.axes = False
@@ -108,7 +110,7 @@ class XtraCrysPy:
 
   def render_iso_surface ( self, data, iso_val=0, color=(1,.3,0) ):
     from scipy.spatial import ConvexHull
-    from fury import actor
+    from .iso_surface import iso_surface
 
     dmin = np.min(data)
     data -= dmin
@@ -122,7 +124,7 @@ class XtraCrysPy:
     origin = np.array([-.5,-.5,-.5])
     hull = (pts, ConvexHull(pts).simplices)
 
-    self.surface = actor.iso_surface(data, iso_val, origin, color, hull)
+    self.surface = iso_surface(data, iso_val, origin, color, hull)
     self.scene.add(self.surface)
 
 

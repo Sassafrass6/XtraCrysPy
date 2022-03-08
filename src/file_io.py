@@ -285,13 +285,11 @@ def struct_from_inputfile_CIF ( fname:str ):
     if eL == nL:
       break
 
-    print(lines[eL])
-    prefix = '_'.join(lines[eL].split('_')[1:])
-    print(prefix)
     
     eL += 1
     data = {}
     loops = []
+    prefix = '_'.join(lines[eL-1].split('_')[1:])
     data_blocks[prefix] = {'data':data, 'loops':loops}
     while eL < nL and (lines[eL][0] == '_' or 'loop_' in lines[eL] ):
 
