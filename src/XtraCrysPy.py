@@ -105,6 +105,29 @@ class XtraCrysPy:
       self.axis_eles[i].center = centers[o]
 
 
+  def render_iso_surface ( self, data, iso_val=0, color=(1,.3,0) ):
+    from fury import actor
+
+    def inside_BZ ( pnt ):
+      pmag = np.linalg.norm(pnt)
+      for p in self.planes:
+        if pmag > np.linalg.norm(p):
+          return False
+      return True
+
+    dmin = np.min(data)
+    data -= dmin
+    iso_val -= dmin
+
+    scale = 255/np.max(data)
+    data *= scale
+    iso_val *= scale
+
+    origin = np.array([-.5,-.5,-.5])
+    self.surface = actor.iso_surface(data, iso_val, origin, color)
+    self.scene.add(self.surface)
+
+
   def start_crystal_view ( self ):
     from fury import pick
 

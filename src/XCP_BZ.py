@@ -25,6 +25,13 @@ class XCP_BZ ( XtraCrysPy ):
         else:
           raise KeyError('No reciprocal lattice (rlattice) or lattice (lattice) specified in model dictionary.')
 
+      elif isinstance(model, str):
+        from os.path import isfile
+        if not isfile(model):
+          raise FileNotFoundError('File {} not found'.format(model))
+        self.model = Model(fname=model)
+        self.rlattice = self.model.rlattice
+
       elif isinstance(model, Model):
         self.rlattice = model.rlattice
 
@@ -122,7 +129,7 @@ class XCP_BZ ( XtraCrysPy ):
               lines.append((c1,c2))
 
     # Adjust planes to represent midpoints between reciprocal lattice points
-    planes = np.array(planes)/2
+    self.planes = np.array(planes)/2
 
     self.frame = actor.streamtube(lines, colors=(1,1,1), linewidth=self.frame_width)
     self.scene.add(self.frame)
