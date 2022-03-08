@@ -129,7 +129,8 @@ class XCP_BZ ( XtraCrysPy ):
               lines.append((c1,c2))
 
     # Adjust planes to represent midpoints between reciprocal lattice points
-    self.planes = np.array(planes)/2
+    self.bound_planes = np.array(planes)/2
+    self.bound_points = np.unique(np.array(lines).reshape((2*len(lines),3)), axis=0)
 
     self.frame = actor.streamtube(lines, colors=(1,1,1), linewidth=self.frame_width)
     self.scene.add(self.frame)

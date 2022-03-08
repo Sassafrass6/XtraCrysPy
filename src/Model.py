@@ -32,7 +32,8 @@ class Model:
       raise e
 
     self.natoms = len(self.species)
-    if self.natoms != self.atoms.shape[0]:
+    shape = self.atoms.shape[(0 if not relax else 1)]
+    if self.natoms != shape:
       raise ValueError('Number of atoms and species do not match')
 
     if not relax:

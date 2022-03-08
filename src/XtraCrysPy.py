@@ -69,6 +69,7 @@ class XtraCrysPy:
 
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()
+    print(x,y)
     self.frame_checkbox.position = (10, y-35)
 
   def update_axes ( self, caller, event ):
@@ -106,14 +107,8 @@ class XtraCrysPy:
 
 
   def render_iso_surface ( self, data, iso_val=0, color=(1,.3,0) ):
+    from scipy.spatial import ConvexHull
     from fury import actor
-
-    def inside_BZ ( pnt ):
-      pmag = np.linalg.norm(pnt)
-      for p in self.planes:
-        if pmag > np.linalg.norm(p):
-          return False
-      return True
 
     dmin = np.min(data)
     data -= dmin
@@ -123,8 +118,11 @@ class XtraCrysPy:
     data *= scale
     iso_val *= scale
 
+    pts = self.bound_points
     origin = np.array([-.5,-.5,-.5])
-    self.surface = actor.iso_surface(data, iso_val, origin, color)
+    hull = (pts, ConvexHull(pts).simplices)
+
+    self.surface = actor.iso_surface(data, iso_val, origin, color, hull)
     self.scene.add(self.surface)
 
 
