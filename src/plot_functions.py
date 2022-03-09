@@ -81,7 +81,7 @@ def plot_dos_beside_bands ( es, dos, bands, sym_points, title, x_lim, y_lim, col
     ax_b.plot(b, color=col)
   if y_lim is None:
     y_lim = ax_b.get_ylim()
-  ax_b.set_xlim(0, bands.shape[0])
+  ax_b.set_xlim(0, bands.shape[1]-1)
   ax_b.set_ylim(*y_lim)
   if sym_points is None:
     ax_b.xaxis.set_visible(False)

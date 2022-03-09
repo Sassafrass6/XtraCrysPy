@@ -10,10 +10,15 @@ if __name__ == '__main__':
 
   pplt = PAO_Plot.PAO_Plot()
 
+  # Functions arguments (tiltle y_lim, etc) can be used in any of the plot functions
   pplt.plot_dos_PAO(f_dos, title='Si2 FCC DoS', vertical=False)
   pplt.plot_bands_PAO(f_band, sym_points=f_symp)
   pplt.plot_dos_beside_bands_PAO(f_dos, f_band, sym_points=f_symp, y_lim=(-11.5,5), dos_ticks=True)
 
+  # Argument t_ele default is [[0,0], [1,1], [2,2]]
+  #   which plots the 3 diagonal elements
   pplt.plot_electrical_conductivity_PAO(f_sigma, title='Ba8Cu16As30 Conductivity', x_lim=(-5,1))
+
+  # Setting t_ele to [] causes the diagonal elements to be averaged.
   pplt.plot_seebeck_PAO(f_seebeck, t_ele=[], x_lim=(-.4,.8), y_lim=(-1.1e3,1.1e3), col='black')
 
