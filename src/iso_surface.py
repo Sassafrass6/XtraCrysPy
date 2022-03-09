@@ -10,6 +10,7 @@ Triangle = cdmvtk.vtkTriangle
 FlyingEdges3D = fcvtk.vtkFlyingEdges3D
 MultiThreshold = fgvtk.vtkMultiThreshold
 SelectEnclosedPoints = fmvtk.vtkSelectEnclosedPoints
+WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
 # Create my iso_surface routine, until I'm allowed to merge the branch into fury
 def iso_surface(data, iso_val, origin, color, bound_polys=None):
@@ -68,9 +69,31 @@ def iso_surface(data, iso_val, origin, color, bound_polys=None):
         thresh.OutputSet(inside)
         thresh.Update()
 
+        #data = thresh.GetOutput().GetBlock(inside).GetBlock(0)
+
+        #trimm = Points()
+        #ipoly = PolyData()
+
+        #quit()
         iso_map = DataSetMapper()
         iso_map.SetInputData(thresh.GetOutput().GetBlock(inside).GetBlock(0))
         iso_map.ScalarVisibilityOff()
+
+        #smooth = WindowedSincPolyDataFilter()
+        #smooth.SetInputConnection(select.GetOutputPort())
+        #smooth.SetNumberOfIterations(60)
+        #smooth.FeatureEdgeSmoothingOn()
+        #smooth.SetFeatureAngle(180)
+        #smooth.BoundarySmoothingOn()
+        #smooth.SetEdgeAngle(180)
+        #smooth.Update()
+
+
+        #iso_map = PolyDataMapper()
+        #iso_map.SetInputConnection(smooth.GetOutputPort())
+        #iso_map.ScalarVisibilityOff()
+
+        #iso_map.SetInputData(smooth.GetOutput())
 
     actor = Actor()
     actor.SetMapper(iso_map)
