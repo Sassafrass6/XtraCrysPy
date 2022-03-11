@@ -36,10 +36,13 @@ def iso_surface(data, iso_val, origin, colors, bound_polys=None):
     data = np.ascontiguousarray(np.swapaxes(data, 0, 2).reshape(np.prod(dims)))
     uchar_array = numpy_support.numpy_to_vtk(data, deep=False, array_type=vtk_type)
 
-    #colors = np.ascontiguousarray(colors.astype('uint8').reshape((np.prod(dims),3)))
-    colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'), 0, 2).reshape(np.prod(dims),3))
-    vtk_colors = numpy_support.numpy_to_vtk(colors, deep=True, array_type=vtk_type)
-    vtk_colors.SetNumberOfComponents(3)
+    one_color = True
+    if len(colors.shape) != 1:
+      one_color = False
+      #colors = np.ascontiguousarray(colors.astype('uint8').reshape((np.prod(dims),3)))
+      colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'), 0, 2).reshape(np.prod(dims),3))
+      vtk_colors = numpy_support.numpy_to_vtk(colors, deep=True, array_type=vtk_type)
+      vtk_colors.SetNumberOfComponents(3)
 
     im = ImageData()
     im.SetDimensions(*dims)
@@ -47,7 +50,9 @@ def iso_surface(data, iso_val, origin, colors, bound_polys=None):
     im.SetSpacing(voxsz[0], voxsz[1], voxsz[2])
     im.AllocateScalars(vtk_type, nb_components)
     im.GetPointData().SetScalars(uchar_array)
-    im.GetCellData().SetScalars(vtk_colors)
+
+    if not one_color:
+      im.GetCellData().SetScalars(vtk_colors)
 
     iso = ContourFilter()
     iso.SetInputData(im)
@@ -68,8 +73,6 @@ def iso_surface(data, iso_val, origin, colors, bound_polys=None):
         iso_map = PolyDataMapper()
         #iso_map.SetInputData(fpoly)
         iso_map.SetInputConnection(iso.GetOutputPort())
-        iso_map.SetScalarModeToUseCellData()
-        iso_map.ScalarVisibilityOn()
 
     else:
         points = Points()
@@ -110,10 +113,16 @@ def iso_surface(data, iso_val, origin, colors, bound_polys=None):
 
         iso_map = PolyDataMapper()
         iso_map.SetInputConnection(smooth.GetOutputPort())
+
+    if not one_color:
         iso_map.SetScalarModeToUseCellData()
         iso_map.ScalarVisibilityOn()
+    else:
+        iso_map.ScalarVisibilityOff()
 
     actor = Actor()
     actor.SetMapper(iso_map)
+    if one_color:
+        actor.GetProperty().SetColor(*colors)
 
     return actor

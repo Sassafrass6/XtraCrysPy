@@ -24,6 +24,11 @@ class XtraCrysPy:
     self.scene.add(self.frame_checkbox)
     self.frame_checkbox.on_change = self.toggle_frame
 
+    self.bound_points = None
+
+    self.surface_index = 0
+    self.surface_slider = None
+
     self.axes = axes
     if axes:
       try:
@@ -49,6 +54,7 @@ class XtraCrysPy:
         print('Will not display coordinate axes')
         self.axes = False
 
+
   def axis_endpoint_positions ( self, vecs ):
     import numpy as np
     centers = np.empty((3,3), dtype=float)
@@ -69,10 +75,13 @@ class XtraCrysPy:
       else:
         self.scene.rm(self.frame)
 
+
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()
-    print(x,y)
     self.frame_checkbox.position = (10, y-35)
+    if self.surface_slider is not None:
+      self.surface_slider.center = (x/2, y-50)
+
 
   def update_axes ( self, caller, event ):
 
@@ -108,21 +117,50 @@ class XtraCrysPy:
       self.axis_eles[i].center = centers[o]
 
 
-  def render_iso_surface ( self, data, iso_val=0, colors=(1,.3,0) ):
+  def update_iso_surface ( self, slider ):
+    sind = int(np.round(slider.value)) - 1
+    if sind != self.surface_index:
+      self.scene.rm(self.surfaces[self.surface_index])
+      self.scene.add(self.surfaces[sind])
+      self.surface_index = sind
+
+
+  def render_iso_surface ( self, data, iso_vals=0, colors=(1,.3,0) ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
+    from fury import ui
+
+    if isinstance(iso_vals, (float,int)):
+      iso_vals = np.array([iso_vals])
+
+    colors = np.array(colors)
+    if len(colors.shape) == 1:
+      colors = [colors] * len(iso_vals)
+    elif len(colors.shape) == 2:
+      if colors.shape[0] != len(iso_vals) or colors.shape[1] != 3:
+        print('Must provide one 3-color for each iso_val')
+        return
+    elif len(colors.shape) == 4:
+      colors = [colors] * len(iso_vals)
+    elif len(colors.shape) == 5:
+      print('Colors 5 shape not implemented')
+      return
+    else:
+      print('Invalid dimensions for colors array')
+      return
 
     dmin = np.min(data)
     data -= dmin
-    iso_val -= dmin
+    iso_vals -= dmin
 
     scale = 255/np.max(data)
     data *= scale
-    iso_val *= scale
+    iso_vals *= scale
 
-    pts = self.bound_points
-    origin = np.array([-.5,-.5,-.5])
-    hull = (pts, ConvexHull(pts).simplices)
+    hull = None
+    if self.bound_points is not None:
+      pts = self.bound_points
+      hull = (pts, ConvexHull(pts).simplices)
 
     #s = data.shape
     #orig = np.array([40,40,30])
@@ -150,8 +188,17 @@ class XtraCrysPy:
     #color[:,40:,:,:] = cc[:,:40,:,:]
     #color = np.swapaxes(color, 0, 2)
     #color = np.swapaxes(np.swapaxes(color, 0, 1), 0, 2)
-    self.surface = iso_surface(data, iso_val, origin, colors, hull)
-    self.scene.add(self.surface)
+
+    self.surfaces = []
+    origin = np.array([-.5,-.5,-.5])
+    for i,iv in enumerate(iso_vals):
+      self.surfaces.append(iso_surface(data, iv, origin, colors[i], hull))
+    self.scene.add(self.surfaces[0])
+
+    self.surface_index = 0
+    self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=iso_vals.shape[0])
+    self.surface_slider.on_change = self.update_iso_surface
+    self.scene.add(self.surface_slider)
 
 
   def start_crystal_view ( self ):
