@@ -28,9 +28,12 @@ def read_bxsf ( fname:str ):
 #rlat,data = read_bxsf('data_files/SnTe.spin_berry_z_xy.bxsf')
 data = np.load('data_files/Fermi_surf_band_46_0.80x80x60.npz')['nameband']
 
-colors = np.zeros((*data.shape, 3))
-for i in range(data.shape[2]):
-  colors[:,:,i,:] = np.array([150,0,255*i/data.shape[2]])
+ds = data.shape
+colors = np.zeros((*ds, 3))
+for i in range(ds[0]):
+  for j in range(ds[1]):
+    col = [i/ds[0], j/ds[1], 0]
+    colors[i,j,:,:] = 255 * np.array(col)
 
 iso_vals = np.linspace(-1.2, -0.4, 5)
 xcp = XCP.XCP_BZ(model='data_files/scf-last.in')

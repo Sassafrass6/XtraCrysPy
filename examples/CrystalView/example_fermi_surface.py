@@ -29,7 +29,8 @@ def read_bxsf ( fname:str ):
 data = np.load('data_files/Fermi_surf_band_46_0.80x80x60.npz')['nameband']
 
 iso_vals = np.linspace(-1.2, -.4, 5)
-colors = [[1,0,0], [1,.4,0], [.6,.8,0], [0,1,.2], [0,.5,1]]
+#colors = [[1,0,0], [1,.4,0], [.6,.8,0], [0,1,.2], [0,.5,1]]
+colors = (250*np.array([[1,0,0], [1,.4,0], [.6,.8,0], [0,1,.2], [0,.5,1]])).astype(int)
 
 xcp = XCP.XCP_BZ(model='data_files/scf-last.in')
 xcp.render_iso_surface(data, iso_vals=iso_vals, colors=colors)

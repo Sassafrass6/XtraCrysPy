@@ -125,29 +125,50 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, data, iso_vals=0, colors=(1,.3,0) ):
+  def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0) ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
     from fury import ui
 
-    if isinstance(iso_vals, (float,int)):
-      iso_vals = np.array([iso_vals])
+    data = np.array(data)
+    if len(data.shape) != 3:
+      raise Exception('Argument data must be a 3D array')
 
-    colors = np.array(colors)
-    if len(colors.shape) == 1:
-      colors = [colors] * len(iso_vals)
-    elif len(colors.shape) == 2:
-      if colors.shape[0] != len(iso_vals) or colors.shape[1] != 3:
-        print('Must provide one 3-color for each iso_val')
-        return
-    elif len(colors.shape) == 4:
-      colors = [colors] * len(iso_vals)
-    elif len(colors.shape) == 5:
-      print('Colors 5 shape not implemented')
-      return
+    if isinstance(iso_vals, (float,int)):
+      iso_vals = np.array([iso_vals], dtype=float)
     else:
-      print('Invalid dimensions for colors array')
-      return
+      iso_vals = np.array(iso_vals, dtype=float)
+
+    if len(iso_vals.shape) != 1:
+      raise Exception('Argumenta iso_vals must be a number or a 1D array of numbers')
+
+    colors = np.array(colors, dtype=float)
+    cshape = colors.shape
+
+    cdim = len(cshape)
+    niv = iso_vals.shape[0]
+    colors = np.array(colors)
+    if cdim == 1:
+      if cshape[0] != 3:
+        raise Exception('Colors should be a tuple (R,G,B) with values in the range [0,255]')
+      colors = np.array([colors] * niv)
+    elif cdim == 2:
+      if cshape[0] != niv or cshape[1] != 3:
+        raise Exception('Must provide one 3-color for each iso_val')
+    elif cdim == 4 or cdim == 5:
+      ci = cdim - 4
+      for i in range(3):
+        if cshape[ci+i] != data.shape[i]:
+          raise Exception('Must provide one 3-color for each data point')
+      colors = np.array([colors] * niv)
+    elif cdim == 5 and cshape[0] != niv:
+      raise Exception('First array dimension must match the number of iso_vals')
+    else:
+      raise ValueError('Invalid dimensions for colors array')
+
+    if np.max(colors[0]) <= 1:
+      for i in range(niv):
+        colors[i] *= 255
 
     dmin = np.min(data)
     data -= dmin
@@ -157,37 +178,28 @@ class XtraCrysPy:
     data *= scale
     iso_vals *= scale
 
+    if len(colors.shape)  > 2:
+
+      resize = False
+      mdim = np.max(data.shape)
+      for i in range(3):
+        if cshape[i] != mdim:
+          resize = True
+
+      if resize:
+        cs = cshape
+        nshape = [niv, mdim, mdim, mdim, 3]
+        ncol = np.zeros(nshape, dtype='uint8')
+        print('Padding colors with zeros to size {}x{}x{}'.format(*nshape[1:]))
+        for i in range(niv):
+          ncol[i,:cs[0],:cs[1],:cs[2],:] = colors[i][:,:,:,:]
+        del colors
+        colors = ncol
+
     hull = None
     if self.bound_points is not None:
       pts = self.bound_points
       hull = (pts, ConvexHull(pts).simplices)
-
-    #s = data.shape
-    #orig = np.array([40,40,30])
-    #color = np.zeros((s[0],s[1],s[2],3), dtype=float, order='C')
-    #for i,x in enumerate(color):
-    #  for j,y in enumerate(x):
-    #    for k,z in enumerate(y):
-    #      #d = np.sqrt(np.sum((np.array([i,j,k])-orig)**2))
-    #      color[i,j,k,:] = np.array([255*i/s[0],0,100]).astype(int)
-          #color[i,#j,k,:] = (255*np.round(np.array([i/s[0],j/s[1],k/s[2]]),2)).astype(int)
-    #color[:40,:,:,0] = 255
-    #color[40:,:,:,2] = 255
-    #color[:20,:,:,0] = 255
-    #color[:,:20,:,1] = 255
-    #color[:,:,:20,2] = 255
-    #color[:40,:,:,0] = 255
-    #color[40:,:,:,2] = 255
-    #color = np.roll(color, 40, axis=2)
-    #color = np.roll(color, 20, axis=0)
-    #color[30:50,:,:,:] = color[49:29:-1,:,:,:]
-    #color[:,:,:,:] = color[::-1,:,:,:]
-    #color = np.roll(color, -20, axis=1)
-    #color = np.roll(color, -20, axis=2)
-    #color[:,:40,:,:] = cc[:,:39:-1,:,:]
-    #color[:,40:,:,:] = cc[:,:40,:,:]
-    #color = np.swapaxes(color, 0, 2)
-    #color = np.swapaxes(np.swapaxes(color, 0, 1), 0, 2)
 
     self.surfaces = []
     origin = np.array([-.5,-.5,-.5])
@@ -195,10 +207,11 @@ class XtraCrysPy:
       self.surfaces.append(iso_surface(data, iv, origin, colors[i], hull))
     self.scene.add(self.surfaces[0])
 
-    self.surface_index = 0
-    self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=iso_vals.shape[0])
-    self.surface_slider.on_change = self.update_iso_surface
-    self.scene.add(self.surface_slider)
+    if len(self.surfaces) > 1:
+      self.surface_index = 0
+      self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=iso_vals.shape[0])
+      self.surface_slider.on_change = self.update_iso_surface
+      self.scene.add(self.surface_slider)
 
 
   def start_crystal_view ( self ):
