@@ -108,7 +108,7 @@ class XtraCrysPy:
       self.axis_eles[i].center = centers[o]
 
 
-  def render_iso_surface ( self, data, iso_val=0, color=(1,.3,0) ):
+  def render_iso_surface ( self, data, iso_val=0, colors=(1,.3,0) ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
 
@@ -124,7 +124,33 @@ class XtraCrysPy:
     origin = np.array([-.5,-.5,-.5])
     hull = (pts, ConvexHull(pts).simplices)
 
-    self.surface = iso_surface(data, iso_val, origin, color, hull)
+    #s = data.shape
+    #orig = np.array([40,40,30])
+    #color = np.zeros((s[0],s[1],s[2],3), dtype=float, order='C')
+    #for i,x in enumerate(color):
+    #  for j,y in enumerate(x):
+    #    for k,z in enumerate(y):
+    #      #d = np.sqrt(np.sum((np.array([i,j,k])-orig)**2))
+    #      color[i,j,k,:] = np.array([255*i/s[0],0,100]).astype(int)
+          #color[i,#j,k,:] = (255*np.round(np.array([i/s[0],j/s[1],k/s[2]]),2)).astype(int)
+    #color[:40,:,:,0] = 255
+    #color[40:,:,:,2] = 255
+    #color[:20,:,:,0] = 255
+    #color[:,:20,:,1] = 255
+    #color[:,:,:20,2] = 255
+    #color[:40,:,:,0] = 255
+    #color[40:,:,:,2] = 255
+    #color = np.roll(color, 40, axis=2)
+    #color = np.roll(color, 20, axis=0)
+    #color[30:50,:,:,:] = color[49:29:-1,:,:,:]
+    #color[:,:,:,:] = color[::-1,:,:,:]
+    #color = np.roll(color, -20, axis=1)
+    #color = np.roll(color, -20, axis=2)
+    #color[:,:40,:,:] = cc[:,:39:-1,:,:]
+    #color[:,40:,:,:] = cc[:,:40,:,:]
+    #color = np.swapaxes(color, 0, 2)
+    #color = np.swapaxes(np.swapaxes(color, 0, 1), 0, 2)
+    self.surface = iso_surface(data, iso_val, origin, colors, hull)
     self.scene.add(self.surface)
 
 

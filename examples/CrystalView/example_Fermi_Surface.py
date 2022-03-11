@@ -28,6 +28,10 @@ def read_bxsf ( fname:str ):
 #rlat,data = read_bxsf('data_files/SnTe.spin_berry_z_xy.bxsf')
 data = np.load('data_files/Fermi_surf_band_46_0.80x80x60.npz')['nameband']
 
+colors = np.zeros((*data.shape, 3))
+for i in range(data.shape[2]):
+  colors[:,:,i,:] = np.array([150,0,255*i/data.shape[2]])
+
 xcp = XCP.XCP_BZ(model='data_files/scf-last.in')
-xcp.render_iso_surface(data, iso_val=-1)
+xcp.render_iso_surface(data, iso_val=-1, colors=colors)
 xcp.start_crystal_view()
