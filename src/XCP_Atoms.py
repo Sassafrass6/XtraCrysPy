@@ -64,8 +64,14 @@ class XCP_Atoms ( XtraCrysPy ):
     self.sel_panel = ui.Panel2D((40,40), (10, size[1]-110), opacity=0)
     self.sel_panel.add_element(self.sel_type_button, (0,0))
     self.sel_panel.add_element(self.sel_type_menu, (50,-210))
-
     self.scene.add(self.sel_panel)
+
+    self.sel_tpanel = ui.Panel2D(size=(300,80), color=(0,0,0))
+    self.sel_tpanel.center = (self.wsize[1]-160, 50)
+    self.sel_text = ui.TextBlock2D(text='', font_size=30, justification='left', vertical_justification='middle')
+    self.sel_tpanel.add_element(self.sel_text, (25,25))
+    self.scene.add(self.sel_tpanel)
+    self.sel_tpanel.set_visibility(False)
 
     self.model = model
     self.relax = relax
@@ -81,7 +87,7 @@ class XCP_Atoms ( XtraCrysPy ):
 
       self.relax_panel = ui.Panel2D((110,50), (size[0]-120,size[1]-60), (0,0,0))
       self.relax_panel.add_element(left_button, (0,0))
-      self.relax_panel.add_element(right_button, (60,0))
+      self.relax_panel.add_element(right_button, (40,0))
       self.scene.add(self.relax_panel)
 
     self.render_atomic_model()
@@ -90,12 +96,15 @@ class XCP_Atoms ( XtraCrysPy ):
   def update_buttons ( self, caller, event ):
     super().update_buttons(caller, event)
     x,y = self.scene.GetSize()
+    self.sel_tpanel.center = (x-160, 50)
     self.sel_panel.position = (10, y-110)
-    self.relax_panel.position = (x-120, y-60)
     self.constrain_checkbox.position = (10, y-65)
+    if self.relax:
+      self.relax_panel.position = (x-120, y-60)
 
 
   def update_selection_type ( self ):
+    self.clear_selection_text()
     self.sel_type = self.sel_type_menu.selected[0] 
     for _ in range(len(self.sel_bnds)):
       self.pop_sbond()
@@ -104,6 +113,16 @@ class XCP_Atoms ( XtraCrysPy ):
     for i in self.sel_inds.copy():
       self.pop_atom(colors, i, nvert)
     update_actor(self.atoms)
+
+
+  def clear_selection_text ( self ):
+    self.sel_text.message = ''
+    self.sel_tpanel.set_visibility(False)
+
+
+  def update_selection_text ( self, text ):
+    self.sel_text.message = text
+    self.sel_tpanel.set_visibility(True)
 
 
   def update_constrain ( self, checkboxes ):
@@ -199,6 +218,7 @@ class XCP_Atoms ( XtraCrysPy ):
   def selection_logic ( self, colors, index, nvert ):
 
     if index in self.sel_inds:
+      self.clear_selection_text()
 
       if self.sel_type == 'Info':
         self.pop_atom(colors, index, nvert)
@@ -229,8 +249,13 @@ class XCP_Atoms ( XtraCrysPy ):
 
     else:
       if self.sel_type == 'Info':
+        if len(self.sel_inds) != 0:
+          self.pop_atom(colors, self.sel_inds[-1], nvert)
         self.push_atom(colors, index, nvert)
-        print('Atom {} : {}'.format(index, self.model.species[index%self.natoms]))
+        spec = self.model.species[index%self.model.natoms]
+        message = 'Atom {} : {}'.format(index, spec)
+        self.update_selection_text(message)
+        print(message)
 
       elif self.sel_type == 'Distance':
         if len(self.sel_inds) == 0:
@@ -239,8 +264,10 @@ class XCP_Atoms ( XtraCrysPy ):
           if self.push_atom(colors, index, nvert):
             self.push_sbond()
             dist = self.distance(*self.sel_inds)
+            message = '{:.4f} {}\n'.format(dist, self.units)
+            self.update_selection_text(message)
             print('Distance between atoms {} and {}:'.format(*self.sel_inds))
-            print('{} {}\n'.format(self.distance(*self.sel_inds),self.units))
+            print(message)
 
       elif self.sel_type == 'Angle':
         if len(self.sel_inds) == 0:
@@ -249,8 +276,11 @@ class XCP_Atoms ( XtraCrysPy ):
           if self.push_atom(colors, index, nvert):
             self.push_sbond()
             if len(self.sel_inds) == 3:
+              angle = self.angle(*self.sel_inds)
+              message = '{:.4f} {}\n'.format(angle, self.runits)
+              self.update_selection_text(message)
               print('Angle between atoms {}, {}, and {}:'.format(*self.sel_inds))
-              print('{} {}\n'.format(self.angle(*self.sel_inds),self.runits))
+              print(message)
 
       elif self.sel_type == 'Chain':
         if self.push_atom(colors, index, nvert) and len(self.sel_inds) > 1:
