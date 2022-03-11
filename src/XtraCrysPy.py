@@ -160,7 +160,8 @@ class XtraCrysPy:
       for i in range(3):
         if cshape[ci+i] != data.shape[i]:
           raise Exception('Must provide one 3-color for each data point')
-      colors = np.array([colors] * niv)
+      if cdim == 4:
+        colors = np.array([colors] * niv)
     elif cdim == 5 and cshape[0] != niv:
       raise Exception('First array dimension must match the number of iso_vals')
     else:
@@ -181,13 +182,14 @@ class XtraCrysPy:
     if len(colors.shape)  > 2:
 
       resize = False
+      cshape = colors.shape
       mdim = np.max(data.shape)
-      for i in range(3):
+      for i in range(1,4):
         if cshape[i] != mdim:
           resize = True
 
       if resize:
-        cs = cshape
+        cs = cshape[1:]
         nshape = [niv, mdim, mdim, mdim, 3]
         ncol = np.zeros(nshape, dtype='uint8')
         print('Padding colors with zeros to size {}x{}x{}'.format(*nshape[1:]))
