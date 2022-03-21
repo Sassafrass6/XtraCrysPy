@@ -175,9 +175,12 @@ class XtraCrysPy:
     data -= dmin
     iso_vals -= dmin
 
-    scale = 255/np.max(data)
+    dmax = np.max(data)
+    scale = 255/dmax
     data *= scale
     iso_vals *= scale
+
+    print('Data range: [{}, {}]'.format(dmin, dmax+dmin))
 
     if len(colors.shape)  > 2:
 
