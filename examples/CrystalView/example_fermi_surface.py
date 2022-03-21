@@ -27,9 +27,9 @@ def read_bxsf ( fname:str ):
 #eigs = np.load('data_files/SnTe.fermi_surf_band_4.npz')['nameband']
 #rlat,data = read_bxsf('data_files/SnTe.spin_berry_z_xy.bxsf')
 data = np.load('data_files/Fermi_surf_band_46_0.80x80x60.npz')['nameband']
+data = np.fft.fftshift(data, axes=(0,1,2))
 
-iso_vals = np.linspace(-1.2, -.4, 5)
-#colors = [[1,0,0], [1,.4,0], [.6,.8,0], [0,1,.2], [0,.5,1]]
+iso_vals = np.linspace(-2.4, -.5, 5)
 colors = (250*np.array([[1,0,0], [1,.4,0], [.6,.8,0], [0,1,.2], [0,.5,1]])).astype(int)
 
 xcp = XCP.XCP_BZ(model='data_files/scf-last.in')

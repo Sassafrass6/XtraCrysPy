@@ -195,18 +195,43 @@ class XtraCrysPy:
         print('Padding colors with zeros to size {}x{}x{}'.format(*nshape[1:]))
         for i in range(niv):
           ncol[i,:cs[0],:cs[1],:cs[2],:] = colors[i][:,:,:,:]
+        cs = nshape
+        colors = ncol
+        ncol = np.zeros([niv]+[2*s for s in nshape[1:-1]]+[3])
+        for i in range(2):
+          for j in range(2):
+            for k in range(2):
+              dw = (i, j, k)
+              up = (i+1, j+1, k+1)
+              for iv in range(niv):
+                ncol[iv, dw[0]*cs[1]:up[0]*cs[1], dw[1]*cs[2]:up[1]*cs[2], dw[2]*cs[3]:up[2]*cs[3]] = colors[iv,:,:,:,:]
         del colors
         colors = ncol
+        for i in range(3):
+          colors = np.roll(colors, data.shape[i]//2, axis=i+1)
 
     hull = None
     if self.bound_points is not None:
       pts = self.bound_points
       hull = (pts, ConvexHull(pts).simplices)
 
+    ds = data.shape
+    ndata = np.empty([2*s for s in ds])
+    for i in range(2):
+      for j in range(2):
+        for k in range(2):
+          dw = (i, j, k)
+          up = (i+1, j+1, k+1)
+          ndata[dw[0]*ds[0]:up[0]*ds[0], dw[1]*ds[1]:up[1]*ds[1], dw[2]*ds[2]:up[2]*ds[2]] = data[:,:,:]
+
+    data = ndata
+    for i in range(3):
+      data = np.roll(data, data.shape[i]//4, axis=i)
+
     self.surfaces = []
-    origin = np.array([-.5,-.5,-.5])
+    origin = 2*np.array([-.5,-.5,-.5])
     for i,iv in enumerate(iso_vals):
-      self.surfaces.append(iso_surface(data, iv, origin, colors[i], hull))
+      self.surfaces.append(iso_surface(data, iv, origin, colors[i], bound_polys=hull, lattice=self.rlattice))
     self.scene.add(self.surfaces[0])
 
     if len(self.surfaces) > 1:
