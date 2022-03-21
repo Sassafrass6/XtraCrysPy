@@ -125,7 +125,7 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0) ):
+  def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0), disp_all=False ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
     from fury import ui
@@ -235,10 +235,14 @@ class XtraCrysPy:
     self.scene.add(self.surfaces[0])
 
     if len(self.surfaces) > 1:
-      self.surface_index = 0
-      self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=iso_vals.shape[0])
-      self.surface_slider.on_change = self.update_iso_surface
-      self.scene.add(self.surface_slider)
+      if not disp_all:
+        self.surface_index = 0
+        self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=iso_vals.shape[0])
+        self.surface_slider.on_change = self.update_iso_surface
+        self.scene.add(self.surface_slider)
+      else:
+        for s in self.surfaces:
+          self.scene.add(s)
 
 
   def start_crystal_view ( self ):

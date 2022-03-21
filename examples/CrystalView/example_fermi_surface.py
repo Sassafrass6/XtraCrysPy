@@ -33,5 +33,5 @@ iso_vals = np.linspace(-2.4, -.5, 5)
 colors = (250*np.array([[1,0,0], [1,.4,0], [.6,.8,0], [0,1,.2], [0,.5,1]])).astype(int)
 
 xcp = XCP.XCP_BZ(model='data_files/scf-last.in')
-xcp.render_iso_surface(data, iso_vals=iso_vals, colors=colors)
+xcp.render_iso_surface(data, iso_vals=iso_vals, colors=colors, disp_all=True)
 xcp.start_crystal_view()
