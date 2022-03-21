@@ -87,7 +87,7 @@ class XCP_Atoms ( XtraCrysPy ):
 
       self.relax_panel = ui.Panel2D((110,50), (size[0]-120,size[1]-60), (0,0,0))
       self.relax_panel.add_element(left_button, (0,0))
-      self.relax_panel.add_element(right_button, (40,0))
+      self.relax_panel.add_element(right_button, (60,0))
       self.scene.add(self.relax_panel)
 
     self.render_atomic_model()
