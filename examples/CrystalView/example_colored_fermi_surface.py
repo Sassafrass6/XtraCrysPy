@@ -1,7 +1,6 @@
 from XtraCrysPy import XCP_BZ as XCP
 import numpy as np
 
-
 def read_bxsf ( fname:str ):
 
   lines = None
@@ -35,7 +34,7 @@ for i in range(ds[0]):
   for j in range(ds[1]):
     a = i if i<ds[0]//2 else ds[0]-i
     b = j if j<ds[1]//2 else ds[1]-j
-    col = [a/ds[0], b/ds[1], 0]
+    col = [a/ds[0], b/ds[1], .5]
     colors[i,j,:,:] = 255 * np.array(col)
 
 iso_vals = np.linspace(-1.2, -0.4, 5)
