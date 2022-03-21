@@ -18,12 +18,6 @@ class Model:
         from .file_io import struct_from_inputfile
         params.update(struct_from_inputfile(fname))
 
-      if params['lunit'] == 'angstrom':
-        params['lattice'] *= 1.88973
-
-      if params['aunit'] == 'angstrom':
-        params['abc'] *= 1.88973
-
     elif relax:
       raise ValueError('Relax mode only supported for QE output files.')
 

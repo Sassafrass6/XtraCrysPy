@@ -244,7 +244,14 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     from .lattice_format import lattice_format_QE
     struct['lattice'] = lattice_format_QE(struct['ibrav'], struct['celldm'])
 
-  if struct['aunit'] == 'angstrom':
+  if struct['lunit'] == 'angstrom':
+    struct['lattice'] *= 1.88973
+  elif struct['lunit'] != 'bohr':
+    print('WARNING: Unit {} may behave strangely'.format(struct['lunit']))
+
+  if struct['aunit'] == 'bohr' or struct['aunit'] == 'angstrom':
+    if struct['aunit'] == 'angstrom':
+      struct['abc'] *= 1.88973
     struct['abc'] = struct['abc'] @ np.linalg.inv(struct['lattice'])
 
   return struct
