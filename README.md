@@ -13,7 +13,7 @@ Features:
 
 Fury currently has a bug with the cylinder routine, used for displaying bonds.
 Clone the forked fury reposity, from my GitHub, and check out the glyph\_orientation branch
-(https://github.com/Sassafrass6/fury/tree/glyph\_orientation)
+(https://github.com/Sassafrass6/fury/tree/glyph_orientation)
 
 Requirements:
 - python 3.8
