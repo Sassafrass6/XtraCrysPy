@@ -1,18 +1,18 @@
-from fury.utils import colors_from_actor,update_actor,vertices_from_actor
+from fury.utils import colors_from_actor, update_actor
+from fury.utils import vertices_from_actor
 from .XtraCrysPy import XtraCrysPy
 import numpy as np
 
 class XCP_Atoms ( XtraCrysPy ):
 
-  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False, model=None, params={}, relax=False, nsc=(1,1,1), bond_type='Stick', sel_type='Chain' ):
-    from fury.data import read_viz_icons
-    from .Model import Model
-    from fury import ui
+  def __init__ ( self, size=(1024, 1024), axes=True,
+                 perspective=False, model=None, params={},
+                 relax=False, nsc=(1,1,1), bond_type='Stick',
+                 sel_type='Chain', unit='angstrom', runit='degree' ):
     super().__init__(size, axes, perspective)
+    from .Model import Model
 
     self.nsc = nsc
-    self.units = 'bohr'
-    self.runits = 'degree'
     self.sel_forward = True
     self.sel_type = sel_type
     self.bond_type = bond_type
@@ -32,32 +32,68 @@ class XCP_Atoms ( XtraCrysPy ):
           raise FileNotFoundError('File {} not found'.format(model))
         model = Model(params, fname=model, relax=relax)
       else:
-        raise TypeError('Argument \'model\' must be a file name or a Model object.')
+        s = 'Argument \'model\' must be a file name or a Model object.'
+        raise TypeError(s)
     elif params:
       model = Model(params, fname=None, relax=relax)
     else:
       raise Exception('Must specify model or params arguments')
 
-    self._icons = [('left',read_viz_icons(fname='circle-left.png')), 
-                   ('down',read_viz_icons(fname='circle-down.png')),
-                   ('right',read_viz_icons(fname='circle-right.png'))]
+    self.model = model
+    self.relax = relax
+    self.relax_index = 0
+    self.nrelax = self.model.atoms.shape[0]
 
-    self.sel_type_button = ui.Button2D(icon_fnames=self._icons[2:0:-1], size=(40,40))
+    self.units = unit.lower()
+    self.runits = runit.lower()
+    if self.units not in ['angstrom', 'bohr']:
+      print('Supported length units are angstrom and bohr')
+      self.units = 'angstrom'
+    if self.runits not in ['degree', 'radian']:
+      print('Supported radial units are degree and radian')
+      self.runits = 'degree'
+
+    self.setup_ui()
+
+    self.render_atomic_model()
+
+
+  def setup_ui ( self ):
+    from fury.data import read_viz_icons
+    from fury import ui
+
+    size = self.wsize
+    icons = [('left',read_viz_icons(fname='circle-left.png')), 
+              ('down',read_viz_icons(fname='circle-down.png')),
+              ('right',read_viz_icons(fname='circle-right.png'))]
+
+    self.sel_type_button = ui.Button2D(icon_fnames=icons[2:0:-1],
+                                       size=(40,40))
 
     sel_types = ['Chain', 'Info', 'Angle', 'Distance']
-    if sel_type not in sel_types:
-      raise ValueError('{} is not a valid selection type. Choose from:\n  Info, Angle Chain, or Distance.')
+    if self.sel_type not in sel_types:
+      s = '''{} is not a valid selection type. Choose from:
+               Info, Angle Chain, or Distance.'''
+      self.sel_type = 'Chain'
+      print(s)
+
     self.sel_type_menu = ui.ListBox2D(sel_types, multiselection=False,
-                 font_size=24, line_spacing=2, background_opacity=.9, size=(150,220))
-    self.sel_type_menu.select(self.sel_type_menu.slots[sel_types.index(sel_type)])
+                         font_size=24, line_spacing=2, size=(150,220),
+                         background_opacity=.9)
+
+    sel = sel_types.index(self.sel_type)
+    self.sel_type_menu.select(self.sel_type_menu.slots[sel])
     self.sel_type_menu.on_change = self.update_selection_type
 
     self.sel_menu_vis = False
+    sel_button = self.sel_type_button
     self.sel_type_menu.set_visibility(False)
-    self.sel_type_button.on_left_mouse_button_clicked = self.toggle_sel_menu
+    sel_button.on_left_mouse_button_clicked = self.toggle_sel_menu
 
     checkbox = ['Constrain']
-    self.constrain_checkbox = ui.Checkbox(checkbox, checkbox, font_size=24, font_family='Arial', position=(10,self.wsize[1]-65))
+    self.constrain_checkbox = ui.Checkbox(checkbox, checkbox,
+                              font_size=24, font_family='Arial',
+                              position=(10,size[1]-65))
     self.scene.add(self.constrain_checkbox)
     self.constrain_checkbox.on_change = self.update_constrain
 
@@ -67,30 +103,32 @@ class XCP_Atoms ( XtraCrysPy ):
     self.scene.add(self.sel_panel)
 
     self.sel_tpanel = ui.Panel2D(size=(300,80), color=(0,0,0))
-    self.sel_tpanel.center = (self.wsize[1]-160, 50)
-    self.sel_text = ui.TextBlock2D(text='', font_size=30, justification='left', vertical_justification='middle')
+    self.sel_tpanel.center = (size[1]-160, 50)
+    self.sel_text = ui.TextBlock2D(font_size=30, justification='left',
+                    text='', vertical_justification='middle')
     self.sel_tpanel.add_element(self.sel_text, (25,25))
     self.scene.add(self.sel_tpanel)
     self.sel_tpanel.set_visibility(False)
 
-    self.model = model
-    self.relax = relax
-    self.relax_index = 0
-    self.nrelax = self.model.atoms.shape[0]
-    if relax:
+    if self.relax:
 
-      left_button = ui.Button2D(icon_fnames=[self._icons[0]], size=(50,50))
+      left_button = ui.Button2D(icon_fnames=[icons[0]], size=(50,50))
       left_button.on_left_mouse_button_clicked = self.relax_backward
 
-      right_button = ui.Button2D(icon_fnames=[self._icons[2]], size=(50,50))
+      right_button = ui.Button2D(icon_fnames=[icons[2]], size=(50,50))
       right_button.on_left_mouse_button_clicked = self.relax_forward
 
-      self.relax_panel = ui.Panel2D((110,50), (size[0]-120,size[1]-60), (0,0,0))
+      self.relax_panel = ui.Panel2D((110,100),
+                         (size[0]-120,size[1]-60), (0,0,0))
       self.relax_panel.add_element(left_button, (0,0))
       self.relax_panel.add_element(right_button, (60,0))
-      self.scene.add(self.relax_panel)
 
-    self.render_atomic_model()
+      stext = '1/{}'.format(self.nrelax)
+      self.relax_text = ui.TextBlock2D(text=stext, 
+                        justification='center', font_size=30,
+                        vertical_justification='top')
+      self.relax_panel.add_element(self.relax_text, (55,-10))
+      self.scene.add(self.relax_panel)
 
 
   def update_buttons ( self, caller, event ):
@@ -120,6 +158,11 @@ class XCP_Atoms ( XtraCrysPy ):
     self.sel_tpanel.set_visibility(False)
 
 
+  def update_relax_text ( self ):
+    text = '{}/{}'.format(self.relax_index+1, self.nrelax)
+    self.relax_text.message = text
+
+
   def update_selection_text ( self, text ):
     self.sel_text.message = text
     self.sel_tpanel.set_visibility(True)
@@ -147,13 +190,9 @@ class XCP_Atoms ( XtraCrysPy ):
 
 
   def distance ( self, ai1, ai2 ):
+    from .conversion import BOHR_ANG
     dist = np.sqrt(np.sum((self.aposs[ai2]-self.aposs[ai1])**2))
-    if self.units == 'angstrom':
-      from .conversion import BOHR_ANG
-      dist *= BOHR_ANG
-    else:
-      pass # Bohr
-    return dist
+    return dist * (BOHR_ANG if self.units=='angstrom' else 1)
 
 
   def set_atom_color ( self, mem, index, nvert, col ):
@@ -181,10 +220,12 @@ class XCP_Atoms ( XtraCrysPy ):
     brad = self.model.bond_radius(dist, ai1, ai2, self.bond_type)
     if self.bond_type != 'Sphere':
       brad = 0.01 + brad / 2
-      tbond = actor.cylinder([cent], [conn], [self.scolor/255], radius=brad, heights=dist, resolution=20)
+      tbond = actor.cylinder([cent], [conn], [self.scolor/255],
+                             radius=brad, heights=dist, resolution=20)
     else:
       ends = [[self.aposs[ai2], self.aposs[ai1]]]
-      tbond = actor.streamtube(ends, colors=self.scolor, linewidth=brad)
+      tbond = actor.streamtube(ends, colors=self.scolor,
+                               linewidth=brad)
 
     self.scene.add(tbond)
     if self.sel_forward:
@@ -266,8 +307,9 @@ class XCP_Atoms ( XtraCrysPy ):
             dist = self.distance(*self.sel_inds)
             message = '{:.4f} {}\n'.format(dist, self.units)
             self.update_selection_text(message)
-            print('Distance between atoms {} and {}:'.format(*self.sel_inds))
-            print(message)
+            dtext = 'Distance between atoms {} and {}:'
+            print(dtext.format(*self.sel_inds))
+            print('\t{}'.format(message))
 
       elif self.sel_type == 'Angle':
         if len(self.sel_inds) == 0:
@@ -279,23 +321,27 @@ class XCP_Atoms ( XtraCrysPy ):
               angle = self.angle(*self.sel_inds)
               message = '{:.4f} {}\n'.format(angle, self.runits)
               self.update_selection_text(message)
-              print('Angle between atoms {}, {}, and {}:'.format(*self.sel_inds))
-              print(message)
+              dtext = 'Angle between atoms {}, {}, and {}:'
+              print(dtext.format(*self.sel_inds))
+              print('\t{}'.format(message))
 
       elif self.sel_type == 'Chain':
-        if self.push_atom(colors, index, nvert) and len(self.sel_inds) > 1:
+        selected = self.push_atom(colors, index, nvert)
+        if selected and len(self.sel_inds) > 1:
           self.push_sbond()
 
 
   def relax_forward ( self, iren, obj, event ):
     if self.relax_index < self.nrelax-1:
       self.relax_index += 1
+      self.update_relax_text()
       self.update_atomic_model()
 
 
   def relax_backward ( self, iren, obj, event ):
     if self.relax_index > 0:
       self.relax_index -= 1
+      self.update_relax_text()
       self.update_atomic_model()
 
 
@@ -347,25 +393,26 @@ class XCP_Atoms ( XtraCrysPy ):
     from fury import actor
     import numpy as np
 
-
-    if self.model.units != self.units:
-      self.units = self.model.units
-
-    ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc, self.bond_type, self.relax_index, self.constrain_atoms)
+    ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc,
+                        self.bond_type, self.relax_index,
+                        self.constrain_atoms)
  
     self.aposs = ainfo[0]
     self.natoms = ainfo[0].shape[0]
     if self.natoms > 0:
-      self.atoms = actor.sphere(centers=ainfo[0], colors=ainfo[1], radii=ainfo[2])
+      self.atoms = actor.sphere(centers=ainfo[0],
+                                colors=ainfo[1], radii=ainfo[2])
       self.scene.add(self.atoms)
       self.atoms.AddObserver('LeftButtonPressEvent', self.pick_atom, 1)
 
     self.bonds = []
     for i in range(binfo[0].shape[0]):
-      tbond = actor.cylinder(binfo[0][i], binfo[1][i], binfo[2][i], radius=binfo[3][i], heights=binfo[4][i], resolution=20)
+      tbond = actor.cylinder(binfo[0][i], binfo[1][i], binfo[2][i],
+              radius=binfo[3][i], heights=binfo[4][i], resolution=20)
       self.scene.add(tbond)
       self.bonds.append(tbond)
 
     self.frame = actor.streamtube(linfo, colors=(1,1,1), linewidth=0.1)
     if 'Boundary' in self.frame_checkbox.checked_labels:
       self.scene.add(self.frame)
+

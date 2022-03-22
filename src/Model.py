@@ -153,7 +153,7 @@ class Model:
       self.bond_type = bond_type
 
     for i,n in enumerate(nsc):
-      lattice[:,i] *= n
+      lattice[i,:] *= n
 
     atoms = []
     acols = []
@@ -221,7 +221,7 @@ class Model:
     bheight = np.array(bheight)
 
     lines = []
-    lat = lattice
+    lat = self.lattice
     for ix in range(nc1):
       for iy in range(nc2):
         for iz in range(nc3):
@@ -231,7 +231,5 @@ class Model:
           lines += [[orig+p,corner] for p in [lat[i]+lat[j] for i in range(3) for j in range(i+1,3)]]
           lines += [[orig+lat[k],orig+lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
     lines = np.array(lines)
-    for i,n in enumerate(nsc):
-      lines[:,:,i] /= n
 
     return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight), (lines)

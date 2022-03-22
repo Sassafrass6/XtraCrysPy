@@ -257,7 +257,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   return struct
 
 
-def struct_from_inputfile_CIF ( fname:str ):
+def struct_from_inputfile_CIF ( fname:str ) -> dict:
   '''
   '''
   import numpy as np
@@ -343,17 +343,63 @@ def struct_from_inputfile_CIF ( fname:str ):
   quit()
     
 
+def struct_from_inputfile_POSCAR ( fname:str ) -> dict:
+  import numpy as np
+
+  struct = {}
+  with open(fname, 'r') as f:
+
+    lines = f.readlines()
+
+    alat = float(lines[1].split()[0])
+    lattice = np.empty((3,3), dtype=float)
+    for i in range(3):
+      lattice[i,:] = np.array([float(v) for v in lines[2+i].split()])
+
+    uspec = lines[5].split()
+    nspec = lines[6].split()
+    numeric = nspec[0].isnumeric()
+    ucount = [int(v) for v in (nspec if numeric else uspec)]
+
+    spec = []
+    for i,c in enumerate(ucount):
+      spec += c * [(uspec[i] if numeric else str(i))]
+
+    lc = 7 if numeric else 6
+    if lines[lc][0].lower() == 's':
+      lc += 1
+
+    cartesian = lines[lc][0].lower() in ['c', 'k']
+
+    lc += 1
+    nat = len(spec)
+    abc = np.empty((nat,3), dtype=float)
+    for i in range(nat):
+      abc[i,:] = np.array([float(v) for v in lines[lc+i].split()])
+
+    lattice *= 1.88973 * alat
+    if cartesian:
+      abc = 1.88973 * abc @ np.linalg.inv(lattice)
+
+    struct['abc'] = abc
+    struct['species'] = spec
+    struct['lattice'] = lattice
+
+    return struct
 
 
 def infer_file_type ( fname:str ):
 
   extension = fname.split('.')
-  if len(extension) == 1:
+  if len(extension) <= 1:
     print('Cannot infer file type without an extension. Assuming qe')
     return 'qe'
+
   extension = extension[-1].lower()
-  if extension == 'in' or extension == 'out':
+  if extension in ['in', 'out']:
     ftype = 'qe'
+  elif extension == 'poscar':
+    ftype = 'poscar'
   else:
     ftype = extension
 
@@ -386,6 +432,8 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
       return struct_from_inputfile_QE(fname)
     elif ftype == 'cif':
       return struct_from_inputfile_CIF(fname)
+    elif ftype == 'poscar':
+      return struct_from_inputfile_POSCAR(fname)
     else:
       raise ValueError('Cannot read file type {}'.format(ftype))
 

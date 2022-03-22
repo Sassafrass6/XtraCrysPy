@@ -1,9 +1,11 @@
-from XtraCrysPy import XCP_BZ,Model
+from XtraCrysPy import XCP_BZ as XCP
+import numpy as np
 
-if '__main__' == __name__:
+data = np.load('data_files/Al_Fermi_surf_band_2_0.npz')['nameband']
+data = np.fft.fftshift(data, axes=(0,1,2))
 
-  # BZ for FCC Iron, from a QE inputfile
-  model = Model.Model(fname='data_files/Fe.scf.in')
-  xcp = XCP_BZ.XCP_BZ(model=model)
-  xcp.start_crystal_view()
-
+iso_vals = np.linspace(2.5, 4.5, 3)
+colors = [[1,0,0], [0,1,0], [0,0,1]]
+xcp = XCP.XCP_BZ(model='data_files/Al.scf.in')
+xcp.render_iso_surface(data, iso_vals=iso_vals, colors=colors)
+xcp.start_crystal_view()
