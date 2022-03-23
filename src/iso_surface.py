@@ -21,14 +21,14 @@ TransformPolyDataFilter = fgvtk.vtkTransformPolyDataFilter
 WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
 # Create my iso_surface routine, until I'm allowed to merge the branch into fury
-def iso_surface(data, iso_val, origin, colors, bound_polys=None, lattice=None):
+def iso_surface(data, iso_val, origin, colors, bound_polys=None, lattice=None, nsc=(1,1,1)):
 
     if data.ndim != 3:
         raise ValueError('Only 3D arrays are currently supported.')
 
     dims = data.shape
     npnt = np.prod(dims)
-    voxsz = [2/s for s in dims]
+    voxsz = [(nsc[i]+1)/s for i,s in enumerate(dims)]
 
     data = data.astype('uint8')
     vtk_type = numpy_support.get_vtk_array_type(data.dtype)

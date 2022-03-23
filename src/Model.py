@@ -222,13 +222,16 @@ class Model:
 
     bpoints = []
     bpoints.append([0,0,0])
-    bpoints.append(nc1*self.lattice[0])
-    bpoints.append(nc2*self.lattice[1])
-    bpoints.append(nc3*self.lattice[2])
-    bpoints.append(nc1*self.lattice[0]+nc2*self.lattice[1])
-    bpoints.append(nc2*self.lattice[1]+nc3*self.lattice[2])
-    bpoints.append(nc1*self.lattice[0]+nc3*self.lattice[2])
-    bpoints.append(np.sum(self.lattice,axis=0))
+    p1 = nc1*self.lattice[0]
+    p2 = nc2*self.lattice[1]
+    p3 = nc3*self.lattice[2]
+    bpoints.append(p1)
+    bpoints.append(p2)
+    bpoints.append(p3)
+    bpoints.append(p1+p2)
+    bpoints.append(p2+p3)
+    bpoints.append(p1+p3)
+    bpoints.append(p1+p2+p3)
     bpoints = np.array(bpoints)
 
     lines = []

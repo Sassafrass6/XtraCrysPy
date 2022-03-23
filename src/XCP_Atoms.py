@@ -418,5 +418,7 @@ class XCP_Atoms ( XtraCrysPy ):
       self.scene.add(self.frame)
 
   def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0), disp_all=False ):
-    origin = -.5*np.array([1,1,1], dtype=float)
-    super().render_iso_surface(self.model.lattice, origin, data, iso_vals, colors, disp_all)
+    nsc = self.nsc
+    origin = -np.array([((nsc[i]+1)%4)/4 for i in range(3)])
+    origin += .5/np.array(data.shape)/nsc*[3-nsc[i]%2 for i in range(3)]
+    super().render_iso_surface(self.model.lattice, origin, data, iso_vals, colors, disp_all, nsc)
