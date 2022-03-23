@@ -220,6 +220,17 @@ class Model:
     brads = np.array(brads)
     bheight = np.array(bheight)
 
+    bpoints = []
+    bpoints.append([0,0,0])
+    bpoints.append(nc1*self.lattice[0])
+    bpoints.append(nc2*self.lattice[1])
+    bpoints.append(nc3*self.lattice[2])
+    bpoints.append(nc1*self.lattice[0]+nc2*self.lattice[1])
+    bpoints.append(nc2*self.lattice[1]+nc3*self.lattice[2])
+    bpoints.append(nc1*self.lattice[0]+nc3*self.lattice[2])
+    bpoints.append(np.sum(self.lattice,axis=0))
+    bpoints = np.array(bpoints)
+
     lines = []
     lat = self.lattice
     for ix in range(nc1):
@@ -232,4 +243,4 @@ class Model:
           lines += [[orig+lat[k],orig+lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
     lines = np.array(lines)
 
-    return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight), (lines)
+    return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight), (bpoints,lines)

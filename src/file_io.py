@@ -442,7 +442,7 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
     raise e
 
 
-def read_dos_QE ( fname, return_ef=True ):
+def read_dos_QE ( fname:str, read_ef=True ):
   '''
   '''
   import numpy as np
@@ -454,7 +454,7 @@ def read_dos_QE ( fname, return_ef=True ):
   with open(fname, 'r') as f:
     lines = f.readlines()
 
-    ef = float(lines[0].split()[8])
+    ef = float(lines[0].split()[8]) if read_ef else 0.
 
     for l in lines[1:]:
       ls = l.split()
@@ -465,10 +465,10 @@ def read_dos_QE ( fname, return_ef=True ):
   dos = np.array(dos)
   int_dos = np.array(int_dos)
 
-  return (ef, es, dos) if return_ef else (es, dos)
+  return (ef, es, dos)
 
 
-def read_bands_QE_dat ( fname ):
+def read_bands_QE_dat ( fname:str ):
   '''
   '''
   import numpy as np
@@ -498,7 +498,7 @@ def read_bands_QE_dat ( fname ):
   return ks, bands
 
 
-def read_bands_QE_agr ( fname ):
+def read_bands_QE_agr ( fname:str ):
   '''
   '''
   import numpy as np
@@ -516,7 +516,7 @@ def read_bands_QE_agr ( fname ):
   return np.array(bands)
 
 
-def read_band_path_PAO ( fname ):
+def read_band_path_PAO ( fname:str ):
   '''
   '''
   import numpy as np
@@ -547,7 +547,7 @@ def read_band_path_PAO ( fname ):
   return findex, ftags
 
 
-def read_dos_PAO ( fname ):
+def read_dos_PAO ( fname:str ):
   '''
   '''
   import numpy as np
@@ -566,7 +566,7 @@ def read_dos_PAO ( fname ):
   return es, dos
 
 
-def read_bands_PAO ( fname ):
+def read_bands_PAO ( fname:str ):
   '''
   '''
   import numpy as np
@@ -579,7 +579,7 @@ def read_bands_PAO ( fname ):
   return np.array(bands).T
 
 
-def read_transport_PAO ( fname ):
+def read_transport_PAO ( fname:str ):
 
   import numpy as np
 
@@ -622,23 +622,32 @@ def read_transport_PAO ( fname ):
     return enes, temps, tensors
 
 
-def read_transport_PAO_parse ( fname ):
+def read_datablocks_XSF ( fname:str ):
   '''
   '''
   import numpy as np
 
-  enes = []
-  temps = [-1]
-  tensors = []
+  blocks = []
   with open(fname, 'r') as f:
-    tene = []
-    ttemp = []
-    ttensor = []
-    for l in f.readlines():
-      ls = l.split()
-      ntemp = float(ls[0])
-      if not temps[-1] == ntemp:
-        enes.append(tene); tene = []
-        temps.append(ntemp)
-  temps.pop(0)
+    lines = f.readlines()
+    nlines = len(lines)
 
+    ind = 0
+    while ind < nlines:
+      while 'BEGIN_DATAGRID' not in lines[ind]:
+        ind += 1
+        if ind == nlines:
+          return np.array(blocks)
+      if 'BEGIN_DATAGRID' in lines[ind]:
+        ind += 1
+        dims = np.array([int(v) for v in lines[ind].split()])
+        ind += 5
+        data = np.empty(dims, dtype=float)
+        for i in range(dims[0]):
+          for j in range(dims[1]):
+            data[i,j,:] = np.array([float(v) for v in lines[ind].split()])
+            ind += 1
+        blocks.append(data)
+      ind += 1
+
+  return np.array(blocks)

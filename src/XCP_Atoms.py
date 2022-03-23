@@ -412,7 +412,11 @@ class XCP_Atoms ( XtraCrysPy ):
       self.scene.add(tbond)
       self.bonds.append(tbond)
 
-    self.frame = actor.streamtube(linfo, colors=(1,1,1), linewidth=0.1)
+    self.bound_points = linfo[0]
+    self.frame = actor.streamtube(linfo[1], colors=(1,1,1), linewidth=0.1)
     if 'Boundary' in self.frame_checkbox.checked_labels:
       self.scene.add(self.frame)
 
+  def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0), disp_all=False ):
+    origin = -.5*np.array([1,1,1], dtype=float)
+    super().render_iso_surface(self.model.lattice, origin, data, iso_vals, colors, disp_all)
