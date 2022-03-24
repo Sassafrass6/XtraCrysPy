@@ -164,6 +164,20 @@ class Model:
           frame += [[orig+lat[k],orig+lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
     frame = np.array(frame)
 
+    bpoints = []
+    bpoints.append([0,0,0])
+    p1 = nc1*lattice[0]
+    p2 = nc2*lattice[1]
+    p3 = nc3*lattice[2]
+    bpoints.append(p1)
+    bpoints.append(p2)
+    bpoints.append(p3)
+    bpoints.append(p1+p2)
+    bpoints.append(p2+p3)
+    bpoints.append(p1+p3)
+    bpoints.append(p1+p2+p3)
+    bpoints = np.array(bpoints)
+
     for i,n in enumerate(nsc):
       lattice[i,:] *= n
 
@@ -231,19 +245,5 @@ class Model:
     bcols = np.array(bcols)
     brads = np.array(brads)
     bheight = np.array(bheight)
-
-    bpoints = []
-    bpoints.append([0,0,0])
-    p1 = nc1*lattice[0]
-    p2 = nc2*lattice[1]
-    p3 = nc3*lattice[2]
-    bpoints.append(p1)
-    bpoints.append(p2)
-    bpoints.append(p3)
-    bpoints.append(p1+p2)
-    bpoints.append(p2+p3)
-    bpoints.append(p1+p3)
-    bpoints.append(p1+p2+p3)
-    bpoints = np.array(bpoints)
 
     return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight), (bpoints,frame)
