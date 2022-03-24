@@ -15,7 +15,10 @@ class XtraCrysPy:
     self.picker = None
 
     self.scene = window.Scene()
-    #self.scene.projection('parallel')
+
+    if not perspective:
+      self.scene.projection('parallel')
+
     self.smanager = window.ShowManager(self.scene, size=size, order_transparent=True)
     self.smanager.initialize()
 

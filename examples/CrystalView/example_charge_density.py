@@ -6,7 +6,7 @@ if '__main__' == __name__:
   a_info = {'colors':{'Si':(0,.2,1)}, 'bonds':{'Si_Si':6.5}}
 
   fname = 'data_files/Si.scf.in'
-  xcp = XCP_Atoms.XCP_Atoms(model=fname, params=a_info, axes=False, nsc=(2,2,2))
+  xcp = XCP_Atoms.XCP_Atoms(model=fname, params=a_info, nsc=(2,2,2))
 
   density_file = 'data_files/Si.density_0.xsf'
   data = read_datablocks_XSF(density_file)

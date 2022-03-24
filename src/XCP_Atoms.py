@@ -417,6 +417,9 @@ class XCP_Atoms ( XtraCrysPy ):
     if 'Boundary' in self.frame_checkbox.checked_labels:
       self.scene.add(self.frame)
 
+    self.scene.ResetCamera()
+
+
   def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0), disp_all=False ):
     nsc = self.nsc
     origin = -np.array([((nsc[i]+1)%4)/4 for i in range(3)])

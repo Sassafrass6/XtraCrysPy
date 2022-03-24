@@ -135,6 +135,9 @@ class XCP_BZ ( XtraCrysPy ):
     self.frame = actor.streamtube(lines, colors=(1,1,1), linewidth=self.frame_width)
     self.scene.add(self.frame)
 
+    self.scene.ResetCamera()
+
+
   def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0), disp_all=False ):
     origin = -np.array([1,1,1], dtype=float)
     super().render_iso_surface(self.rlattice, origin, data, iso_vals, colors, disp_all)
