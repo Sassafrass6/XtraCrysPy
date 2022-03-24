@@ -150,6 +150,7 @@ class XtraCrysPy:
     colors = np.array(colors, dtype=float)
     cshape = colors.shape
 
+    one_col = True
     cdim = len(cshape)
     niv = iso_vals.shape[0]
     colors = np.array(colors)
@@ -162,6 +163,7 @@ class XtraCrysPy:
         raise Exception('Must provide one 3-color for each iso_val')
     elif cdim == 4 or cdim == 5:
       ci = cdim - 4
+      one_col = False
       for i in range(3):
         if cshape[ci+i] != data.shape[i]:
           raise Exception('Must provide one 3-color for each data point')
@@ -194,16 +196,28 @@ class XtraCrysPy:
 
     ds = data.shape
     ndata = np.empty([(nsc[i]+1)*s for i,s in enumerate(ds)], dtype=float)
+    if not one_col:
+      ncols = np.empty([niv]+[(nsc[i]+1)*s for i,s in enumerate(ds)]+[3], dtype=float)
     for i in range(nsc[0]+1):
       for j in range(nsc[1]+1):
         for k in range(nsc[2]+1):
           dw = (i, j, k)
           up = (i+1, j+1, k+1)
-          ndata[dw[0]*ds[0]:up[0]*ds[0], dw[1]*ds[1]:up[1]*ds[1], dw[2]*ds[2]:up[2]*ds[2]] = data[:,:,:]
+          dw0,dw1,dw2 = (dw[i]*ds[i] for i in range(3))
+          up0,up1,up2 = (up[i]*ds[i] for i in range(3))
+          ndata[dw0:up0, dw1:up1, dw2:up2] = data[:, :, :]
+          if not one_col:
+            for ic in range(niv):
+              ncols[ic, dw0:up0, dw1:up1, dw2:up2, :] = colors[ic, :, :, :, :]
 
     data = ndata
+    if not one_col:
+      colors = ncols
     for i in range(3):
       data = np.roll(data, data.shape[i]//4, axis=i)
+      if not one_col:
+        for ic in range(niv):
+          colors[ic] = np.roll(colors[ic], data.shape[i]//4, axis=i)
 
     hull = None
     if self.bound_points is not None:
