@@ -3,7 +3,7 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False ):
+  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, perspective=False ):
     '''
     Arguments:
     '''
@@ -23,7 +23,8 @@ class XtraCrysPy:
     self.smanager.initialize()
 
     checkbox = ['Boundary']
-    self.frame_checkbox = ui.Checkbox(checkbox, checkbox, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
+    initial = checkbox if boundary else []
+    self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
     self.scene.add(self.frame_checkbox)
     self.frame_checkbox.on_change = self.toggle_frame
 

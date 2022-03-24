@@ -152,6 +152,18 @@ class Model:
     if self.bond_type is None:
       self.bond_type = bond_type
 
+    frame = []
+    lat = lattice
+    for ix in range(nc1):
+      for iy in range(nc2):
+        for iz in range(nc3):
+          orig = np.array([ix,iy,iz]) @ lat
+          corner = np.sum(lat, axis=0) + orig
+          frame += [[orig,orig+a] for a in lat]
+          frame += [[orig+p,corner] for p in [lat[i]+lat[j] for i in range(3) for j in range(i+1,3)]]
+          frame += [[orig+lat[k],orig+lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
+    frame = np.array(frame)
+
     for i,n in enumerate(nsc):
       lattice[i,:] *= n
 
@@ -222,9 +234,9 @@ class Model:
 
     bpoints = []
     bpoints.append([0,0,0])
-    p1 = nc1*self.lattice[0]
-    p2 = nc2*self.lattice[1]
-    p3 = nc3*self.lattice[2]
+    p1 = nc1*lattice[0]
+    p2 = nc2*lattice[1]
+    p3 = nc3*lattice[2]
     bpoints.append(p1)
     bpoints.append(p2)
     bpoints.append(p3)
@@ -234,16 +246,4 @@ class Model:
     bpoints.append(p1+p2+p3)
     bpoints = np.array(bpoints)
 
-    lines = []
-    lat = self.lattice
-    for ix in range(nc1):
-      for iy in range(nc2):
-        for iz in range(nc3):
-          orig = np.array([ix,iy,iz]) @ lat
-          corner = np.sum(lat, axis=0) + orig
-          lines += [[orig,orig+a] for a in lat]
-          lines += [[orig+p,corner] for p in [lat[i]+lat[j] for i in range(3) for j in range(i+1,3)]]
-          lines += [[orig+lat[k],orig+lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
-    lines = np.array(lines)
-
-    return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight), (bpoints,lines)
+    return (atoms,acols,radii), (bonds,bdirs,bcols,brads,bheight), (bpoints,frame)

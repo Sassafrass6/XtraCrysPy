@@ -19,6 +19,6 @@ if '__main__' == __name__:
   a_info = {'species':labels, 'lattice':cubic_vecs, 'abc':atoms, 'bonds':bonds, 'units':'angstrom'}
 
   model = Model.Model(params=a_info)
-  xcp = XCP_Atoms.XCP_Atoms(model=model)
+  xcp = XCP_Atoms.XCP_Atoms(model=model, boundary=False)
   xcp.start_crystal_view()
 
