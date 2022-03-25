@@ -165,18 +165,10 @@ class Model:
     frame = np.array(frame)
 
     bpoints = []
-    bpoints.append([0,0,0])
-    p1 = nc1*lattice[0]
-    p2 = nc2*lattice[1]
-    p3 = nc3*lattice[2]
-    bpoints.append(p1)
-    bpoints.append(p2)
-    bpoints.append(p3)
-    bpoints.append(p1+p2)
-    bpoints.append(p2+p3)
-    bpoints.append(p1+p3)
-    bpoints.append(p1+p2+p3)
-    bpoints = np.array(bpoints)
+    bp = np.array([nsc[i]*lattice[i] for i in range(3)])
+    for i,b in enumerate(bp):
+      bpoints += [b, bp[i-2]+bp[i-1]]
+    bpoints += [[0,0,0], np.sum(bp, axis=0)]
 
     for i,n in enumerate(nsc):
       lattice[i,:] *= n
@@ -196,6 +188,7 @@ class Model:
     atoms = np.array(atoms)
     acols = np.array(acols)
     radii = np.array(radii)
+
     for i,n in enumerate(nsc):
       atoms[:,i] /= n
     atoms = atoms @ lattice
@@ -240,6 +233,7 @@ class Model:
               bcols.append([self.colors[t1], self.colors[t2]])
               brads.append(self.bond_radius(dist,i1,i2,self.bond_type))
               bheight.append(dist/2)
+
     bonds = np.array(bonds)
     bdirs = np.array(bdirs)
     bcols = np.array(bcols)
