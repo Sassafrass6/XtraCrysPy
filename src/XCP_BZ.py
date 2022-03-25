@@ -4,8 +4,8 @@ import numpy as np
 
 class XCP_BZ ( XtraCrysPy ):
 
-  def __init__ ( self, size=(1024, 1024), axes=True, perspective=False, model=None, frame_width=4e-3 ):
-    super().__init__(size, axes, perspective)
+  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, model=None, frame_width=4e-3 ):
+    super().__init__(size, axes, boundary, background, perspective)
 
     self.model = model
     self.point_actors = []
@@ -38,7 +38,7 @@ class XCP_BZ ( XtraCrysPy ):
       else:
         raise ValueError('Argument \'model\' must be a Model object or a dictionary.')
 
-      self.bravais_boundaries()
+      self.bravais_boundaries(render=boundary)
 
 
   def display_points ( self, points, colors=(1,1,1), radii=0.04 ):
@@ -65,7 +65,7 @@ class XCP_BZ ( XtraCrysPy ):
     self.point_actors.append(p_actors)
 
 
-  def bravais_boundaries ( self ):
+  def bravais_boundaries ( self, render=True ):
     from numpy.linalg import det,norm,solve
     from fury import actor
 
@@ -133,7 +133,8 @@ class XCP_BZ ( XtraCrysPy ):
     self.bound_points = np.unique(np.array(lines).reshape((2*len(lines),3)), axis=0)
 
     self.frame = actor.streamtube(lines, colors=(1,1,1), linewidth=self.frame_width)
-    self.scene.add(self.frame)
+    if render:
+      self.scene.add(self.frame)
 
     self.scene.ResetCamera()
 

@@ -3,7 +3,7 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, perspective=False ):
+  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False ):
     '''
     Arguments:
     '''
@@ -15,6 +15,7 @@ class XtraCrysPy:
     self.picker = None
 
     self.scene = window.Scene()
+    self.scene.background(background)
 
     if not perspective:
       self.scene.projection('parallel')

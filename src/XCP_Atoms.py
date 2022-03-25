@@ -6,10 +6,11 @@ import numpy as np
 class XCP_Atoms ( XtraCrysPy ):
 
   def __init__ ( self, size=(1024, 1024), axes=True, boundary=True,
-                 perspective=False, model=None, params={},
-                 relax=False, nsc=(1,1,1), bond_type='Stick',
-                 sel_type='Chain', unit='angstrom', runit='degree' ):
-    super().__init__(size, axes, boundary, perspective)
+                 background=(0,0,0), perspective=False, model=None,
+                 params={}, relax=False, nsc=(1,1,1),
+		 bond_type='Stick', sel_type='Chain', unit='angstrom',
+		 runit='degree' ):
+    super().__init__(size, axes, boundary, background, perspective)
     from .Model import Model
 
     self.nsc = nsc
