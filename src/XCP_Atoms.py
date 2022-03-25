@@ -413,7 +413,7 @@ class XCP_Atoms ( XtraCrysPy ):
       self.scene.add(tbond)
       self.bonds.append(tbond)
 
-    self.bound_points = linfo[0]
+    self.bound_planes = linfo[0]
     self.frame = actor.streamtube(linfo[1], colors=(1,1,1), linewidth=0.1)
     if 'Boundary' in self.frame_checkbox.checked_labels:
       self.scene.add(self.frame)

@@ -221,15 +221,17 @@ class XtraCrysPy:
         for ic in range(niv):
           colors[ic] = np.roll(colors[ic], data.shape[i]//4, axis=i)
 
+    '''
     hull = None
     if self.bound_points is not None:
       pts = self.bound_points
       hull = (pts, ConvexHull(pts).simplices)
+    '''
 
     self.surfaces = []
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
-      self.surfaces.append(iso_surface(data, grid_spacing, iv, origin, colors[i], bound_polys=hull, skew=lattice))
+      self.surfaces.append(iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=self.bound_planes, skew=lattice))
     self.scene.add(self.surfaces[0])
 
     if len(self.surfaces) > 1:

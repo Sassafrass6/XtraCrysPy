@@ -129,7 +129,7 @@ class XCP_BZ ( XtraCrysPy ):
               lines.append((c1,c2))
 
     # Adjust planes to represent midpoints between reciprocal lattice points
-    self.bound_planes = np.array(planes)/2
+    self.bound_planes = np.array([np.array(planes)/2]*2)
     self.bound_points = np.unique(np.array(lines).reshape((2*len(lines),3)), axis=0)
 
     self.frame = actor.streamtube(lines, colors=(1,1,1), linewidth=self.frame_width)
@@ -140,5 +140,5 @@ class XCP_BZ ( XtraCrysPy ):
 
 
   def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0), disp_all=False ):
-    origin = -np.array([1,1,1], dtype=float)
+    origin = 1/np.array(data.shape) - 1
     super().render_iso_surface(self.rlattice, origin, data, iso_vals, colors, disp_all)

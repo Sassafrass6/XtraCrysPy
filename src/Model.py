@@ -164,11 +164,13 @@ class Model:
           frame += [[orig+lat[k],orig+lat[i]+lat[j]] for i in range(3) for j in range(i+1,3) for k in [i,j]]
     frame = np.array(frame)
 
-    bpoints = []
+    bpoints = np.empty((2,6,3), dtype=float)
     bp = np.array([nsc[i]*lattice[i] for i in range(3)])
-    for i,b in enumerate(bp):
-      bpoints += [b, bp[i-2]+bp[i-1]]
-    bpoints += [[0,0,0], np.sum(bp, axis=0)]
+    for i in range(3):
+      bpoints[0,i] = (bp[i-2] + bp[i-1])/2
+      bpoints[1,i] = np.cross(bp[i-1], bp[i-2])
+      bpoints[0,i+3] = bpoints[0,i] + bp[i]
+      bpoints[1,i+3] = -bpoints[1,i]
 
     for i,n in enumerate(nsc):
       lattice[i,:] *= n

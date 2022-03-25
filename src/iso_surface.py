@@ -1,4 +1,4 @@
-from fury.lib import numpy_support,Actor,CellArray,DataObject,ImageData,Points,PolyData,PolyDataMapper,Transform,VTK_UNSIGNED_CHAR
+from fury.lib import numpy_support,Actor,CellArray,DataObject,DoubleArray,ImageData,Points,PolyData,PolyDataMapper,Transform,VTK_UNSIGNED_CHAR
 from fury.utils import numpy_to_vtk_matrix,set_polydata_colors
 import numpy as np
 
@@ -9,7 +9,9 @@ import vtkmodules.vtkFiltersModeling as fmvtk
 import vtkmodules.vtkFiltersGeometry as fgmvtk
 import vtkmodules.vtkCommonDataModel as cdmvtk
 
+Planes = cdmvtk.vtkPlanes
 Triangle = cdmvtk.vtkTriangle
+ClipPolyData = fcvtk.vtkClipPolyData
 ContourFilter = fcvtk.vtkContourFilter
 MultiThreshold = fgvtk.vtkMultiThreshold
 TransformFilter = fgvtk.vtkTransformFilter
@@ -20,7 +22,7 @@ TransformPolyDataFilter = fgvtk.vtkTransformPolyDataFilter
 WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
 # Create my iso_surface routine, until I'm allowed to merge the branch into fury
-def iso_surface(data, dx, iso_val, origin, colors, bound_polys=None, skew=None):
+def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None):
 
     if data.ndim != 3:
         raise ValueError('Only 3D arrays are currently supported.')
@@ -58,56 +60,35 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_polys=None, skew=None):
     transform = Transform()
     transform.SetMatrix(numpy_to_vtk_matrix(lpad))
 
-    latT = TransformPolyDataFilter()
-    latT.SetInputConnection(iso.GetOutputPort())
-    latT.SetTransform(transform)
+    iso_transformed = TransformPolyDataFilter()
+    iso_transformed.SetInputConnection(iso.GetOutputPort())
+    iso_transformed.SetTransform(transform)
 
     if not one_color:
       im.GetCellData().SetScalars(vtk_colors)
 
-    if bound_polys is None:
+    if bound_planes is None:
         iso_map = PolyDataMapper()
-        iso_map.SetInputConnection(latT.GetOutputPort())
+        iso_map.SetInputConnection(iso_transformed.GetOutputPort())
 
     else:
-        points = Points()
-        for p in bound_polys[0]:
-            points.InsertNextPoint(*p)
+        clip_centers = Points()
+        clip_normals = DoubleArray()
+        clip_normals.SetNumberOfComponents(3)
+        for i in range(bound_planes.shape[1]):
+          clip_centers.InsertNextPoint(*bound_planes[0,i])
+          clip_normals.InsertNextTuple3(*bound_planes[1,i])
+        clip_planes = Planes()
+        clip_planes.SetPoints(clip_centers)
+        clip_planes.SetNormals(clip_normals)
 
-        tris = CellArray()
-        for vtx in bound_polys[1]:
-            t = Triangle()
-            for i,v in enumerate(vtx):
-                t.GetPointIds().SetId(i, v)
-            tris.InsertNextCell(t)
-
-        poly = PolyData()
-        poly.SetPoints(points)
-        poly.SetPolys(tris)
-
-        select = SelectEnclosedPoints()
-        select.SetInputConnection(latT.GetOutputPort())
-        select.SetSurfaceData(poly)
-
-        thresh = MultiThreshold()
-        inside = thresh.AddBandpassIntervalSet(1, 1, DataObject.FIELD_ASSOCIATION_POINTS, 'SelectedPoints', 0, 1)
-        thresh.SetInputConnection(select.GetOutputPort())
-        thresh.OutputSet(inside)
-        thresh.Update()
-
-        surface = DataSetSurfaceFilter()
-        surface.SetInputData(thresh.GetOutput().GetBlock(inside).GetBlock(0))
-
-        smooth = WindowedSincPolyDataFilter()
-        smooth.SetInputConnection(surface.GetOutputPort())
-        smooth.SetNumberOfIterations(30)
-        smooth.BoundarySmoothingOn()
-        smooth.SetEdgeAngle(180)
-        smooth.GetOutput().GetCellData().SetScalars(iso.GetOutput().GetCellData().GetScalars())
-        smooth.Update()
+        clipper = ClipPolyData()
+        clipper.SetInputConnection(iso_transformed.GetOutputPort())
+        clipper.SetClipFunction(clip_planes)
+        clipper.InsideOutOn()
 
         iso_map = PolyDataMapper()
-        iso_map.SetInputConnection(smooth.GetOutputPort())
+        iso_map.SetInputConnection(clipper.GetOutputPort())
 
     if not one_color:
         iso_map.SetScalarModeToUseCellData()
