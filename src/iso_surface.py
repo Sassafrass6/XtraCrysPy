@@ -11,7 +11,6 @@ import vtkmodules.vtkCommonDataModel as cdmvtk
 
 Triangle = cdmvtk.vtkTriangle
 ContourFilter = fcvtk.vtkContourFilter
-FlyingEdges3D = fcvtk.vtkFlyingEdges3D
 MultiThreshold = fgvtk.vtkMultiThreshold
 TransformFilter = fgvtk.vtkTransformFilter
 UnsignedCharArray = ccvtk.vtkUnsignedCharArray
@@ -21,14 +20,13 @@ TransformPolyDataFilter = fgvtk.vtkTransformPolyDataFilter
 WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
 # Create my iso_surface routine, until I'm allowed to merge the branch into fury
-def iso_surface(data, iso_val, origin, colors, bound_polys=None, lattice=None, nsc=(1,1,1)):
+def iso_surface(data, dx, iso_val, origin, colors, bound_polys=None, skew=None):
 
     if data.ndim != 3:
         raise ValueError('Only 3D arrays are currently supported.')
 
     dims = data.shape
     npnt = np.prod(dims)
-    voxsz = [(nsc[i]+1)/s for i,s in enumerate(dims)]
 
     data = data.astype('uint8')
     vtk_type = numpy_support.get_vtk_array_type(data.dtype)
@@ -47,7 +45,7 @@ def iso_surface(data, iso_val, origin, colors, bound_polys=None, lattice=None, n
     im = ImageData()
     im.SetDimensions(*dims)
     im.SetOrigin(*origin)
-    im.SetSpacing(voxsz[0], voxsz[1], voxsz[2])
+    im.SetSpacing(*dx)
     im.AllocateScalars(vtk_type, 1)
     im.GetPointData().SetScalars(uchar_array)
 
@@ -56,7 +54,7 @@ def iso_surface(data, iso_val, origin, colors, bound_polys=None, lattice=None, n
     iso.SetValue(0, iso_val)
 
     lpad = np.eye(4)
-    lpad[:3, :3] = lattice.T
+    lpad[:3, :3] = skew.T
     transform = Transform()
     transform.SetMatrix(numpy_to_vtk_matrix(lpad))
 

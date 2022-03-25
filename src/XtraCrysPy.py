@@ -197,6 +197,7 @@ class XtraCrysPy:
     print('Data range: [{}, {}]'.format(dmin, dmax+dmin))
 
     ds = data.shape
+    grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(ds)]
     ndata = np.empty([(nsc[i]+1)*s for i,s in enumerate(ds)], dtype=float)
     if not one_col:
       ncols = np.empty([niv]+[(nsc[i]+1)*s for i,s in enumerate(ds)]+[3], dtype=float)
@@ -228,7 +229,7 @@ class XtraCrysPy:
 
     self.surfaces = []
     for i,iv in enumerate(iso_vals):
-      self.surfaces.append(iso_surface(data, iv, origin, colors[i], bound_polys=hull, lattice=lattice, nsc=nsc))
+      self.surfaces.append(iso_surface(data, grid_spacing, iv, origin, colors[i], bound_polys=hull, lattice=lattice))
     self.scene.add(self.surfaces[0])
 
     if len(self.surfaces) > 1:
