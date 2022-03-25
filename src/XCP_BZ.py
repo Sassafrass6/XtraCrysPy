@@ -139,6 +139,6 @@ class XCP_BZ ( XtraCrysPy ):
     self.scene.ResetCamera()
 
 
-  def render_iso_surface ( self, data, iso_vals=0, colors=(255,110,0), disp_all=False ):
+  def render_iso_surface ( self, data, arrows=None, iso_vals=0, colors=(255,110,0), disp_all=False ):
     origin = 1/np.array(data.shape) - 1
-    super().render_iso_surface(self.rlattice, origin, data, iso_vals, colors, disp_all)
+    super().render_iso_surface(self.rlattice, origin, data, arrows, iso_vals, colors, disp_all)

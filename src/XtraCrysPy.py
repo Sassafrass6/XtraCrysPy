@@ -127,10 +127,13 @@ class XtraCrysPy:
     if sind != self.surface_index:
       self.scene.rm(self.surfaces[self.surface_index])
       self.scene.add(self.surfaces[sind])
+      if self.arrow_surfaces is not None:
+        self.scene.rm(self.arrow_surfaces[self.surface_index])
+        self.scene.add(self.arrow_surfaces[sind])
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, lattice, origin, data, iso_vals=0, colors=(255,110,0), disp_all=False, nsc=(1,1,1) ):
+  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0), disp_all=False, nsc=(1,1,1) ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
     from fury import ui
@@ -197,9 +200,12 @@ class XtraCrysPy:
     print('Data range: [{}, {}]'.format(dmin, dmax+dmin))
 
     ds = data.shape
-    ndata = np.empty([(nsc[i]+1)*s for i,s in enumerate(ds)], dtype=float)
+    scshape = [(nsc[i]+1)*s for i,s in enumerate(ds)]
+    ndata = np.empty(scshape, dtype=float)
     if not one_col:
-      ncols = np.empty([niv]+[(nsc[i]+1)*s for i,s in enumerate(ds)]+[3], dtype=float)
+      ncols = np.empty([niv]+scshape+[3], dtype=float)
+    if arrows is not None:
+      narr = np.empty(scshape+[3], dtype=float)
     for i in range(nsc[0]+1):
       for j in range(nsc[1]+1):
         for k in range(nsc[2]+1):
@@ -211,15 +217,21 @@ class XtraCrysPy:
           if not one_col:
             for ic in range(niv):
               ncols[ic, dw0:up0, dw1:up1, dw2:up2, :] = colors[ic, :, :, :, :]
+          if arrows is not None:
+            narr[dw0:up0, dw1:up1, dw2:up2, :] = arrows[:, :, :, :]
 
     data = ndata
     if not one_col:
       colors = ncols
+    if arrows is not None:
+      arrows = narr
     for i in range(3):
       data = np.roll(data, data.shape[i]//4, axis=i)
       if not one_col:
         for ic in range(niv):
           colors[ic] = np.roll(colors[ic], data.shape[i]//4, axis=i)
+      if arrows is not None:
+        arrows = np.roll(arrows, arrows.shape[i]//4, axis=i)
 
     '''
     hull = None
@@ -229,10 +241,13 @@ class XtraCrysPy:
     '''
 
     self.surfaces = []
+    self.arrow_surfaces = [] if arrows is not None else None
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
-      self.surfaces.append(iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=self.bound_planes, skew=lattice))
-    self.scene.add(self.surfaces[0])
+      s1,s2 = iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=self.bound_planes, skew=lattice, arrows=arrows)
+      self.surfaces.append(s1)
+      if arrows is not None:
+        self.arrow_surfaces.append(s2)
 
     if len(self.surfaces) > 1:
       if not disp_all:
@@ -240,9 +255,18 @@ class XtraCrysPy:
         self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=iso_vals.shape[0])
         self.surface_slider.on_change = self.update_iso_surface
         self.scene.add(self.surface_slider)
+        self.scene.add(self.surfaces[0])
+        if self.arrow_surfaces is not None:
+          self.scene.add(self.arrow_surfaces[0])
       else:
-        for s in self.surfaces:
+        for i,s in enumerate(self.surfaces):
           self.scene.add(s)
+          if self.arrow_surfaces is not None:
+            self.scene.add(self.arrow_surfaces[i])
+    elif len(self.surfaces) == 1:
+      self.scene.add(self.surfaces[0])
+      if self.arrow_surfaces is not None:
+        self.scene.add(self.arrow_surfaces[0])
 
 
   def start_crystal_view ( self ):
