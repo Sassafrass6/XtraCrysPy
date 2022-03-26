@@ -26,7 +26,7 @@ DataSetSurfaceFilter = fgmvtk.vtkDataSetSurfaceFilter
 TransformPolyDataFilter = fgvtk.vtkTransformPolyDataFilter
 WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
-def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None):
+def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None, arrow_colors=None):
 
     if data.ndim != 3:
         raise ValueError('Only 3D arrays are currently supported.')
@@ -43,6 +43,14 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
     one_color = True
     if len(colors.shape) != 1:
       one_color = False
+
+    if arrows is not None:
+      one_acolor = True
+      if arrow_colors is None:
+        raise ValueError('arrow_colors must be a 3-color or one 3-color for each data point')
+      arrow_colors = np.array(arrow_colors)
+      if len(arrow_colors.shape) != 1:
+        one_acolor = False
 
     im = ImageData()
     im.SetDimensions(*dims)
@@ -63,14 +71,14 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
       im.GetPointData().AddArray(adirs)
       im.GetPointData().SetActiveVectors('directions')
 
-    if not one_color:
-      if arrows is not None:
-        tcol = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'),0,2).reshape((np.prod(colors.shape[:3]),3)))
-        acolors = numpy_support.numpy_to_vtk(tcol, deep=True, array_type=vtk_type)
+      if not one_acolor:
+        arrow_colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'),0,2).reshape((np.prod(arrow_colors.shape[:3]),3)))
+        acolors = numpy_support.numpy_to_vtk(arrow_colors, deep=True, array_type=vtk_type)
         acolors.SetNumberOfComponents(3)
         acolors.SetName('colors')
         im.GetPointData().AddArray(acolors)
 
+    if not one_color:
       colors = colors[:-1,:-1,:-1]
       colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'),0,2).reshape((np.prod(colors.shape[:3]),3)))
       vtk_colors = numpy_support.numpy_to_vtk(colors, deep=True, array_type=vtk_type)
@@ -91,34 +99,55 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
     iso_transformed.SetTransform(transform)
 
     if bound_planes is not None:
-        clip_centers = Points()
-        clip_normals = DoubleArray()
-        clip_normals.SetNumberOfComponents(3)
-        for i in range(bound_planes.shape[1]):
-          clip_centers.InsertNextPoint(*bound_planes[0,i])
-          clip_normals.InsertNextTuple3(*bound_planes[1,i])
-        clip_planes = Planes()
-        clip_planes.SetPoints(clip_centers)
-        clip_planes.SetNormals(clip_normals)
+      clip_centers = Points()
+      clip_normals = DoubleArray()
+      clip_normals.SetNumberOfComponents(3)
+      for i in range(bound_planes.shape[1]):
+        clip_centers.InsertNextPoint(*bound_planes[0,i])
+        clip_normals.InsertNextTuple3(*bound_planes[1,i])
+      clip_planes = Planes()
+      clip_planes.SetPoints(clip_centers)
+      clip_planes.SetNormals(clip_normals)
 
-        clipper = ClipPolyData()
-        clipper.SetInputConnection(iso_transformed.GetOutputPort())
-        clipper.SetClipFunction(clip_planes)
-        clipper.InsideOutOn()
+      clipper = ClipPolyData()
+      clipper.SetInputConnection(iso_transformed.GetOutputPort())
+      clipper.SetClipFunction(clip_planes)
+      clipper.InsideOutOn()
 
-        iso_transformed = clipper
+      iso_transformed = clipper
 
     iso_map = PolyDataMapper()
     iso_map.SetInputConnection(iso_transformed.GetOutputPort())
+
+    if not one_color:
+      iso_map.SetScalarModeToUseCellData()
+      iso_map.ScalarVisibilityOn()
+
+    else:
+      iso_map.ScalarVisibilityOff()
+
+    actor = Actor()
+    actor.SetMapper(iso_map)
+
+    if one_color:
+      actor.GetProperty().SetColor(*colors/255)
 
     aactor = None
     if arrows is not None:
 
       arrow = ArrowSource()
+      lpad = np.eye(4)
+      lpad[:3,3] = -.5*np.array([1,0,0])
+      transform = Transform()
+      transform.SetMatrix(numpy_to_vtk_matrix(lpad))
+      tarrow = TransformPolyDataFilter()
+      tarrow.SetInputConnection(arrow.GetOutputPort())
+      tarrow.SetTransform(transform)
+
       arrow_glyph = Glyph3D()
       arrow_glyph.SetInputData(iso_transformed.GetOutput())
       arrow_glyph.OrientOn()
-      arrow_glyph.SetSourceConnection(arrow.GetOutputPort())
+      arrow_glyph.SetSourceConnection(tarrow.GetOutputPort())
       arrow_glyph.SetScaleModeToDataScalingOff()
       arrow_glyph.SetScaleFactor(0.025)
       arrow_glyph.Update()
@@ -126,27 +155,19 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
       amapper = PolyDataMapper()
       amapper.SetInputConnection(arrow_glyph.GetOutputPort())
 
+      if not one_acolor:
+        amapper.SetScalarModeToUsePointFieldData()
+        amapper.SelectColorArray('colors')
+        amapper.ScalarVisibilityOn()
+
+      else:
+        amapper.ScalarVisibilityOff()
+
       aactor = Actor()
       aactor.SetMapper(amapper)
 
-    if not one_color:
-        iso_map.SetScalarModeToUseCellData()
-        iso_map.ScalarVisibilityOn()
-
-        if arrows is not None:
-          amapper.SetScalarModeToUsePointFieldData()
-          amapper.SelectColorArray('colors')
-          amapper.ScalarVisibilityOn()
-    else:
-        iso_map.ScalarVisibilityOff()
-
-        if arrows is not None:
-          amapper.ScalarVisibilityOff()
-
-    actor = Actor()
-    actor.SetMapper(iso_map)
-    if one_color:
-        actor.GetProperty().SetColor(*colors/255.)
+      if one_acolor:
+        aactor.GetProperty().SetColor(*arrow_colors/255)
 
     return actor, aactor
 

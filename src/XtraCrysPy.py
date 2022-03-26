@@ -133,7 +133,7 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0), disp_all=False, nsc=(1,1,1) ):
+  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), disp_all=False, nsc=(1,1,1) ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
     from fury import ui
@@ -143,50 +143,6 @@ class XtraCrysPy:
       raise Exception('Argument data must be a 3D array')
     else:
       data = data[::-1, ::-1, ::-1]
-
-    if isinstance(iso_vals, (float,int)):
-      iso_vals = np.array([iso_vals], dtype=float)
-    else:
-      iso_vals = np.array(iso_vals, dtype=float)
-
-    if len(iso_vals.shape) != 1:
-      raise Exception('Argumenta iso_vals must be a number or a 1D array of numbers')
-
-    colors = np.array(colors, dtype=float)
-    cshape = colors.shape
-
-    one_col = True
-    cdim = len(cshape)
-    niv = iso_vals.shape[0]
-    colors = np.array(colors)
-    if cdim == 1:
-      if cshape[0] != 3:
-        raise Exception('Colors should be a tuple (R,G,B) with values in the range [0,255]')
-      colors = np.array([colors] * niv)
-    elif cdim == 2:
-      if cshape[0] != niv or cshape[1] != 3:
-        raise Exception('Must provide one 3-color for each iso_val')
-    elif cdim == 4 or cdim == 5:
-      ci = cdim - 4
-      one_col = False
-      for i in range(3):
-        if cshape[ci+i] != data.shape[i]:
-          raise Exception('Must provide one 3-color for each data point')
-      if cdim == 4:
-          colors = np.array([colors[::-1,::-1,::-1]] * niv)
-      else:
-        if cshape[0] != niv:
-          raise Exception('First array dimension must match the number of iso_vals')
-        elif cshape[-1] != 3:
-          raise Exception('Colors must be provided as 3-colors')
-        else:
-          colors = colors[:, ::-1, ::-1, ::-1, :]
-    else:
-      raise ValueError('Invalid dimensions for colors array')
-
-    if np.max(colors[0]) <= 1:
-      for i in range(niv):
-        colors[i] *= 255
 
     dmin = np.min(data)
     data -= dmin
@@ -199,6 +155,56 @@ class XtraCrysPy:
 
     print('Data range: [{}, {}]'.format(dmin, dmax+dmin))
 
+    if isinstance(iso_vals, (float,int)):
+      iso_vals = np.array([iso_vals], dtype=float)
+    else:
+      iso_vals = np.array(iso_vals, dtype=float)
+
+    if len(iso_vals.shape) != 1:
+      raise Exception('Argumenta iso_vals must be a number or a 1D array of numbers')
+
+    niv = iso_vals.shape[0]
+    colors = np.array(colors, dtype=float)
+    arrow_colors = np.array(arrow_colors, dtype=float)
+
+    def format_colors_array ( col ):
+      cshape = col.shape
+      one_col = True
+      cdim = len(cshape)
+      if cdim == 1:
+        if cshape[0] != 3:
+          raise Exception('Colors should be a tuple (R,G,B) with values in the range [0,255]')
+        col = np.array([col] * niv)
+      elif cdim == 2:
+        if cshape[0] != niv or cshape[1] != 3:
+          raise Exception('Must provide one 3-color for each iso_val')
+      elif cdim == 4 or cdim == 5:
+        ci = cdim - 4
+        one_col = False
+        for i in range(3):
+          if cshape[ci+i] != data.shape[i]:
+            raise Exception('Must provide one 3-color for each data point')
+        if cdim == 4:
+            col = np.array([col[::-1,::-1,::-1]] * niv)
+        else:
+          if cshape[0] != niv:
+            raise Exception('First array dimension must match the number of iso_vals')
+          elif cshape[-1] != 3:
+            raise Exception('Colors must be provided as 3-colors')
+          else:
+            col = col[:, ::-1, ::-1, ::-1, :]
+      else:
+        raise ValueError('Invalid dimensions for colors array')
+
+      if np.max(col[0]) <= 1:
+        for i in range(niv):
+          col[i] *= 255
+
+      return col, one_col
+
+    colors,one_col = format_colors_array(colors)
+    arrow_colors,one_acol = format_colors_array(arrow_colors)
+
     ds = data.shape
     scshape = [(nsc[i]+1)*s for i,s in enumerate(ds)]
     ndata = np.empty(scshape, dtype=float)
@@ -206,6 +212,8 @@ class XtraCrysPy:
       ncols = np.empty([niv]+scshape+[3], dtype=float)
     if arrows is not None:
       narr = np.empty(scshape+[3], dtype=float)
+      if not one_acol:
+        nacols = np.empty([niv]+scshape+[3], dtype=float)
     for i in range(nsc[0]+1):
       for j in range(nsc[1]+1):
         for k in range(nsc[2]+1):
@@ -219,32 +227,32 @@ class XtraCrysPy:
               ncols[ic, dw0:up0, dw1:up1, dw2:up2, :] = colors[ic, :, :, :, :]
           if arrows is not None:
             narr[dw0:up0, dw1:up1, dw2:up2, :] = arrows[:, :, :, :]
+            if not one_acol:
+              nacols[ic, dw0:up0, dw1:up1, dw2:up2, :] = arrow_colors[ic, :, :, :, :]
 
     data = ndata
+    ds = data.shape
     if not one_col:
       colors = ncols
     if arrows is not None:
       arrows = narr
+      if not one_acol:
+        arrow_colors = nacols
     for i in range(3):
-      data = np.roll(data, data.shape[i]//4, axis=i)
+      data = np.roll(data, ds[i]//4, axis=i)
       if not one_col:
         for ic in range(niv):
-          colors[ic] = np.roll(colors[ic], data.shape[i]//4, axis=i)
+          colors[ic] = np.roll(colors[ic], ds[i]//4, axis=i)
       if arrows is not None:
-        arrows = np.roll(arrows, arrows.shape[i]//4, axis=i)
-
-    '''
-    hull = None
-    if self.bound_points is not None:
-      pts = self.bound_points
-      hull = (pts, ConvexHull(pts).simplices)
-    '''
+        arrows = np.roll(arrows, ds[i]//4, axis=i)
+        if not one_acol:
+          arrow_colors = np.roll(arrow_colors, ds[i]//4, axis=i)
 
     self.surfaces = []
     self.arrow_surfaces = [] if arrows is not None else None
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
-      s1,s2 = iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=self.bound_planes, skew=lattice, arrows=arrows)
+      s1,s2 = iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=self.bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i])
       self.surfaces.append(s1)
       if arrows is not None:
         self.arrow_surfaces.append(s2)
