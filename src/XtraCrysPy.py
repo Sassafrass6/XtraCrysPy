@@ -134,6 +134,20 @@ class XtraCrysPy:
 
 
   def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), disp_all=False, clip_planes=None, nsc=(1,1,1) ):
+    '''
+      Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
+      Arguments:
+        self (XtraCrysPy):
+        lattice (ndarray or list): Array similar to clip_planes (2,N,3), bounding the data
+        origin (ndarray or list): Arraw specifying the translation required to bring the data's center to the origin. Dimension (3,)
+        data (ndarray or list): Array of scalars on which to compute the isosurface. Dimension (X,Y,Z) for arbitrary X,Y, and Z
+        arrows (ndarray or list): Array of normals for arrows to draw on the surface. Dimension (X,Y,Z,3) with X,Y,Z determined by data dimensions
+        iso_vals (float or list): Value or list of iso-values to generate surfaces
+        colors (ndarray or list): Colors for the surface. Can specify for each isovalue and for each voxel, or just choose single colors. Accepted dimensions are (A,), (N,A), (X,Y,Z,A), or (N,X,Y,Z,A), where X,Y,Z are determined by data dimensions, N is the number of isovalues provided, and A is either 3 or 4 for RGB or RGBA colors respectively
+        arrow_colors (ndarray or list): Colors for the arrows, same specifications as the surface colors
+        disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
+        clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
+    '''
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
     from fury import ui
@@ -309,6 +323,9 @@ class XtraCrysPy:
 
 
   def start_crystal_view ( self ):
+    '''
+      Begin the render sequence and allow interaction
+    '''
     from fury import pick
 
     self.picker = pick.PickingManager()
