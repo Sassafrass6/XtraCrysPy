@@ -72,17 +72,17 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
       im.GetPointData().SetActiveVectors('directions')
 
       if not one_acolor:
-        arrow_colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'),0,2).reshape((np.prod(arrow_colors.shape[:3]),3)))
+        arrow_colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'),0,2).reshape((np.prod(arrow_colors.shape[:3]),4)))
         acolors = numpy_support.numpy_to_vtk(arrow_colors, deep=True, array_type=vtk_type)
-        acolors.SetNumberOfComponents(3)
+        acolors.SetNumberOfComponents(4)
         acolors.SetName('colors')
         im.GetPointData().AddArray(acolors)
 
     if not one_color:
       colors = colors[:-1,:-1,:-1]
-      colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'),0,2).reshape((np.prod(colors.shape[:3]),3)))
+      colors = np.ascontiguousarray(np.swapaxes(colors.astype('uint8'),0,2).reshape((np.prod(colors.shape[:3]),4)))
       vtk_colors = numpy_support.numpy_to_vtk(colors, deep=True, array_type=vtk_type)
-      vtk_colors.SetNumberOfComponents(3)
+      vtk_colors.SetNumberOfComponents(4)
       im.GetCellData().SetScalars(vtk_colors)
 
     iso = ContourFilter()
@@ -130,7 +130,8 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
     actor.SetMapper(iso_map)
 
     if one_color:
-      actor.GetProperty().SetColor(*colors/255)
+      actor.GetProperty().SetColor(*colors[:-1]/255)
+      actor.GetProperty().SetOpacity(colors[-1]/255)
 
     aactor = None
     if arrows is not None:
@@ -167,7 +168,8 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
       aactor.SetMapper(amapper)
 
       if one_acolor:
-        aactor.GetProperty().SetColor(*arrow_colors/255)
+        aactor.GetProperty().SetColor(*arrow_colors[:-1]/255)
+        aactor.GetProperty().SetOpacity(arrow_colors[-1]/255)
 
     return actor, aactor
 

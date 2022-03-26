@@ -133,7 +133,7 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), disp_all=False, nsc=(1,1,1) ):
+  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), disp_all=False, nsc=(1,1,1) ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
     from fury import ui
@@ -171,13 +171,26 @@ class XtraCrysPy:
       cshape = col.shape
       one_col = True
       cdim = len(cshape)
+
+      if np.max(col[0]) <= 1:
+        col *= 255
+
       if cdim == 1:
-        if cshape[0] != 3:
-          raise Exception('Colors should be a tuple (R,G,B) with values in the range [0,255]')
+        if cshape[0] not in [3, 4]:
+          raise Exception('Colors should be a tuple (R,G,B) or (R,G,B,A) with values in the range [0,255]')
+        if cshape[0] == 3:
+          col = np.concatenate([col,[255]])
         col = np.array([col] * niv)
       elif cdim == 2:
-        if cshape[0] != niv or cshape[1] != 3:
+        if cshape[0] != niv or cshape[1] not in [3, 4]:
           raise Exception('Must provide one 3-color for each iso_val')
+        if cshape[1] == 3:
+          tcol = np.empty((niv,4), dtype=float)
+          tcol[:,:3] = col[:]
+          tcol[:,3] = 255
+          col = tcol
+      elif cdim == 3:
+        raise Exception('Must provide colors in the same shape as data')
       elif cdim == 4 or cdim == 5:
         ci = cdim - 4
         one_col = False
@@ -185,20 +198,26 @@ class XtraCrysPy:
           if cshape[ci+i] != data.shape[i]:
             raise Exception('Must provide one 3-color for each data point')
         if cdim == 4:
-            col = np.array([col[::-1,::-1,::-1]] * niv)
+          if cshape[-1] == 3:
+            tcol = np.empty(list(cshape[:-1])+[4], dtype=float)
+            tcol[:,:,:,:3] = col
+            tcol[:,:,:,3] = 255
+            col = tcol
+          col = np.array([col[::-1,::-1,::-1]] * niv)
         else:
           if cshape[0] != niv:
             raise Exception('First array dimension must match the number of iso_vals')
           elif cshape[-1] != 3:
             raise Exception('Colors must be provided as 3-colors')
           else:
+            if cshape[-1] == 3:
+              tcol = np.empty(list(cshape[:-1])+[4], dtype=float)
+              tcol[:,:,:,:,:3] = col
+              tcol[:,:,:,:,3] = 255
+              col = tcol
             col = col[:, ::-1, ::-1, ::-1, :]
       else:
         raise ValueError('Invalid dimensions for colors array')
-
-      if np.max(col[0]) <= 1:
-        for i in range(niv):
-          col[i] *= 255
 
       return col, one_col
 
@@ -209,11 +228,11 @@ class XtraCrysPy:
     scshape = [(nsc[i]+1)*s for i,s in enumerate(ds)]
     ndata = np.empty(scshape, dtype=float)
     if not one_col:
-      ncols = np.empty([niv]+scshape+[3], dtype=float)
+      ncols = np.empty([niv]+scshape+[4], dtype=float)
     if arrows is not None:
       narr = np.empty(scshape+[3], dtype=float)
       if not one_acol:
-        nacols = np.empty([niv]+scshape+[3], dtype=float)
+        nacols = np.empty([niv]+scshape+[4], dtype=float)
     for i in range(nsc[0]+1):
       for j in range(nsc[1]+1):
         for k in range(nsc[2]+1):
