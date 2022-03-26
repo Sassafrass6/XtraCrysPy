@@ -421,8 +421,8 @@ class XCP_Atoms ( XtraCrysPy ):
     self.scene.ResetCamera()
 
 
-  def render_iso_surface ( self, data, arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), disp_all=False ):
+  def render_iso_surface ( self, data, arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), disp_all=False, clip_planes=None ):
     nsc = self.nsc
     origin = -np.array([((nsc[i]+1)%4)/4 for i in range(3)])
     origin += .5/np.array(data.shape)/nsc*[3-nsc[i]%2 for i in range(3)]
-    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, disp_all, nsc)
+    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, disp_all, clip_planes, nsc)

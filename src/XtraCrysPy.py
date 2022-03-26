@@ -133,7 +133,7 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), disp_all=False, nsc=(1,1,1) ):
+  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), disp_all=False, clip_planes=None, nsc=(1,1,1) ):
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
     from fury import ui
@@ -224,6 +224,18 @@ class XtraCrysPy:
     colors,one_col = format_colors_array(colors)
     arrow_colors,one_acol = format_colors_array(arrow_colors)
 
+    if clip_planes is None:
+      bound_planes = self.bound_planes
+    else:
+      clip_planes = np.array(clip_planes)
+      if clip_planes.shape[0] != 2 or clip_planes.shape[2] != 3:
+        raise Exception('clip_planes must have shape (2,N,3) where N is the number of planes to clip on. The first dimension has index 0 for points and index 1 for normals.')
+      nbp = self.bound_planes.shape[1]
+      ncp = clip_planes.shape[1]
+      bound_planes = np.empty((2,nbp+ncp,3))
+      bound_planes[:,:nbp,:] = self.bound_planes[:,:,:]
+      bound_planes[:,nbp:,:] = clip_planes[:,:,:]
+
     ds = data.shape
     scshape = [(nsc[i]+1)*s for i,s in enumerate(ds)]
     ndata = np.empty(scshape, dtype=float)
@@ -271,7 +283,7 @@ class XtraCrysPy:
     self.arrow_surfaces = [] if arrows is not None else None
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
-      s1,s2 = iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=self.bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i])
+      s1,s2 = iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i])
       self.surfaces.append(s1)
       if arrows is not None:
         self.arrow_surfaces.append(s2)
