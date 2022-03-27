@@ -31,6 +31,9 @@ class XtraCrysPy:
 
     self.bound_points = None
 
+    self.surfaces = None
+    self.arrow_surfaces = None
+
     self.surface_index = 0
     self.surface_slider = None
 
@@ -293,8 +296,13 @@ class XtraCrysPy:
         if not one_acol:
           arrow_colors = np.roll(arrow_colors, ds[i]//4, axis=i)
 
-    self.surfaces = []
-    self.arrow_surfaces = [] if arrows is not None else None
+    nsurf = 0
+    if self.surfaces is None:
+      self.surfaces = []
+    else:
+      nsurf = len(self.surfaces)
+    if self.arrow_surfaces is None:
+      self.arrow_surfaces = [] if arrows is not None else None
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
       s1,s2 = iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i])
@@ -302,21 +310,28 @@ class XtraCrysPy:
       if arrows is not None:
         self.arrow_surfaces.append(s2)
 
-    if len(self.surfaces) > 1:
+    if len(self.surfaces) > nsurf:
       if not disp_all:
-        self.surface_index = 0
-        self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=iso_vals.shape[0])
-        self.surface_slider.on_change = self.update_iso_surface
-        self.scene.add(self.surface_slider)
-        self.scene.add(self.surfaces[0])
-        if self.arrow_surfaces is not None:
-          self.scene.add(self.arrow_surfaces[0])
+        for s in self.surfaces[:nsurf]:
+          self.scene.rm(s)
+        if self.surface_slider is None:
+          self.surface_index = 0
+          self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=len(self.surfaces))
+          self.surface_slider.on_change = self.update_iso_surface
+          self.scene.add(self.surface_slider)
+        else:
+          self.surface_slider.max_value = len(self.surfaces)
+          self.surface_slider.set_visibility(True)
+          self.surface_slider.update()
+        self.scene.add(self.surfaces[self.surface_index])
       else:
+        if self.surface_slider is not None:
+          self.surface_slider.set_visibility(False)
         for i,s in enumerate(self.surfaces):
           self.scene.add(s)
           if self.arrow_surfaces is not None:
             self.scene.add(self.arrow_surfaces[i])
-    elif len(self.surfaces) == 1:
+    if nsurf == 0 and len(self.surfaces) > 0:
       self.scene.add(self.surfaces[0])
       if self.arrow_surfaces is not None:
         self.scene.add(self.arrow_surfaces[0])
