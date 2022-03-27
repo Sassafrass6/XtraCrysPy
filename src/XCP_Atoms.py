@@ -421,7 +421,7 @@ class XCP_Atoms ( XtraCrysPy ):
     self.scene.ResetCamera()
 
 
-  def render_iso_surface ( self, data, arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), disp_all=False, clip_planes=None ):
+  def render_iso_surface ( self, data, arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), disp_all=False, clip_planes=None, clip_boundary=True):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
@@ -433,8 +433,10 @@ class XCP_Atoms ( XtraCrysPy ):
         arrow_colors (ndarray or list): Colors for the arrows, same specifications as the surface colors
         disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
+        clip_boundary (bool): Setting True disables clipping of the isosurface within the first BZ.
     '''
     nsc = self.nsc
     origin = -np.array([((nsc[i]+1)%4)/4 for i in range(3)])
     origin += .5/np.array(data.shape)/nsc*[3-nsc[i]%2 for i in range(3)]
-    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, disp_all, clip_planes, nsc)
+    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, disp_all, clip_planes, clip_boundary, nsc)
+

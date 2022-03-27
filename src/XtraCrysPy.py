@@ -136,7 +136,7 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), disp_all=False, clip_planes=None, nsc=(1,1,1) ):
+  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), disp_all=False, clip_planes=None, clip_boundary=True, nsc=(1,1,1) ):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
@@ -150,6 +150,7 @@ class XtraCrysPy:
         arrow_colors (ndarray or list): Colors for the arrows, same specifications as the surface colors
         disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
+        clip_boundary (bool): Setting True disables clipping of the isosurface within the first BZ.
     '''
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface
@@ -242,16 +243,19 @@ class XtraCrysPy:
     arrow_colors,one_acol = format_colors_array(arrow_colors)
 
     if clip_planes is None:
-      bound_planes = self.bound_planes
+      bound_planes = self.bound_planes if clip_boundary else None
     else:
       clip_planes = np.array(clip_planes)
       if clip_planes.shape[0] != 2 or clip_planes.shape[2] != 3:
         raise Exception('clip_planes must have shape (2,N,3) where N is the number of planes to clip on. The first dimension has index 0 for points and index 1 for normals.')
-      nbp = self.bound_planes.shape[1]
-      ncp = clip_planes.shape[1]
-      bound_planes = np.empty((2,nbp+ncp,3))
-      bound_planes[:,:nbp,:] = self.bound_planes[:,:,:]
-      bound_planes[:,nbp:,:] = clip_planes[:,:,:]
+      if clip_boundary:
+        nbp = self.bound_planes.shape[1]
+        ncp = clip_planes.shape[1]
+        bound_planes = np.empty((2,nbp+ncp,3))
+        bound_planes[:,:nbp,:] = self.bound_planes[:,:,:]
+        bound_planes[:,nbp:,:] = clip_planes[:,:,:]
+      else:
+        bound_planes = clip_planes
 
     ds = data.shape
     scshape = [(nsc[i]+1)*s for i,s in enumerate(ds)]
