@@ -314,16 +314,23 @@ class XtraCrysPy:
       if not disp_all:
         for s in self.surfaces[:nsurf]:
           self.scene.rm(s)
-        if self.surface_slider is None:
-          self.surface_index = 0
-          self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=len(self.surfaces))
-          self.surface_slider.on_change = self.update_iso_surface
-          self.scene.add(self.surface_slider)
+        if len(self.surfaces) == 1:
+          self.scene.add(self.surfaces[0])
+          if self.arrow_surfaces is not None:
+            self.scene.add(self.arrow_surfaces[0])
         else:
-          self.surface_slider.max_value = len(self.surfaces)
-          self.surface_slider.set_visibility(True)
-          self.surface_slider.update()
-        self.scene.add(self.surfaces[self.surface_index])
+          if self.surface_slider is None:
+            self.surface_index = 0
+            self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=len(self.surfaces))
+            self.surface_slider.on_change = self.update_iso_surface
+            self.scene.add(self.surface_slider)
+          else:
+            self.surface_slider.max_value = len(self.surfaces)
+            self.surface_slider.set_visibility(True)
+            self.surface_slider.update()
+          self.scene.add(self.surfaces[self.surface_index])
+          if self.arrow_surfaces is not None:
+            self.scene.add(self.arrow_surfaces[self.surface_index])
       else:
         if self.surface_slider is not None:
           self.surface_slider.set_visibility(False)
@@ -331,10 +338,6 @@ class XtraCrysPy:
           self.scene.add(s)
           if self.arrow_surfaces is not None:
             self.scene.add(self.arrow_surfaces[i])
-    if nsurf == 0 and len(self.surfaces) > 0:
-      self.scene.add(self.surfaces[0])
-      if self.arrow_surfaces is not None:
-        self.scene.add(self.arrow_surfaces[0])
 
 
   def start_crystal_view ( self ):
