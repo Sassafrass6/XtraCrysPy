@@ -42,11 +42,18 @@ Usage:
       python silicon_fcc.py
 
     From inputfile:
+      python SnTe_2D.py
       python example_qe_in.py
       python example_poscar.py
 
     Relax QE outputfile:
-      python example4.py
+      python example_relax.py
+
+    Charge Density:
+      python example_charge_density.py
+
+    Reciprocal Space:
+      python example_BZ.py
 
     Fermi Surfaces:
       python example_fermi_surface1.py

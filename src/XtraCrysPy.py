@@ -32,7 +32,6 @@ class XtraCrysPy:
     self.bound_points = None
 
     self.surfaces = None
-    self.arrow_surfaces = None
 
     self.surface_index = 0
     self.surface_slider = None
@@ -128,11 +127,13 @@ class XtraCrysPy:
   def update_iso_surface ( self, slider ):
     sind = int(np.round(slider.value)) - 1
     if sind != self.surface_index:
-      self.scene.rm(self.surfaces[self.surface_index])
-      self.scene.add(self.surfaces[sind])
-      if self.arrow_surfaces is not None:
-        self.scene.rm(self.arrow_surfaces[self.surface_index])
-        self.scene.add(self.arrow_surfaces[sind])
+      su,ar = self.surfaces[self.surface_index]
+      self.scene.rm(su)
+      self.scene.add(self.surfaces[sind][0])
+      if ar is not None:
+        self.scene.rm(ar)
+      if self.surfaces[sind][1] is not None:
+        self.scene.add(self.surfaces[sind][1])
       self.surface_index = sind
 
 
@@ -305,23 +306,20 @@ class XtraCrysPy:
       self.surfaces = []
     else:
       nsurf = len(self.surfaces)
-    if self.arrow_surfaces is None:
-      self.arrow_surfaces = [] if arrows is not None else None
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
-      s1,s2 = iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i])
-      self.surfaces.append(s1)
-      if arrows is not None:
-        self.arrow_surfaces.append(s2)
+      self.surfaces.append(iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i]))
 
     if len(self.surfaces) > nsurf:
       if not disp_all:
-        for s in self.surfaces[:nsurf]:
-          self.scene.rm(s)
+        for su,ar in self.surfaces[:nsurf]:
+          self.scene.rm(su)
+          if ar is not None:
+            self.scene.rm(ar)
         if len(self.surfaces) == 1:
-          self.scene.add(self.surfaces[0])
-          if self.arrow_surfaces is not None:
-            self.scene.add(self.arrow_surfaces[0])
+          self.scene.add(self.surfaces[0][0])
+          if self.surfaces[0][1] is not None:
+            self.scene.add(self.surfaces[0][1])
         else:
           if self.surface_slider is None:
             self.surface_index = 0
@@ -332,16 +330,16 @@ class XtraCrysPy:
             self.surface_slider.max_value = len(self.surfaces)
             self.surface_slider.set_visibility(True)
             self.surface_slider.update()
-          self.scene.add(self.surfaces[self.surface_index])
-          if self.arrow_surfaces is not None:
-            self.scene.add(self.arrow_surfaces[self.surface_index])
+          self.scene.add(self.surfaces[self.surface_index][0])
+          if self.surfaces[self.surface_index][1] is not None:
+            self.scene.add(self.surfaces[self.surface_index][1])
       else:
         if self.surface_slider is not None:
           self.surface_slider.set_visibility(False)
-        for i,s in enumerate(self.surfaces):
-          self.scene.add(s)
-          if self.arrow_surfaces is not None:
-            self.scene.add(self.arrow_surfaces[i])
+        for su,ar in self.surfaces:
+          self.scene.add(su)
+          if ar is not None:
+            self.scene.add(ar)
 
 
   def start_crystal_view ( self ):
