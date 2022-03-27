@@ -35,7 +35,7 @@ class QE_Plot:
       from .file_io import read_dos_QE
       eF,_,_ = read_dos_QE(eF)
 
-    plot_bands(bands-eF, sym_points, title, y_lim, col)
+    plot_bands(bands-eF, sym_points, title, None, y_lim, col)
 
 
   def plot_dos_beside_bands_QE ( self, fn_dos, fn_bands, align_eF=True, sym_points=None, title=None, x_lim=None, y_lim=None, col='black', dos_ticks=False ):
@@ -61,4 +61,4 @@ class QE_Plot:
       es -= ef
       bands -= ef
 
-    plot_dos_beside_bands(es, dos, bands, sym_points, title, x_lim, y_lim, col, dos_ticks)
+    plot_dos_beside_bands(es, dos, bands, sym_points, title, None, x_lim, y_lim, col, dos_ticks)
