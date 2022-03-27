@@ -153,6 +153,6 @@ class XCP_BZ ( XtraCrysPy ):
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
         clip_boundary (bool): Setting True disables clipping of the isosurface within the first BZ.
     '''
-    origin = 1.5/np.array(data.shape) - 1
+    origin = 1/np.array(data.shape) - 1
     super().render_iso_surface(self.rlattice, origin, data, arrows, iso_vals, colors, arrow_colors, disp_all, clip_planes, clip_boundary)
 

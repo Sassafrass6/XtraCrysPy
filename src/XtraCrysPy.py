@@ -191,7 +191,7 @@ class XtraCrysPy:
       one_col = True
       cdim = len(cshape)
 
-      if np.max(col[0]) <= 1:
+      if np.max(col) <= 1:
         col *= 255
 
       if cdim == 1:
