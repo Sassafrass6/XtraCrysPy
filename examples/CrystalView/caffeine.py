@@ -13,7 +13,7 @@ if '__main__' == __name__:
   labels = ['O']*2 + ['N']*4 + ['C']*8 + ['H']*10
 
   # Bond distance in Angstrom
-  bonds = {'C_C':1.5, 'C_N':1.5, 'C_O':1.5, 'C_H':1.2}
+  bonds = 1.5
 
   # Visual information: species, lattice, atoms, bonds, units
   a_info = {'species':labels, 'lattice':cubic_vecs, 'abc':atoms, 'bonds':bonds, 'units':'angstrom'}

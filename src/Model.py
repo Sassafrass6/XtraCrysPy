@@ -54,7 +54,22 @@ class Model:
 
     self.bonds = {}
     if 'bonds' in params:
-      self.bonds = params['bonds']
+      bval = params['bonds']
+      if isinstance(bval, (int,float)):
+        bonds = {}
+        uspec = list(set(self.species))
+        nuat = len(uspec)
+        for s in uspec:
+          bonds['{}_{}'.format(s,s)] = bval
+        for i,s1 in enumerate(uspec[:-1]):
+          for j in range(i+1, nuat):
+            s2 = uspec[j]
+            bonds['{}_{}'.format(s1,s2)] = bval
+        self.bonds = bonds
+      elif isinstance(bval, dict):
+        self.bonds = bval
+      else:
+        raise TypeError('bonds value in params dictionary must be either a dictionary or number')
 
     self.colors = {}
     if 'colors' in params:

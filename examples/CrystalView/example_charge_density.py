@@ -3,7 +3,7 @@ from XtraCrysPy.file_io import read_datablocks_XSF
 
 if '__main__' == __name__:
 
-  a_info = {'colors':{'Si':(0,.2,1)}, 'bonds':{'Si_Si':6.5}}
+  a_info = {'colors':{'Si':(0,.2,1)}, 'bonds':6.5}
 
   fname = 'data_files/Si.scf.in'
   xcp = XCP_Atoms.XCP_Atoms(model=fname, params=a_info, nsc=(2,1,1))
