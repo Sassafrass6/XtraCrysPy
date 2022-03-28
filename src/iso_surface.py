@@ -26,7 +26,7 @@ DataSetSurfaceFilter = fgmvtk.vtkDataSetSurfaceFilter
 TransformPolyDataFilter = fgvtk.vtkTransformPolyDataFilter
 WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
-def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None, arrow_colors=None):
+def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None, arrow_colors=None, arrow_scale=0.025):
 
     if data.ndim != 3:
         raise ValueError('Only 3D arrays are currently supported.')
@@ -150,7 +150,7 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
       arrow_glyph.OrientOn()
       arrow_glyph.SetSourceConnection(tarrow.GetOutputPort())
       arrow_glyph.SetScaleModeToDataScalingOff()
-      arrow_glyph.SetScaleFactor(0.025)
+      arrow_glyph.SetScaleFactor(arrow_scale)
       arrow_glyph.Update()
 
       amapper = PolyDataMapper()
