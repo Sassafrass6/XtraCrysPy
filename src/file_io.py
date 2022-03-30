@@ -145,7 +145,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
       mf = []
       for v in m:
         mf += v.split(',')
-      block = mf.pop(0)
+      block = mf.pop(0).lower()
       if 'control' in block:
         for s in mf:
           if 'calculation' in s:
