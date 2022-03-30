@@ -294,8 +294,9 @@ class XCP_Atoms ( XtraCrysPy ):
         if len(self.sel_inds) != 0:
           self.pop_atom(colors, self.sel_inds[-1], nvert)
         self.push_atom(colors, index, nvert)
-        spec = self.model.species[index%self.model.natoms]
-        message = 'Atom {} : {}'.format(index, spec)
+        indmod = index % self.model.natoms
+        spec = self.model.species[indmod]
+        message = 'Atom {} ({}): {}'.format(indmod, index, spec)
         self.update_selection_text(message)
         print(message)
 
