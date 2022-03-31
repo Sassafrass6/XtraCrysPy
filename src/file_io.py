@@ -302,7 +302,6 @@ def struct_from_inputfile_CIF ( fname:str ) -> dict:
       eL += 1
     if eL == nL:
       break
-
     
     eL += 1
     data = {}
@@ -329,18 +328,61 @@ def struct_from_inputfile_CIF ( fname:str ) -> dict:
         loops.append((labels,eles))
       else:
         raise Exception('Unknown field {}'.format(tag))
-      '''
-      continue
-        #  ind = ord(tag.split('_')[-1]) - 97
-        #  #cell_param[ind] = strip_float(lines[eL+1])
-        #  data[tag] = strip_float(lines[eL+1])
-      tag = lambda t : t.split('_')[-1]
-      elif '_cell_angle_' in lines[eL]:
-        ind = 3 + ['alpha', 'beta', 'gamma'].index(tag(ls[0]))
-      '''
 
-  print(data_blocks)
-  quit()
+  struct = {}
+  if len(data_blocks.keys()) > 1:
+    print('WARNING: CIF reader currently only reads one structure per file.')
+
+  for k,v in data_blocks.items():
+
+    if 'data' not in v or 'loops' not in v:
+      raise Exception('Unable to read CIF file.')
+
+    data = v['data']
+    len_str = '_cell_length_{}'
+    ang_str = '_cell_angle_{}'
+
+    let = ['a', 'b', 'c']
+    glet = ['alpha', 'beta', 'gamma']
+    cell_param = np.empty(6, dtype=float)
+    cif_num = lambda v : float(v.split('(')[0])
+    for i,(l,gl) in enumerate(zip(let, glet)):
+      stl = len_str.format(l)
+      stgl = ang_str.format(gl)
+      cell_param[i] = cif_num(data[stl])
+      cell_param[i+3] = cif_num(data[stgl])
+
+    cell_param[:3] *= 1.88973
+    a,b,c = cell_param[:3]
+    A,B,G = cell_param[3:]
+    lattice = np.empty((3,3), dtype=float)
+    lattice[0,:] = a * np.array([1,0,0])
+    lattice[1,:] = b * np.array([np.cos(G), np.sin(G), 0])
+    lattice[2,:] = c * np.array([np.cos(B), np.cos(A), np.sin(A)*np.sin(B)])
+
+    abc = []
+    spec = []
+    loops = v['loops']
+    for l in loops:
+      astr = '_atom_site_label'
+      if astr in l[0]:
+        lind = l[0].index(astr)
+        if '_atom_site_type_symbol' in l[0]:
+          lind = l[0].index('_atom_site_type_symbol')
+        fstr = '_atom_site_fract_{}'
+        find = [l[0].index(fstr.format(v)) for v in ['x', 'y', 'z']]
+        for a in l[1]:
+          spec.append(a[lind])
+          abc.append([cif_num(a[i]) for i in find])
+      if '_atom_type_label' in l[0]:
+        l1ind = l[0].index('_atom_type_label')
+
+    struct['abc'] = np.array(abc)
+    struct['nat'] = len(spec)
+    struct['species'] = spec
+    struct['lattice'] = lattice
+
+  return struct
     
 
 def struct_from_inputfile_POSCAR ( fname:str ) -> dict:
