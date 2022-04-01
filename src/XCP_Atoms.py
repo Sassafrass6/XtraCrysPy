@@ -9,8 +9,8 @@ class XCP_Atoms ( XtraCrysPy ):
                  background=(0,0,0), perspective=False, model=None,
                  params={}, relax=False, nsc=(1,1,1),
 		 bond_type='Stick', sel_type='Chain', unit='angstrom',
-		 runit='degree' ):
-    super().__init__(size, axes, boundary, background, perspective)
+		 runit='degree', image_prefix='XCP_Image' ):
+    super().__init__(size, axes, boundary, background, perspective, image_prefix)
     from .Model import Model
 
     self.nsc = list(nsc)
@@ -133,7 +133,7 @@ class XCP_Atoms ( XtraCrysPy ):
     self.ncell_panel.set_visibility(False)
     self.scene.add(self.ncell_panel)
 
-    self.sel_panel = ui.Panel2D((110,40), (10, size[1]-110), opacity=0)
+    self.sel_panel = ui.Panel2D((110,40), (60, size[1]-110), opacity=0)
     self.sel_panel.add_element(self.ncell_button, (50,0))
     self.sel_panel.add_element(self.sel_type_button, (0,0))
     self.sel_panel.add_element(self.sel_type_menu, (50,-230))
@@ -172,7 +172,7 @@ class XCP_Atoms ( XtraCrysPy ):
     super().update_buttons(caller, event)
     x,y = self.scene.GetSize()
     self.sel_tpanel.center = (x-160, 50)
-    self.sel_panel.position = (10, y-110)
+    self.sel_panel.position = (60, y-110)
     self.constrain_checkbox.position = (10, y-65)
     if self.relax:
       self.relax_panel.position = (x-120, y-60)
@@ -236,6 +236,7 @@ class XCP_Atoms ( XtraCrysPy ):
     self.sel_type_menu.set_visibility(self.sel_menu_vis)
     self.sel_type_button.next_icon()
     self.smanager.render()
+
 
   def toggle_ncell_menu ( self, iren, caller, event ):
     self.ncell_panel_vis = not self.ncell_panel_vis

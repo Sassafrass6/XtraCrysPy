@@ -3,12 +3,13 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False ):
+  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, image_prefix='XCP_Image' ):
     '''
     Arguments:
     '''
-    from .Line2D import Line2D
+    from fury.data import read_viz_icons
     from fury import ui,window
+    from .Line2D import Line2D
 
     self.wsize = size
     self.frame = None
@@ -28,6 +29,14 @@ class XtraCrysPy:
     self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
     self.scene.add(self.frame_checkbox)
     self.frame_checkbox.on_change = self.toggle_frame
+
+    self.fprefix = image_prefix
+    cam_icon = ('camera',read_viz_icons(fname='camera.png'))
+    self.cam_panel = ui.Panel2D((40,40), (5, size[1]-108), opacity=0)
+    self.cam_button = ui.Button2D(icon_fnames=[cam_icon], size=(40,40))
+    self.cam_button.on_left_mouse_button_clicked = self.camera_engaged
+    self.cam_panel.add_element(self.cam_button, (0,0))
+    self.scene.add(self.cam_panel)
 
     self.bound_points = None
 
@@ -75,6 +84,36 @@ class XtraCrysPy:
     pass
 
 
+  def camera_engaged ( self, iren, caller, event ):
+    self.save_image(self.fprefix)
+
+
+  def save_image ( self, fprefix ):
+    from fury.lib import RenderWindowInteractor,WindowToImageFilter,numpy_support
+    from fury.io import save_image
+    from os.path import isfile
+
+    print('Taking snapshot...')
+    window_to_image_filter = WindowToImageFilter()
+    window_to_image_filter.SetInput(self.scene.GetRenderWindow())
+    window_to_image_filter.Update()
+
+    vtk_image = window_to_image_filter.GetOutput()
+    h, w, _ = vtk_image.GetDimensions()
+    vtk_array = vtk_image.GetPointData().GetScalars()
+    components = vtk_array.GetNumberOfComponents()
+    arr = numpy_support.vtk_to_numpy(vtk_array).reshape(w, h, components)
+
+    nim = 0
+    fname = lambda n : '{}.{}.png'.format(fprefix, n)
+    while isfile(fname(nim)):
+      nim += 1
+
+    fname = fname(nim)
+    print('  Saving image as: {}'.format(fname))
+    save_image(arr, fname)
+
+
   def toggle_frame ( self, checkboxes ):
     if self.frame is not None:
       if 'Boundary' in checkboxes.checked_labels:
@@ -85,6 +124,7 @@ class XtraCrysPy:
 
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()
+    self.cam_panel.position = (5, y-108)
     self.frame_checkbox.position = (10, y-35)
     if self.surface_slider is not None:
       self.surface_slider.center = (x/2, y-50)
