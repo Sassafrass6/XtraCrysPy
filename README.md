@@ -41,7 +41,11 @@ Usage:
       python caffeine.py
       python silicon_fcc.py
 
-    From inputfile:
+    From inputfile (with main.py script):
+      python main.py <inputfile>
+      python main.py <inputfile> <bond_length>
+
+    From inputfile (programmatic):
       python SnTe_2D.py
       python example_qe_in.py
       python example_poscar.py
@@ -58,7 +62,9 @@ Usage:
     Fermi Surfaces:
       python example_fermi_surface1.py
       python example_fermi_surface2.py
+      python example_fermi_surface_clip.py
       python example_colored_fermi_surface.py
+      python example_textured_fermi_surface_clip.py
 
   See examples/PlotTools for QE and PAOFLOW plotting functions:
     Close windows to advance plot script
