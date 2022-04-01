@@ -323,7 +323,7 @@ class XtraCrysPy:
         else:
           if self.surface_slider is None:
             self.surface_index = 0
-            self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=len(self.surfaces))
+            self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=len(self.surfaces), text_template='{value:0.0f}')
             self.surface_slider.on_change = self.update_iso_surface
             self.scene.add(self.surface_slider)
           else:

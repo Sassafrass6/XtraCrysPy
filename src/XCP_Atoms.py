@@ -13,7 +13,7 @@ class XCP_Atoms ( XtraCrysPy ):
     super().__init__(size, axes, boundary, background, perspective)
     from .Model import Model
 
-    self.nsc = nsc
+    self.nsc = list(nsc)
     self.sel_forward = True
     self.sel_type = sel_type
     self.bond_type = bond_type
@@ -68,8 +68,12 @@ class XCP_Atoms ( XtraCrysPy ):
               ('down',read_viz_icons(fname='circle-down.png')),
               ('right',read_viz_icons(fname='circle-right.png'))]
 
+    self.ncell_button = ui.Button2D(icon_fnames=icons[2:0:-1],
+                                    size=(40,40))
     self.sel_type_button = ui.Button2D(icon_fnames=icons[2:0:-1],
                                        size=(40,40))
+    self.ncell_button.on_left_mouse_button_clicked = self.toggle_ncell_menu
+    self.sel_type_button.on_left_mouse_button_clicked = self.toggle_sel_menu
 
     sel_types = ['Chain', 'Info', 'Angle', 'Distance']
     if self.sel_type not in sel_types:
@@ -87,9 +91,7 @@ class XCP_Atoms ( XtraCrysPy ):
     self.sel_type_menu.on_change = self.update_selection_type
 
     self.sel_menu_vis = False
-    sel_button = self.sel_type_button
     self.sel_type_menu.set_visibility(False)
-    sel_button.on_left_mouse_button_clicked = self.toggle_sel_menu
 
     checkbox = ['Constrain']
     self.constrain_checkbox = ui.Checkbox(checkbox, checkbox,
@@ -98,9 +100,43 @@ class XCP_Atoms ( XtraCrysPy ):
     self.scene.add(self.constrain_checkbox)
     self.constrain_checkbox.on_change = self.update_constrain
 
-    self.sel_panel = ui.Panel2D((40,40), (10, size[1]-110), opacity=0)
+    self.ncell_panel_vis = False
+    self.ncell_panel = ui.Panel2D(size=(180,140), color=(0,0,0), opacity=.8)
+    self.ncell_panel.center = (300, size[1]-80)
+
+    nsc = self.nsc
+    nmax = [max(n, 4) for n in nsc]
+    self.slider_nx = ui.LineSlider2D(min_value=1,
+                                     max_value=nmax[0],
+                                     initial_value=nsc[0],
+                                     text_template="{value:0.0f}",
+                                     font_size=12,
+                                     length=140)
+    self.slider_ny = ui.LineSlider2D(min_value=1,
+                                     max_value=nmax[1],
+                                     initial_value=nsc[1],
+                                     text_template="{value:0.0f}",
+                                     font_size=12,
+                                     length=140)
+    self.slider_nz = ui.LineSlider2D(min_value=1,
+                                     max_value=nmax[2],
+                                     initial_value=nsc[2],
+                                     text_template="{value:0.0f}",
+                                     font_size=12,
+                                     length=140)
+    self.slider_nx.on_change = self.update_nsc_x
+    self.slider_ny.on_change = self.update_nsc_y
+    self.slider_nz.on_change = self.update_nsc_z
+    self.ncell_panel.add_element(self.slider_nx, (.1,.75))
+    self.ncell_panel.add_element(self.slider_ny, (.1,.45))
+    self.ncell_panel.add_element(self.slider_nz, (.1,.15))
+    self.ncell_panel.set_visibility(False)
+    self.scene.add(self.ncell_panel)
+
+    self.sel_panel = ui.Panel2D((110,40), (10, size[1]-110), opacity=0)
+    self.sel_panel.add_element(self.ncell_button, (50,0))
     self.sel_panel.add_element(self.sel_type_button, (0,0))
-    self.sel_panel.add_element(self.sel_type_menu, (50,-210))
+    self.sel_panel.add_element(self.sel_type_menu, (50,-230))
     self.scene.add(self.sel_panel)
 
     self.sel_tpanel = ui.Panel2D(size=(300,80), color=(0,0,0))
@@ -120,7 +156,7 @@ class XCP_Atoms ( XtraCrysPy ):
       right_button.on_left_mouse_button_clicked = self.relax_forward
 
       self.relax_panel = ui.Panel2D((110,100),
-                         (size[0]-120,size[1]-60), (0,0,0))
+                         (size[0]-120,size[1]-60), (0,0,0), opacity=0)
       self.relax_panel.add_element(left_button, (0,0))
       self.relax_panel.add_element(right_button, (60,0))
 
@@ -174,10 +210,37 @@ class XCP_Atoms ( XtraCrysPy ):
     self.update_atomic_model()
 
 
+  def update_nsc_x ( self, slider ):
+    ind = int(np.round(slider.value))
+    if ind != self.nsc[0]:
+      self.nsc[0] = ind
+      self.update_atomic_model()
+
+
+  def update_nsc_y ( self, slider ):
+    ind = int(np.round(slider.value))
+    if ind != self.nsc[1]:
+      self.nsc[1] = ind
+      self.update_atomic_model()
+
+
+  def update_nsc_z ( self, slider ):
+    ind = int(np.round(slider.value))
+    if ind != self.nsc[2]:
+      self.nsc[2] = ind
+      self.update_atomic_model()
+
+
   def toggle_sel_menu ( self, iren, caller, event ):
     self.sel_menu_vis = not self.sel_menu_vis
     self.sel_type_menu.set_visibility(self.sel_menu_vis)
     self.sel_type_button.next_icon()
+    self.smanager.render()
+
+  def toggle_ncell_menu ( self, iren, caller, event ):
+    self.ncell_panel_vis = not self.ncell_panel_vis
+    self.ncell_panel.set_visibility(self.ncell_panel_vis)
+    self.ncell_button.next_icon()
     self.smanager.render()
 
 
