@@ -211,6 +211,7 @@ class XCP_Atoms ( XtraCrysPy ):
 
 
   def update_nsc_x ( self, slider ):
+    self.update_selection_type()
     ind = int(np.round(slider.value))
     if ind != self.nsc[0]:
       self.nsc[0] = ind
@@ -218,6 +219,7 @@ class XCP_Atoms ( XtraCrysPy ):
 
 
   def update_nsc_y ( self, slider ):
+    self.update_selection_type()
     ind = int(np.round(slider.value))
     if ind != self.nsc[1]:
       self.nsc[1] = ind
@@ -225,6 +227,7 @@ class XCP_Atoms ( XtraCrysPy ):
 
 
   def update_nsc_z ( self, slider ):
+    self.update_selection_type()
     ind = int(np.round(slider.value))
     if ind != self.nsc[2]:
       self.nsc[2] = ind
