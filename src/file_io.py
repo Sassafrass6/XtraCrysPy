@@ -129,11 +129,14 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
 
   pattern = re.compile('&(.*?)/@')
   nocomma = lambda s : s.replace(',', '')
-  inquote = lambda s : s.split('\'')[1]
   qenum = lambda s : s.split('=')[1].replace('d', 'e')
   qeint = lambda s : int(qenum(s))
   qefloat = lambda s : float(qenum(s))
   qebool = lambda s : True if s.split('.')[1][0].lower() == 't' else False
+  def inquote ( s ):
+    v = '"' if '"' in s else "'"
+    return s.split(v)[1]
+    inquote = lambda s : s.split(v)[1]
 
   struct = {}
   celldm = np.zeros(6, dtype=float)
