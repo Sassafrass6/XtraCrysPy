@@ -127,80 +127,91 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   if not isfile(fname):
     raise FileNotFoundError('File {} does not exist.'.format(fname))
 
-  pattern = re.compile('&(.*?)/@')
+  fstr = None
+  with open(fname, 'r') as f:
+    fstr = f.read()
+
+  # Datatype format helpers for QE input
   nocomma = lambda s : s.replace(',', '')
+  qebool = lambda s : True if s.split('.')[1][0].lower() == 't' else False
   qenum = lambda s : s.split('=')[1].replace('d', 'e')
   qeint = lambda s : int(qenum(s))
   qefloat = lambda s : float(qenum(s))
-  qebool = lambda s : True if s.split('.')[1][0].lower() == 't' else False
   def inquote ( s ):
     v = '"' if '"' in s else "'"
     return s.split(v)[1]
-    inquote = lambda s : s.split(v)[1]
 
+
+  # Process blocks
   struct = {}
+  pattern = re.compile('&(.*?)/@')
   celldm = np.zeros(6, dtype=float)
-  with open(fname, 'r') as f:
-    fstr = f.read()
-    matches = pattern.findall(fstr.replace(' ', '').replace('\n', '@ '))
-    for m in matches:
-      m = [s.replace(' ', '') for s in re.split(', |@', m)]
-      mf = []
-      for v in m:
-        mf += v.split(',')
-      block = mf.pop(0).lower()
-      if 'control' in block:
-        for s in mf:
-          if 'calculation' in s:
-            struct['calc'] = inquote(s)
-          elif 'outdir' in s:
-            struct['outdir'] = inquote(s)
-          elif 'prefix' in s:
-            struct['id'] = inquote(s)
-          elif 'pseudo_dir' in s:
-            struct['ppdir'] = inquote(s)
-          elif 'tstress' in s:
-            struct['tstress'] = qebool(s)
-          elif 'tprnfor' in s:
-            struct['tprnfor'] = qebool(s)
-      elif 'system' in block:
-        for s in mf:
-          if 'ibrav' in s:
-            struct['ibrav'] = qeint(s)
-          if 'nat' in s:
-            struct['nat'] = qeint(s)
-          elif 'ecutwfc' in s:
-            struct['ecutwfc'] = qefloat(s)
-          elif 'ecutrho' in s:
-            struct['ecutrho'] = qefloat(s)
-          elif 'occupations' in s:
-            struct['occ'] = inquote(s)
-          elif 'smearing' in s:
-            struct['smearing'] = inquote(s)
-          elif 'degauss' in s:
-            struct['degauss'] = qefloat(s)
-          elif 'celldm' in s:
-            cpattern = re.compile('\(([^\)]+)\)')
-            dm = int(cpattern.findall(s)[0]) - 1
-            celldm[dm] = qefloat(s)
-      elif 'electrons' in block:
-        for s in mf:
-          if 'conv_thr' in s:
-            struct['conv_thr'] = qefloat(s)
-      elif 'ions' in block:
-        pass
-      elif 'cell' in block:
-        pass
+  matches = pattern.findall(fstr.replace(' ', '').replace('\n', '@ '))
+  for m in matches:
+    m = [s.replace(' ', '') for s in re.split(', |@', m)]
+    mf = []
+    for v in m:
+      mf += v.split(',')
+    block = mf.pop(0).lower()
+    if 'control' in block:
+      for s in mf:
+        if 'calculation' in s:
+          struct['calc'] = inquote(s)
+        elif 'outdir' in s:
+          struct['outdir'] = inquote(s)
+        elif 'prefix' in s:
+          struct['id'] = inquote(s)
+        elif 'pseudo_dir' in s:
+          struct['ppdir'] = inquote(s)
+        elif 'tstress' in s:
+          struct['tstress'] = qebool(s)
+        elif 'tprnfor' in s:
+          struct['tprnfor'] = qebool(s)
+    elif 'system' in block:
+      for s in mf:
+        if 'ibrav' in s:
+          struct['ibrav'] = qeint(s)
+        if 'nat' in s:
+          struct['nat'] = qeint(s)
+        elif 'ecutwfc' in s:
+          struct['ecutwfc'] = qefloat(s)
+        elif 'ecutrho' in s:
+          struct['ecutrho'] = qefloat(s)
+        elif 'occupations' in s:
+          struct['occ'] = inquote(s)
+        elif 'smearing' in s:
+          struct['smearing'] = inquote(s)
+        elif 'degauss' in s:
+          struct['degauss'] = qefloat(s)
+        elif 'celldm' in s:
+          cpattern = re.compile('\(([^\)]+)\)')
+          dm = int(cpattern.findall(s)[0]) - 1
+          celldm[dm] = qefloat(s)
+    elif 'electrons' in block:
+      for s in mf:
+        if 'conv_thr' in s:
+          struct['conv_thr'] = qefloat(s)
+    elif 'ions' in block:
+      pass
+    elif 'cell' in block:
+      pass
 
   if struct['ibrav'] != 0:
     struct['lunit'] = 'bohr'
     struct['celldm'] = celldm
 
+  # Process CARDS
+  fstr = fstr.split('\n')
+  def scan_blank_lines ( nl ):
+    nl += 1
+    while fstr[nl] == '':
+      nl += 1
+    return nl
+
   il = 0
   cl = 0
   kl = 0
-  fstr = fstr.split('\n')
-  while not 'ATOMIC_POSITION' in fstr[il]:
+  while 'ATOMIC_POSITION' not in fstr[il]:
     if 'CELL_PARAM' in fstr[il]:
       cl = il
     if 'K_POINTS' in fstr[il]:
@@ -208,7 +219,8 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     il += 1
   unit = fstr[il].split()
   struct['aunit'] = unit[1].strip('(){{}}') if len(unit) > 1 else 'alat'
-  il += 1
+
+  il = scan_blank_lines(il)
 
   spec = []
   abc = np.empty((struct['nat'],3), dtype=float)
@@ -221,7 +233,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   struct['species'] = spec
 
   if kl == 0:
-    while not 'K_POINTS' in fstr[kl]:
+    while 'K_POINTS' not in fstr[kl]:
       if 'CELL_PARAM' in fstr[cl]:
         cl = kl
       kl += 1
@@ -229,18 +241,19 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   if 'gamma' in fstr[kl]:
     struct['kpnts'] = {'type':'gamma'}
   elif 'automatic' in fstr[kl]:
-    nk1,nk2,nk3,o1 = (int(v) for v in fstr[kl+1].split()[:4])
+    kl = scan_blank_lines(kl)
+    nk1,nk2,nk3,o1 = (int(v) for v in fstr[kl].split()[:4])
     struct['kpnts'] = {'type':'automatic', 'nk1':nk1, 'nk2':nk2, 'nk3':nk3, 'offset':o1}
 
   nf = len(fstr)
   if cl == 0:
-    while cl < nf and not 'CELL_PARAM' in fstr[cl]:
+    while cl < nf and 'CELL_PARAM' not in fstr[cl]:
       cl += 1
 
   if cl < nf:
     unit = fstr[cl].split()
     struct['lunit'] = unit[1].strip('(){{}}') if len(unit) > 1 else 'alat'
-    cl += 1
+    cl = scan_blank_lines(cl)
     struct['lattice'] = np.array([np.array([float(v) for v in fstr[cl+c].split()]) for c in range(3)])
 
   if 'lattice' not in struct:
