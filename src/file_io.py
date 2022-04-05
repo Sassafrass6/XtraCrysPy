@@ -145,6 +145,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   struct = {}
   pattern = re.compile('&(.*?)/@')
   celldm = np.zeros(6, dtype=float)
+  comment = lambda v : v != '' and '!' not in v
   matches = pattern.findall(fstr.replace(' ', '').replace('\n', '@ '))
   for m in matches:
     m = [s.replace(' ', '') for s in re.split(', |@', m)]
@@ -152,6 +153,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     for v in m:
       mf += v.split(',')
     block = mf.pop(0).lower()
+    mf = filter(comment, mf)
     if 'control' in block:
       for s in mf:
         if 'calculation' in s:
@@ -200,7 +202,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     struct['celldm'] = celldm
 
   # Process CARDS
-  fstr = fstr.split('\n')
+  fstr = list(filter(comment, fstr.split('\n')))
   def scan_blank_lines ( nl ):
     nl += 1
     while fstr[nl] == '':
