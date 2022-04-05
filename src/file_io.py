@@ -141,7 +141,6 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     v = '"' if '"' in s else "'"
     return s.split(v)[1]
 
-
   # Process blocks
   struct = {}
   pattern = re.compile('&(.*?)/@')
@@ -296,25 +295,30 @@ def struct_from_inputfile_CIF ( fname:str ) -> dict:
     if l[0] == "'" or l[0] == '"' or l[0] == ';':
       c = l[0]
 
-    i += 1
     if c is None:
-      flines.append(lines[i-1])
+      flines.append(lines[i])
 
     else:
-      fstr = [l]
-      while lines[i][-1] != c:
+      ist = i
+      fstr = []
+      if lines[i][0] == lines[i][-1]:
+        fstr.append(l)
+      if len(lines[i]) < 2:
+        i += 1
+      while lines[i][-1] != c or (c == ';' and len(lines[i]) != 1):
         fstr.append(lines[i])
         i += 1
-      fstr.append(lines[i])
+      if i != ist:
+        fstr.append(lines[i])
       flines.append(' '.join(fstr))
-      i += 1
+    i += 1
   lines = flines
 
   eL = 0
   nL = len(lines)
   data_blocks = {}
   while eL < nL:
-    while eL < nL and 'data_' not in lines[eL]:
+    while eL < nL and (len(lines[eL]) < 5 or 'data_' != lines[eL][:5]):
       eL += 1
     if eL == nL:
       break
