@@ -26,7 +26,7 @@ DataSetSurfaceFilter = fgmvtk.vtkDataSetSurfaceFilter
 TransformPolyDataFilter = fgvtk.vtkTransformPolyDataFilter
 WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
-def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None, arrow_colors=None, arrow_scale=0.025):
+def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None, arrow_colors=None, arrow_scale=0.025, arrow_anchor='mid'):
 
     if data.ndim != 3:
         raise ValueError('Only 3D arrays are currently supported.')
@@ -136,14 +136,16 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
     aactor = None
     if arrows is not None:
 
-      arrow = ArrowSource()
+      arrow = tarrow = ArrowSource()
       lpad = np.eye(4)
-      lpad[:3,3] = -.5*np.array([1,0,0])
-      transform = Transform()
-      transform.SetMatrix(numpy_to_vtk_matrix(lpad))
-      tarrow = TransformPolyDataFilter()
-      tarrow.SetInputConnection(arrow.GetOutputPort())
-      tarrow.SetTransform(transform)
+      if arrow_anchor !=  'tail':
+        ashft = 1 if arrow_anchor == 'tip' else .5
+        lpad[:3,3] = -ashft * np.array([1,0,0])
+        transform = Transform()
+        transform.SetMatrix(numpy_to_vtk_matrix(lpad))
+        tarrow = TransformPolyDataFilter()
+        tarrow.SetInputConnection(arrow.GetOutputPort())
+        tarrow.SetTransform(transform)
 
       arrow_glyph = Glyph3D()
       arrow_glyph.SetInputData(iso_transformed.GetOutput())
