@@ -44,11 +44,6 @@ class Model:
         self.rlattice[i,:] = np.cross(self.lattice[i-2], self.lattice[i-1])
       self.rlattice *= 2 * np.pi / self.volume
 
-      mins = np.min(self.atoms, axis=0)
-      maxs = np.max(self.atoms, axis=0)
-      if not np.all([mi>=-1 and ma<=1 for mi,ma in zip(mins,maxs)]):
-        print('WARNING: \'abc\' requires crystal coordinates. Specify \'xyz\' for custom units..')
-
     if 'units' in params:
       self.units = params['units']
 

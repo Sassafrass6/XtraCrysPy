@@ -148,7 +148,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   comment = lambda v : v != '' and '!' not in v
   matches = pattern.findall(fstr.replace(' ', '').replace('\n', '@ '))
   for m in matches:
-    m = [s.replace(' ', '') for s in re.split(', |@', m)]
+    m = [s.replace(' ', '').split('!')[0] for s in re.split(', |@', m)]
     mf = []
     for v in m:
       mf += v.split(',')
