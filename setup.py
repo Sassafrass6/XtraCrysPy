@@ -3,12 +3,12 @@ import os
 
 defs = os.path.join('src')
 
-with open('README.md', 'r') as f:
-    long_description = f.read()
+long_description = open('./README.md', 'r').read()
 
 setup(name='XtraCrysPy',
       version='0.7',
       description='A Python tool for visualizing atomic systems and properties of condensed matter.',
+      long_description=long_description,
       author='Frank T. Cerasoli',
       author_email='ftcerasoli@ucdavis.edu',
       platforms='Unix',
