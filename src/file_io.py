@@ -239,7 +239,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
         cl = kl
       kl += 1
 
-  if 'gamma' in fstr[kl]:
+  if 'gamma' in fstr[kl].lower():
     struct['kpnts'] = {'type':'gamma'}
   elif 'automatic' in fstr[kl]:
     kl = scan_blank_lines(kl)
