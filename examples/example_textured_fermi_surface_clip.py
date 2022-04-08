@@ -1,4 +1,4 @@
-from XtraCrysPy import XCP_BZ as XCP
+from XtraCrysPy.Reciprocal import Reciprocal as XCP
 import numpy as np
 
 data = np.load('data_files/Fermi_surf_band_103_0.npz')['nameband']
@@ -24,7 +24,7 @@ plane_normals = [[0,.4,1], [0,-.4,-1]]
 clips = [plane_centers, plane_normals]
 iso_vals = np.linspace(-1.4, -.2, 6)
 
-xcp = XCP.XCP_BZ(model='data_files/Te_L.scf.in', background=(1,1,1))
+xcp = XCP(model='data_files/Te_L.scf.in', background=(1,1,1))
 xcp.render_iso_surface(data, iso_vals=iso_vals[::2], colors=colors, arrows=spins, arrow_colors=(1,0,0), clip_planes=clips)
 xcp.render_iso_surface(data, iso_vals=iso_vals[1::2], colors=colors, arrows=None, clip_planes=clips, disp_all=True)
 xcp.start_crystal_view()

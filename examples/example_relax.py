@@ -1,4 +1,4 @@
-from XtraCrysPy import XCP_Atoms as XCP
+from XtraCrysPy.Atomic import Atomic
 
 if '__main__' == __name__:
 
@@ -7,7 +7,7 @@ if '__main__' == __name__:
                       'P':(1,0,0)},
             'bonds':5}
   # Relaxation
-  xcp = XCP.XCP_Atoms(model='data_files/CaAlP.relax.out', 
-                      params=a_info, relax=True, sel_type='Chain')
+  xcp = Atomic(model='data_files/CaAlP.relax.out', 
+               params=a_info, relax=True, sel_type='Chain')
   xcp.start_crystal_view()
 

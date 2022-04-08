@@ -1,4 +1,4 @@
-from XtraCrysPy import XCP_Atoms as XCP
+from XtraCrysPy import Atomic as XCP
 from sys import argv
 
 if '__main__' == __name__:
@@ -16,6 +16,6 @@ if '__main__' == __name__:
 
   fname = argv[1]
   a_info = {'bonds':b_len}
-  xcp = XCP.XCP_Atoms(params=a_info, model=fname, sel_type='Chain')
+  xcp = XCP.Atomic(params=a_info, model=fname, sel_type='Chain')
   xcp.start_crystal_view()
 

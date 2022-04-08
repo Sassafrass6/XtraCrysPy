@@ -1,4 +1,4 @@
-from XtraCrysPy import XCP_BZ as XCP
+from XtraCrysPy.Reciprocal import Reciprocal
 import numpy as np
 
 if '__main__' == __name__:
@@ -17,7 +17,7 @@ if '__main__' == __name__:
   b_vec[2,:] = 2*np.pi/omega * np.cross(a_vec[0], a_vec[1])
 
   # Start XtraCrysPy
-  xcp = XCP.XCP_BZ(model={'rlattice':b_vec}, background=(.25,.3,.3))
+  xcp = Reciprocal(model={'rlattice':b_vec}, background=(.25,.3,.3))
 
   # Gamma
   green = [0,1,0]

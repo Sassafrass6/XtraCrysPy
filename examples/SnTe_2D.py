@@ -1,4 +1,4 @@
-from XtraCrysPy import XCP_Atoms,Model
+from XtraCrysPy.Atomic import Atomic
 
 if '__main__' == __name__:
 
@@ -6,6 +6,6 @@ if '__main__' == __name__:
   # Bonds are drawn between Sn & Te atoms if they are closer together than 6 a.u.
   a_info = {'colors':{'Sn':(1,0,0),'Te':(0,0,1)}, 'radii':{'Sn':1,'Te':1.1}, 'bonds':{'Sn_Te':6.5}}
   fname = 'data_files/SnTe.scf.in'
-  xcp = XCP_Atoms.XCP_Atoms(model=fname, params=a_info, boundary=False, nsc=(3,3,1))
+  xcp = Atomic(model=fname, params=a_info, boundary=False, nsc=(3,3,1))
   xcp.start_crystal_view()
 

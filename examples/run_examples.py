@@ -30,7 +30,6 @@ if __name__ == '__main__':
               'example_fermi_surface2.py',
               'example_fermi_surface_clip.py',
               'example_colored_fermi_surface.py',
-              'example_textured_fermi_surface.py',
               'example_textured_fermi_surface_clip.py']:
       examples.append(e)
 

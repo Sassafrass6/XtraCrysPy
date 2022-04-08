@@ -1,8 +1,8 @@
-from XtraCrysPy import XCP_Atoms,Model
+from XtraCrysPy.Atomic import Atomic
 
 if '__main__' == __name__:
 
   fname = 'data_files/BN.poscar'
-  xcp = XCP_Atoms.XCP_Atoms(model=fname, params={'bonds':3}, nsc=(2,2,2), perspective=True)
+  xcp = Atomic(model=fname, params={'bonds':3}, nsc=(2,2,2), perspective=True)
   xcp.start_crystal_view()
 
