@@ -703,9 +703,8 @@ def read_datablocks_XSF ( fname:str ):
         if ind == nlines:
           return np.array(blocks)
       if 'BEGIN_DATAGRID' in lines[ind]:
-        ind += 1
-        dims = np.array([int(v) for v in lines[ind].split()])
-        ind += 5
+        dims = np.array([int(v) for v in lines[ind+1].split()])
+        ind += 6
         data = np.empty(dims, dtype=float)
         for i in range(dims[0]):
           for j in range(dims[1]):
@@ -715,3 +714,32 @@ def read_datablocks_XSF ( fname:str ):
       ind += 1
 
   return np.array(blocks)
+
+
+# Need to test this routine
+def read_bxsf ( fname ):
+  '''
+  Read BXSF file, originally formatted for XCrysDen
+  '''
+  bands = None
+  b_vec = None
+  with open(fname) as f:
+    l = f.readline()
+    while l != '':
+      if 'BANDGRID_3D_BANDS' in l:
+        l = f.readline()
+        nbnd = int(l.split()[0])
+        nx,ny,nz = (int(v) for v in f.readline().split()); f.readline()
+        b_vec = np.array([[float(v) for v in f.readline().split()] for _ in range(3)])
+        bands = np.zeros((nx,ny,nz,nbnd), dtype=float)
+        for n in range(nbnd):
+          f.readline()
+          for i in range(nx):
+            for j in range(ny):
+              ls = f.readline().split()
+              for k in range(nz):
+                bands[i,j,k,n] = float(ls[k])
+        break
+      l = f.readline()
+  return b_vec,bands
+
