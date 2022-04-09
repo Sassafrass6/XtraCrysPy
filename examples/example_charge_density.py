@@ -1,5 +1,5 @@
 from XtraCrysPy.Atomic import Atomic
-from XtraCrysPy.file_io import read_datablocks_XSF
+from XtraCrysPy.file_io import read_XSF
 
 if '__main__' == __name__:
 
@@ -10,7 +10,7 @@ if '__main__' == __name__:
   xcp = Atomic(model=fname, params=a_info, nsc=(3,3,2))
 
   density_file = 'data_files/Si.density_0.xsf'
-  data = read_datablocks_XSF(density_file)
+  data = read_XSF(density_file)
 
   xcp.render_iso_surface(data[0], iso_vals=.000075, colors=[.9,.2,0,.8])
   xcp.start_crystal_view()

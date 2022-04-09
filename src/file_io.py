@@ -556,7 +556,38 @@ def read_transport_PAO ( fname:str ):
     return enes, temps, tensors
 
 
-def read_datablocks_XSF ( fname:str ):
+def read_CUBE ( fname:str ):
+  '''
+  '''
+  import numpy as np
+
+  lines = None
+  with open (fname, 'r') as f:
+    lines = f.readlines()
+
+  pop = lambda : lines.pop(0)
+  while not lines[0].split()[0].isnumeric():
+    pop()
+
+  pop()
+  grid = np.empty(3, dtype=int)
+  for i in range(3):
+    grid[i] = int(pop().split()[0])
+  for _ in range(3):
+    pop()
+
+  data = np.empty(grid, dtype=float)
+  for i in range(grid[0]):
+    for j in range(grid[1]):
+      lcnt = 0
+      while lcnt < grid[2]:
+        tdata = [float(v) for v in pop().split()]
+        data[i,j,lcnt:lcnt+len(tdata)] = np.array(tdata)
+        lcnt += len(tdata)
+  return data[::-1, ::-1, ::-1]
+
+
+def read_XSF ( fname:str ):
   '''
   '''
   import numpy as np
