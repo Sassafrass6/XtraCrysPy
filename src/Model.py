@@ -10,6 +10,7 @@ class Model:
     from .defaults import atom_defaults
 
     self.relax = relax
+    self.species = None
     if fname is not None:
       if relax:
         from .file_io import read_relaxed_coordinates
@@ -25,16 +26,23 @@ class Model:
       self.units = 'bohr'
       self.bond_type = None
       self.atoms = params['abc']
-      self.species = params['species']
       self.lattice = params['lattice']
+      if 'species' in params:
+        self.species = params['species']
     except Exception as e:
       print('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
       raise e
 
+    ati = 0 if not relax else 1
+    if self.species is None:
+      self.species = [str(s) for s in range(self.atoms.shape[ati])]
+
     self.natoms = len(self.species)
-    shape = self.atoms.shape[(0 if not relax else 1)]
+    shape = self.atoms.shape[ati]
     if self.natoms != shape:
       raise ValueError('Number of atoms and species do not match')
+
+    
 
     if not relax:
       self.volume = self.lattice[0].dot(np.cross(self.lattice[1], self.lattice[2]))
@@ -79,8 +87,13 @@ class Model:
 
     self.radii = {}
     if 'radii' in params:
-      for k,v in params['radii'].items():
-        self.radii[k] = v
+      radii = params['radii']
+      if isinstance(radii, (int,float)):
+        for s in self.species:
+          self.radii[s] = radii
+      elif isinstance(radii, dict):
+        for k,v in params['radii'].items():
+          self.radii[k] = v
 
     if 'units' in params:
       unit = params['units']
