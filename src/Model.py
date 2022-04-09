@@ -48,8 +48,14 @@ class Model:
       self.units = params['units']
 
     self.bonds = {}
+    self.bond_thickness = 1
     if 'bonds' in params:
       bval = params['bonds']
+      if isinstance(bval, dict):
+        if 'thickness' in bval:
+          self.bond_thickness = bval['thickness']
+        if 'distance' in bval:
+          bval = bval['distance']
       if isinstance(bval, (int,float)):
         bonds = {}
         uspec = list(set(self.species))
@@ -139,7 +145,8 @@ class Model:
       raise ValueError('Bond types are Stick, Primary, and Sphere')
     s1 = self.species[aind1%self.natoms]
     s2 = self.species[aind2%self.natoms]
-    return np.min([brad, 0.9*np.min([self.radii[s1], self.radii[s2]])])
+    bspec = 0.9*np.min([self.radii[s1], self.radii[s2]])
+    return self.bond_thickness * np.min([brad, bspec])
 
 
   def lattice_atoms_bonds ( self, nc1, nc2, nc3, bond_type='stick', relax_index=0, constrain_atoms=True ):
