@@ -10,7 +10,7 @@ if '__main__' == __name__:
     print('  python main.py <inputfile> <bond_length>')
     exit()
 
-  b_len = 6.1
+  b_len = 4.2 # Bohr
   if argc > 2:
     b_len = float(argv[2])
 

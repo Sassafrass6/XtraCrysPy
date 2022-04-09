@@ -24,6 +24,7 @@ if __name__ == '__main__':
               'SnTe_2D.py',
               'example_qe_in.py',
               'example_poscar.py',
+              'example_cif.py',
               'example_relax.py',
               'example_BZ.py',
               'example_fermi_surface1.py',

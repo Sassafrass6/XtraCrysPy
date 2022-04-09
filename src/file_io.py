@@ -274,184 +274,6 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   return struct
 
 
-def struct_from_inputfile_CIF ( fname:str ) -> dict:
-  '''
-  '''
-  import numpy as np
-  import re
-
-  def strip_float ( text:str ):
-    pat = '[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)'
-    return float(re.search(pat, text).group())
-
-  lines = []
-  struct = {}
-  with open(fname, 'r') as f:
-    lines = ' '.join([s.replace('\n', ' ') for s in f.readlines() if not s[0]=='#']).split()
-
-  i = 0
-  flines = []
-  while i < len(lines):
-    c = None
-    l = lines[i]
-    if l[0] == "'" or l[0] == '"' or l[0] == ';':
-      c = l[0]
-
-    if c is None:
-      flines.append(lines[i])
-
-    else:
-      ist = i
-      fstr = []
-      if lines[i][0] == lines[i][-1]:
-        fstr.append(l)
-      if len(lines[i]) < 2:
-        i += 1
-      while lines[i][-1] != c or (c == ';' and len(lines[i]) != 1):
-        fstr.append(lines[i])
-        i += 1
-      if i != ist:
-        fstr.append(lines[i])
-      flines.append(' '.join(fstr))
-    i += 1
-  lines = flines
-
-  eL = 0
-  nL = len(lines)
-  data_blocks = {}
-  while eL < nL:
-    while eL < nL and (len(lines[eL]) < 5 or 'data_' != lines[eL][:5]):
-      eL += 1
-    if eL == nL:
-      break
-    
-    eL += 1
-    data = {}
-    loops = []
-    prefix = '_'.join(lines[eL-1].split('_')[1:])
-    data_blocks[prefix] = {'data':data, 'loops':loops}
-    while eL < nL and (lines[eL][0] == '_' or 'loop_' in lines[eL] ):
-
-      tag = lines[eL]
-      if lines[eL][0] == '_':
-        data[tag] = lines[eL+1]
-        eL += 2
-      elif 'loop_' in tag:
-        nele = 0
-        labels = []
-        while lines[eL+nele+1][0] == '_':
-          nele += 1
-          labels.append(lines[eL+nele])
-        eles = []
-        eL += nele + 1
-        while eL < nL and lines[eL][0] != '_' and 'loop_' not in lines[eL]:
-          eles.append(lines[eL:eL+nele])
-          eL += nele
-        loops.append((labels,eles))
-      else:
-        raise Exception('Unknown field {}'.format(tag))
-
-  struct = {}
-  if len(data_blocks.keys()) > 1:
-    print('WARNING: CIF reader currently only reads one structure per file.')
-
-  for k,v in data_blocks.items():
-
-    if 'data' not in v or 'loops' not in v:
-      raise Exception('Unable to read CIF file.')
-
-    data = v['data']
-    len_str = '_cell_length_{}'
-    ang_str = '_cell_angle_{}'
-
-    let = ['a', 'b', 'c']
-    glet = ['alpha', 'beta', 'gamma']
-    cell_param = np.empty(6, dtype=float)
-    cif_num = lambda v : float(v.split('(')[0])
-    for i,(l,gl) in enumerate(zip(let, glet)):
-      stl = len_str.format(l)
-      stgl = ang_str.format(gl)
-      cell_param[i] = cif_num(data[stl])
-      cell_param[i+3] = cif_num(data[stgl])
-
-    cell_param[:3] *= 1.88973
-    a,b,c = cell_param[:3]
-    A,B,G = cell_param[3:]
-    lattice = np.empty((3,3), dtype=float)
-    lattice[0,:] = a * np.array([1,0,0])
-    lattice[1,:] = b * np.array([np.cos(G), np.sin(G), 0])
-    lattice[2,:] = c * np.array([np.cos(B), np.cos(A), np.sin(A)*np.sin(B)])
-
-    abc = []
-    spec = []
-    loops = v['loops']
-    for l in loops:
-      astr = '_atom_site_label'
-      if astr in l[0]:
-        lind = l[0].index(astr)
-        if '_atom_site_type_symbol' in l[0]:
-          lind = l[0].index('_atom_site_type_symbol')
-        fstr = '_atom_site_fract_{}'
-        find = [l[0].index(fstr.format(v)) for v in ['x', 'y', 'z']]
-        for a in l[1]:
-          spec.append(a[lind])
-          abc.append([cif_num(a[i]) for i in find])
-      if '_atom_type_label' in l[0]:
-        l1ind = l[0].index('_atom_type_label')
-
-    struct['abc'] = np.array(abc)
-    struct['nat'] = len(spec)
-    struct['species'] = spec
-    struct['lattice'] = lattice
-
-  return struct
-    
-
-def struct_from_inputfile_POSCAR ( fname:str ) -> dict:
-  import numpy as np
-
-  struct = {}
-  with open(fname, 'r') as f:
-
-    lines = f.readlines()
-
-    alat = float(lines[1].split()[0])
-    lattice = np.empty((3,3), dtype=float)
-    for i in range(3):
-      lattice[i,:] = np.array([float(v) for v in lines[2+i].split()])
-
-    uspec = lines[5].split()
-    nspec = lines[6].split()
-    numeric = nspec[0].isnumeric()
-    ucount = [int(v) for v in (nspec if numeric else uspec)]
-
-    spec = []
-    for i,c in enumerate(ucount):
-      spec += c * [(uspec[i] if numeric else str(i))]
-
-    lc = 7 if numeric else 6
-    if lines[lc][0].lower() == 's':
-      lc += 1
-
-    cartesian = lines[lc][0].lower() in ['c', 'k']
-
-    lc += 1
-    nat = len(spec)
-    abc = np.empty((nat,3), dtype=float)
-    for i in range(nat):
-      abc[i,:] = np.array([float(v) for v in lines[lc+i].split()])
-
-    lattice *= 1.88973 * alat
-    if cartesian:
-      abc = 1.88973 * abc @ np.linalg.inv(lattice)
-
-    struct['abc'] = abc
-    struct['species'] = spec
-    struct['lattice'] = lattice
-
-    return struct
-
-
 def infer_file_type ( fname:str ):
 
   extension = fname.split('.')
@@ -484,6 +306,58 @@ def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
     raise ValueError('Cannot read relax file type {}'.format(ftype))
 
 
+def struct_from_inputfile_ASE ( fname:str ):
+  '''
+  '''
+  from .conversion import ANG_BOHR
+  import ase.io as aio
+  import numpy as np
+
+  atoms = aio.read(fname)
+  syms = atoms.symbols
+  la = len(syms)
+
+  def extract_number ( ind ):
+    nn = 1
+    while ind+nn < la and syms[ind+nn].isnumeric():
+      nn += 1
+    return nn-1, int(syms[ind:ind+nn])
+
+  ci = 0
+  spec = []
+  while ci < la:
+    if ci == la-1:
+      spec.append(syms[ci])
+      ci += 1
+    else:
+      num = 1
+      sym = syms[ci]
+      if syms[ci+1].isnumeric():
+        ci += 1
+        nn,num = extract_number(ci)
+        ci += nn
+      elif syms[ci+1].islower():
+        ci += 2
+        sym += syms[ci-1]
+        if ci < la and syms[ci].isnumeric():
+          nn,num = extract_number(ci)
+          ci += nn
+      else:
+        ci += 1
+      spec += num * [sym]
+
+  lat = np.empty((3,3), dtype=float)
+  for i,v in enumerate(atoms.cell):
+    lat[i,:] = v[:]
+
+  struct = {}
+  struct['lattice'] = lat * ANG_BOHR
+  struct['species'] = spec
+  struct['abc'] = (atoms.positions.copy()) @ np.linalg.inv(lat)
+
+  return struct
+
+
 def struct_from_inputfile ( fname:str, ftype='automatic' ):
   '''
   '''
@@ -494,12 +368,8 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
   try:
     if ftype == 'qe':
       return struct_from_inputfile_QE(fname)
-    elif ftype == 'cif':
-      return struct_from_inputfile_CIF(fname)
-    elif ftype == 'poscar':
-      return struct_from_inputfile_POSCAR(fname)
     else:
-      raise ValueError('Cannot read file type {}'.format(ftype))
+      return struct_from_inputfile_ASE(fname)
 
   except Exception as e:
     print('Failed to read file {}'.format(fname))
@@ -714,32 +584,3 @@ def read_datablocks_XSF ( fname:str ):
       ind += 1
 
   return np.array(blocks)
-
-
-# Need to test this routine
-def read_bxsf ( fname ):
-  '''
-  Read BXSF file, originally formatted for XCrysDen
-  '''
-  bands = None
-  b_vec = None
-  with open(fname) as f:
-    l = f.readline()
-    while l != '':
-      if 'BANDGRID_3D_BANDS' in l:
-        l = f.readline()
-        nbnd = int(l.split()[0])
-        nx,ny,nz = (int(v) for v in f.readline().split()); f.readline()
-        b_vec = np.array([[float(v) for v in f.readline().split()] for _ in range(3)])
-        bands = np.zeros((nx,ny,nz,nbnd), dtype=float)
-        for n in range(nbnd):
-          f.readline()
-          for i in range(nx):
-            for j in range(ny):
-              ls = f.readline().split()
-              for k in range(nz):
-                bands[i,j,k,n] = float(ls[k])
-        break
-      l = f.readline()
-  return b_vec,bands
-
