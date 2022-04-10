@@ -19,10 +19,6 @@ Supported File Types:
 - XSF
 - BXSF (coming soon)
 
-Fury currently has a bug with the cylinder routine, used for displaying bonds.
-Clone the forked fury reposity, from my GitHub, and check out the glyph\_orientation branch
-(https://github.com/Sassafrass6/fury/tree/glyph_orientation)
-
 Requirements:
 - python 3.8
 - numpy 1.19
@@ -35,39 +31,44 @@ Installation (only use --user if you do not have permission to install python pa
   
 Usage:
 
-  See examples/CrystalView for crystal and Brillouin zone plotting:
+  Display an atomic model from inputfile, with the examples/main.py script:
+    python main.py <inputfile>
 
-    From scratch:
-      python caffeine.py
-      python silicon_fcc.py
+  Control Inputs:
+    'u' : Toggle UI visibility
+    'a' : Toggle Axis visibility
+    SHIFT + 's' : Take snapshot
+    CTRL + 'w' : Exit
 
-    From inputfile (with main.py script):
-      python main.py <inputfile>
-      python main.py <inputfile> <bond_length>
 
-    From inputfile (programmatic):
-      python SnTe_2D.py
-      python example_qe_in.py
-      python example_poscar.py
+See examples directory for crystal and Brillouin zone plotting:
 
-    Relax QE outputfile:
-      python example_relax.py
+  From scratch:
+    python caffeine.py
+    python silicon_fcc.py
 
-    Charge Density:
-      python example_charge_density.py
+  From inputfile (with main.py script):
+    python main.py <inputfile>
+    python main.py <inputfile> <bond_length>
 
-    Reciprocal Space:
-      python example_BZ.py
+  From inputfile (programmatic):
+    python SnTe_2D.py
+    python example_cif.py
+    python example_qe_in.py
+    python example_poscar.py
 
-    Fermi Surfaces:
-      python example_fermi_surface1.py
-      python example_fermi_surface2.py
-      python example_fermi_surface_clip.py
-      python example_colored_fermi_surface.py
-      python example_textured_fermi_surface_clip.py
+  Relax QE outputfile:
+    python example_relax.py
+  Charge Density:
+    python example_charge_density.py
 
-  See examples/PlotTools for QE and PAOFLOW plotting functions:
-    Close windows to advance plot script
+  Reciprocal Space:
+    python example_BZ.py
 
-    python example01_qe.py
-    python example01_pao.py
+  Fermi Surfaces:
+    python example_fermi_surface1.py
+    python example_fermi_surface2.py
+    python example_fermi_surface_clip.py
+    python example_colored_fermi_surface.py
+    python example_textured_fermi_surface_clip.py
+

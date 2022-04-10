@@ -139,12 +139,13 @@ class Reciprocal ( XtraCrysPy ):
     self.scene.ResetCamera()
 
 
-  def render_iso_surface ( self, data, arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.025, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True ):
+  def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.025, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True ):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
         self (XtraCrysPy):
         data (ndarray or list): Array of scalars on which to compute the isosurface. Dimension (X,Y,Z) for arbitrary X,Y, and Z
+        origin (tuple, list, or ndarray): 3-vector origin to offset the surface position manually.
         arrows (ndarray or list): Array of normals for arrows to draw on the surface. Dimension (X,Y,Z,3) with X,Y,Z determined by data dimensions
         iso_vals (float or list): Value or list of iso-values to generate surfaces
         colors (ndarray or list): Colors for the surface. Can specify for each isovalue and for each voxel, or just choose single colors. Accepted dimensions are (A,), (N,A), (X,Y,Z,A), or (N,X,Y,Z,A), where X,Y,Z are determined by data dimensions, N is the number of isovalues provided, and A is either 3 or 4 for RGB or RGBA colors respectively
@@ -155,6 +156,7 @@ class Reciprocal ( XtraCrysPy ):
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
         clip_boundary (bool): Setting True disables clipping of the isosurface within the first BZ.
     '''
-    origin = 1/np.array(data.shape) - 1
+    origin = np.array(origin, dtype=float)
+    origin -= 1 - 1/np.array(data.shape)
     super().render_iso_surface(self.rlattice, origin, data, arrows, iso_vals, colors, arrow_colors, arrow_scale, arrow_anchor, disp_all, clip_planes, clip_boundary)
 

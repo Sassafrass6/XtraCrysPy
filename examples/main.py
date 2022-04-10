@@ -7,7 +7,12 @@ if '__main__' == __name__:
   if argc < 2 or argv[1] == '-h':
     print('Usage:')
     print('  python main.py <inputfile>')
-    print('  python main.py <inputfile> <bond_length>')
+    print('  python main.py <inputfile> <bond_length>\n')
+    print('Control Inputs:')
+    print('  \'u\' : Toggle UI visibility')
+    print('  \'a\' : Toggle Axis visibility')
+    print('  SHIFT + \'s\' : Take snapshot')
+    print('  CTRL + \'w\' : Exit')
     exit()
 
   b_len = 4.2 # Bohr

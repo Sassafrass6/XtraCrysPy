@@ -7,6 +7,7 @@ class XtraCrysPy:
     '''
     Arguments:
     '''
+    from fury.interactor import CustomInteractorStyle
     from fury.data import read_viz_icons
     from fury import ui,window
     from .Line2D import Line2D
@@ -17,12 +18,12 @@ class XtraCrysPy:
 
     self.scene = window.Scene()
     self.scene.background(background)
-
-    if not perspective:
-      self.scene.projection('parallel')
-
     self.smanager = window.ShowManager(self.scene, size=size, order_transparent=True)
     self.smanager.initialize()
+
+    self.ui_visible = True
+    if not perspective:
+      self.scene.projection('parallel')
 
     checkbox = ['Boundary']
     initial = checkbox if boundary else []
@@ -47,6 +48,7 @@ class XtraCrysPy:
 
     self.axes = axes
     if axes:
+      self.axes_visible = True
       try:
         self.axis_eles = [None]*3
         self.axis_lines = [None]*3
@@ -72,6 +74,8 @@ class XtraCrysPy:
         print('Will not display coordinate axes')
         self.axes = False
 
+    self.smanager.add_iren_callback(self.key_press_callback, event='KeyPressEvent')
+
 
   def axis_endpoint_positions ( self, vecs ):
     import numpy as np
@@ -84,6 +88,26 @@ class XtraCrysPy:
 
   def left_click ( self, obj, event ):
     pass
+
+
+  def key_press_callback ( self, obj, event ):
+
+    key = obj.GetKeySym()
+    shift = obj.GetShiftKey()
+    control = obj.GetControlKey()
+
+    if control:
+      if key.lower() in ['q', 'w', 'z']:
+        exit()
+
+    if shift:
+      if key.lower() == 's':
+        self.save_image(self.fprefix)
+
+    if key.lower() == 'u':
+      self.toggle_ui()
+    elif key.lower() == 'a':
+      self.toggle_axes()
 
 
   def camera_engaged ( self, iren, caller, event ):
@@ -114,6 +138,29 @@ class XtraCrysPy:
     fname = fname(nim)
     print('  Saving image as: {}'.format(fname))
     save_image(arr, fname)
+
+
+  def toggle_ui ( self ):
+
+    vis = self.ui_visible = not self.ui_visible
+    self.cam_panel.set_visibility(self.ui_visible)
+    self.frame_checkbox.set_visibility(self.ui_visible)
+
+    if self.surface_slider is not None:
+      self.surface_slider.set_visibility(vis)
+      self.surface_slider.update()
+
+    self.smanager.render()
+
+
+  def toggle_axes ( self ):
+    if self.axes:
+      vis = self.axes_visible = not self.axes_visible
+      self.ax_panel.set_visibility(vis)
+      for i in range(3):
+        self.axis_eles[i].set_visibility(vis)
+        self.axis_lines[i].set_visibility(vis)
+      self.smanager.render()
 
 
   def toggle_frame ( self, checkboxes ):
