@@ -59,7 +59,7 @@ def read_relaxed_coordinates_QE ( fname:str ):
         coord = []
         for l in lines[eL+1:eL+4]:
           coord.append([celldm[0]*float(v) for v in l.split()[3:6]])
-        cell_params.append(coord)
+        cell_params.append(np.array(coord))
 
       while 'site n.' not in lines[eL]:
         eL += 1
@@ -70,7 +70,8 @@ def read_relaxed_coordinates_QE ( fname:str ):
         species.append(line[1])
         apos.append([float(v) for v in line[6:9]])
         eL += 1
-      abc.append(apos)
+      apos = celldm[0] * np.array(apos)
+      abc.append(apos @ np.linalg.inv(cell_params[-1]))
 
       while eL < nL:
         while eL < nL and 'CELL_PARAMETERS' not in lines[eL] and 'ATOMIC_POSITIONS' not in lines[eL]:
