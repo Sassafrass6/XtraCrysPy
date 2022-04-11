@@ -1,6 +1,65 @@
 from numpy import ndarray
 
 
+def struct_from_outputfile_QE ( fname:str ):
+  '''
+  '''
+  from os.path import isfile,join
+  import numpy as np
+
+  if not isfile(fname):
+    msg = 'File {} does not exist.'.format(join(getcwd(),fname))
+    raise FileNotFoundError(msg)
+
+  struct = {'lunit':'bohr', 'aunit':'alat'}
+  with open(fname, 'r') as f:
+    lines = f.readlines()
+
+    eL = 0
+    nL = len(lines)
+
+    try:
+      struct['species'] = []
+      celldm = np.empty(6, dtype=float)
+      while 'bravais-lattice' not in lines[eL]:
+        eL += 1
+      ibrav = int(lines[eL].split()[3])
+
+      while  'celldm' not in lines[eL]:
+        eL += 1
+      celldm[:3] = [float(v) for i,v in enumerate(lines[eL].split()) if i%2==1]
+      celldm[3:] = [float(v) for i,v in enumerate(lines[eL+1].split()) if i%2==1]
+
+      if ibrav != 0:
+        from .lattice_format import lattice_format_QE
+        struct['lattice'] = lattice_format_QE(ibrav, celldm)
+      else:
+        while 'crystal axes' not in lines[eL]:
+          eL += 1
+        coord = []
+        for l in lines[eL+1:eL+4]:
+          coord.append([celldm[0]*float(v) for v in l.split()[3:6]])
+        struct['lattice'] = np.array(coord)
+
+      while 'site n.' not in lines[eL]:
+        eL += 1
+      eL += 1
+      apos = []
+      while 'End' not in lines[eL] and lines[eL] != '\n':
+        line = lines[eL].split()
+        struct['species'].append(line[1])
+        apos.append([float(v) for v in line[6:9]])
+        eL += 1
+      apos = celldm[0] * np.array(apos)
+      struct['abc'] = apos @ np.linalg.inv(struct['lattice'])
+
+    except Exception as e:
+      print('ERROR: Could not read the QE output.')
+      raise e
+
+  return struct
+
+
 def read_relaxed_coordinates_QE ( fname:str ):
   '''
     Reads relaxed atomic positions from a QE .out file. If vcrelax is set True, the crystal coordinates are also read.
@@ -17,15 +76,10 @@ def read_relaxed_coordinates_QE ( fname:str ):
   from os import getcwd
   import numpy as np
 
-  if not isfile(fname):
-    raise FileNotFoundError('File {} does not exist.'.format(join(getcwd(),fname)))
-
   abc = []
-  ibrav = 0
-  species = []
   cell_params = []
-  celldm = np.empty(6, dtype=float)
-  struct = {'lunit':'bohr', 'aunit':'alat'}
+  struct = struct_from_outputfile_QE(fname)
+
   with open(fname, 'r') as f:
     lines = f.readlines()
 
@@ -39,39 +93,6 @@ def read_relaxed_coordinates_QE ( fname:str ):
           apos.append([float(v) for v in lines[sind].split()[1:4]])
           sind += 1
         return sind, apos
-
-      while 'bravais-lattice' not in lines[eL]:
-        eL += 1
-      ibrav = int(lines[eL].split()[3])
-
-
-      while  'celldm' not in lines[eL]:
-        eL += 1
-      celldm[:3] = [float(v) for i,v in enumerate(lines[eL].split()) if i%2==1]
-      celldm[3:] = [float(v) for i,v in enumerate(lines[eL+1].split()) if i%2==1]
-
-      if ibrav != 0:
-        from .lattice_format import lattice_format_QE
-        cell_params.append(lattice_format_QE(ibrav, celldm))
-      else:
-        while 'crystal axes' not in lines[eL]:
-          eL += 1
-        coord = []
-        for l in lines[eL+1:eL+4]:
-          coord.append([celldm[0]*float(v) for v in l.split()[3:6]])
-        cell_params.append(np.array(coord))
-
-      while 'site n.' not in lines[eL]:
-        eL += 1
-      eL += 1
-      apos = []
-      while 'End' not in lines[eL] and lines[eL] != '\n':
-        line = lines[eL].split()
-        species.append(line[1])
-        apos.append([float(v) for v in line[6:9]])
-        eL += 1
-      apos = celldm[0] * np.array(apos)
-      abc.append(apos @ np.linalg.inv(cell_params[-1]))
 
       while eL < nL:
         while eL < nL and 'CELL_PARAMETERS' not in lines[eL] and 'ATOMIC_POSITIONS' not in lines[eL]:
@@ -103,9 +124,8 @@ def read_relaxed_coordinates_QE ( fname:str ):
       print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
       raise e
 
-  struct['species'] = species
-  struct['lattice'] = np.array(cell_params)
-  struct['abc'] = np.array(abc)
+  struct['lattice'] = np.array([struct['lattice']] + cell_params)
+  struct['abc'] = np.array([struct['abc']] + abc)
 
   return struct
 
@@ -172,7 +192,6 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
           struct['tprnfor'] = qebool(s)
     elif 'system' in block:
       for s in mf:
-        print(s)
         if 'ibrav' in s:
           struct['ibrav'] = qeint(s)
         elif 'nat' in s:
@@ -295,7 +314,7 @@ def infer_file_type ( fname:str ):
 
   extension = extension[-1].lower()
   if extension in ['in', 'out']:
-    ftype = 'qe'
+    ftype = 'qe' + extension
   elif extension == 'poscar':
     ftype = 'poscar'
   else:
@@ -312,7 +331,7 @@ def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
   if ftype == 'automatic':
     ftype = infer_file_type(fname)
 
-  if ftype == 'qe':
+  if 'qe' in ftype:
     return read_relaxed_coordinates_QE(fname)
   else:
     raise ValueError('Cannot read relax file type {}'.format(ftype))
@@ -378,8 +397,11 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
     ftype = infer_file_type(fname)
 
   try:
-    if ftype == 'qe':
-      return struct_from_inputfile_QE(fname)
+    if ftype in ['qe', 'qein', 'qeout']:
+      if ftype == 'qeout':
+        return struct_from_outputfile_QE(fname)
+      else:
+        return struct_from_inputfile_QE(fname)
     else:
       return struct_from_inputfile_ASE(fname)
 
