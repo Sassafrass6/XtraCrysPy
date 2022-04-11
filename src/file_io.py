@@ -121,6 +121,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     Returns:
       (dict): Structure dictionary
   '''
+  from .conversion import ANG_BOHR
   from os.path import isfile
   import numpy as np
   import re
@@ -171,9 +172,10 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
           struct['tprnfor'] = qebool(s)
     elif 'system' in block:
       for s in mf:
+        print(s)
         if 'ibrav' in s:
           struct['ibrav'] = qeint(s)
-        if 'nat' in s:
+        elif 'nat' in s:
           struct['nat'] = qeint(s)
         elif 'ecutwfc' in s:
           struct['ecutwfc'] = qefloat(s)
@@ -189,6 +191,11 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
           cpattern = re.compile('\(([^\)]+)\)')
           dm = int(cpattern.findall(s)[0]) - 1
           celldm[dm] = qefloat(s)
+        else:
+          cpat = ['A=', 'B=', 'C=', 'cosAB', 'cosAC', 'cosBC']
+          for i,p in enumerate(cpat):
+            if p in s:
+              celldm[i] = ANG_BOHR * qefloat(s)
     elif 'electrons' in block:
       for s in mf:
         if 'conv_thr' in s:
@@ -263,13 +270,17 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     struct['lattice'] = lattice_format_QE(struct['ibrav'], struct['celldm'])
 
   if struct['lunit'] == 'angstrom':
-    struct['lattice'] *= 1.88973
+    struct['lattice'] *= ANG_BOHR
+  elif struct['lunit'] == 'alat':
+    struct['lattice'] *= celldm[0]
   elif struct['lunit'] != 'bohr':
     print('WARNING: Unit {} may behave strangely'.format(struct['lunit']))
 
-  if struct['aunit'] == 'bohr' or struct['aunit'] == 'angstrom':
+  if struct['aunit'] in ['bohr', 'angstrom', 'alat']:
     if struct['aunit'] == 'angstrom':
-      struct['abc'] *= 1.88973
+      struct['abc'] *= ANG_BOHR
+    elif struct['aunit'] == 'alat':
+      struct['abc'] *= celldm[0]
     struct['abc'] = struct['abc'] @ np.linalg.inv(struct['lattice'])
 
   return struct
