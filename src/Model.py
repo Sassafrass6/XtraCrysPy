@@ -240,7 +240,10 @@ class Model:
           if dist < dist_min:
             dist_min = dist
       radii *= 1.3 * dist_min
-    else:
+    elif len(self.bonds.keys()) > 0:
+      if natsc > 500:
+        print('WARNING: Large number of atoms.')
+        print('         Unset bonds to improve performance.')
       for i1 in range(natsc-1):
         for i2 in range(i1+1, natsc):
           a1 = atoms[i1]
