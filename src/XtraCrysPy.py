@@ -92,21 +92,52 @@ class XtraCrysPy:
 
   def key_press_callback ( self, obj, event ):
 
-    key = obj.GetKeySym()
+    key = obj.GetKeySym().lower()
     shift = obj.GetShiftKey()
     control = obj.GetControlKey()
 
     if control:
-      if key.lower() in ['q', 'w', 'z']:
+      if key in ['q', 'w', 'z']:
         exit()
 
     if shift:
-      if key.lower() == 's':
+      if key == 's':
         self.save_image(self.fprefix)
 
-    if key.lower() == 'u':
+    if key in ['up', 'down', 'left', 'right']:
+      camera = self.scene.GetActiveCamera()
+      if shift:
+        step = 0.5 if control else 2.5
+        if key == 'up':
+         # camera.Pitch(-step)
+         pass
+        elif key == 'down':
+         # camera.Pitch(step)
+         pass
+        elif key == 'left':
+         # camera.Yaw(-step)
+         pass
+        elif key == 'right':
+         # camera.Yaw(step)
+         pass
+      else:
+        step = 1 if control else 5
+        if key == 'up':
+          camera.Elevation(-step)
+        elif key == 'down':
+          camera.Elevation(step)
+        elif key == 'left':
+          camera.Azimuth(step)
+        elif key == 'right':
+          camera.Azimuth(-step)
+      camera.OrthogonalizeViewUp()
+      self.update_axes(None, None)
+      self.scene.ResetCameraClippingRange()
+      self.smanager.render()
+
+    elif key == 'u':
       self.toggle_ui()
-    elif key.lower() == 'a':
+    elif key == 'a':
       self.toggle_axes()
 
 
@@ -196,7 +227,7 @@ class XtraCrysPy:
     for i,u in enumerate(unit[:2]):
       v = np.cross(cam_vecs[i], u)
       r = np.array([[0,-v[2],v[1]],[v[2],0,-v[0]],[-v[1],v[0],0]])
-      rot.append(np.eye(3) + r + r@r/(1+cam_vecs[i].dot(u)))
+      rot.append(np.eye(3) + r + r@r/(1 + cam_vecs[i].dot(u)))
       cam_vecs = rot[-1] @ cam_vecs.T
 
     axis_vecs = np.eye(3) @ np.linalg.inv(rot[0]) @ np.linalg.inv(rot[1])
