@@ -16,11 +16,18 @@ class XtraCrysPy:
     self.frame = None
     self.picker = None
 
+    background = np.array(background)
+    if background.max() > 1:
+      background = np.array(background) / 255
+    bg_norm = np.linalg.norm(background)
+    self.font_color = (0,0,0) if bg_norm > 0.5 else (1,1,1)
+
     self.scene = window.Scene()
     self.scene.background(background)
     self.smanager = window.ShowManager(self.scene, size=size, order_transparent=True)
     self.smanager.initialize()
 
+    self.shift_step = 0.25
     self.ui_visible = True
     if not perspective:
       self.scene.projection('parallel')
@@ -30,6 +37,9 @@ class XtraCrysPy:
     self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
     self.scene.add(self.frame_checkbox)
     self.frame_checkbox.on_change = self.toggle_frame
+    for label in self.frame_checkbox.labels:
+      tactor = self.frame_checkbox.options[label].text.actor
+      tactor.GetTextProperty().SetColor(self.font_color)
 
     self.fprefix = image_prefix
     cam_icon = ('camera',read_viz_icons(fname='camera.png'))
@@ -49,30 +59,24 @@ class XtraCrysPy:
     self.axes = axes
     if axes:
       self.axes_visible = True
-      try:
-        self.axis_eles = [None]*3
-        self.axis_lines = [None]*3
-        self.axis_width = ax_wid = 200
-        self.ax_panel = ui.Panel2D(size=(ax_wid,ax_wid), color=(0,0,0))
-        self.ax_panel.center = (ax_wid/2, ax_wid/2)
-        self.ax_panel.background.\
-             on_left_mouse_button_dragged = lambda a,b,c : None
-        self.scene.add(self.ax_panel)
+      self.axis_eles = [None]*3
+      self.axis_lines = [None]*3
+      self.axis_width = ax_wid = 200
+      self.ax_panel = ui.Panel2D(size=(ax_wid,ax_wid), color=(0,0,0))
+      self.ax_panel.center = (ax_wid/2, ax_wid/2)
+      self.ax_panel.background.\
+           on_left_mouse_button_dragged = lambda a,b,c : None
+      self.scene.add(self.ax_panel)
 
-        axis_vecs = np.array([[1,0,0],[0,1,0],[0,0,1]])
-        centers = self.axis_endpoint_positions(axis_vecs)
-        for i in range(3):
-          self.axis_eles[i] = ui.Disk2D(outer_radius=8, center=centers[i], color=axis_vecs[i])
-          self.axis_lines[i] = Line2D((ax_wid/2,ax_wid/2), centers[i], color=axis_vecs[i])
-          self.axis_lines[i].width = 5
+      axis_vecs = np.array([[1,0,0],[0,1,0],[0,0,1]])
+      centers = self.axis_endpoint_positions(axis_vecs)
+      for i in range(3):
+        self.axis_eles[i] = ui.Disk2D(outer_radius=8, center=centers[i], color=axis_vecs[i])
+        self.axis_lines[i] = Line2D((ax_wid/2,ax_wid/2), centers[i], color=axis_vecs[i])
+        self.axis_lines[i].width = 5
 
-          self.scene.add(self.axis_eles[i])
-          self.scene.add(self.axis_lines[i])
-      except Exception as e:
-        print(e)
-        print('Could not import Line2D from fury. Instal Line2D branch from Sassafrass6 GitHub')
-        print('Will not display coordinate axes')
-        self.axes = False
+        self.scene.add(self.axis_eles[i])
+        self.scene.add(self.axis_lines[i])
 
     self.smanager.add_iren_callback(self.key_press_callback, event='KeyPressEvent')
 
@@ -114,7 +118,7 @@ class XtraCrysPy:
       camera = self.scene.GetActiveCamera()
       if shift:
         trans = 0
-        step = .25 if control else 2.5
+        step = self.shift_step * (1 if control else 5)
         camera.OrthogonalizeViewUp()
         up = np.array(camera.GetViewUp())
         focal = np.array(camera.GetFocalPoint())
@@ -185,7 +189,7 @@ class XtraCrysPy:
     self.cam_panel.set_visibility(self.ui_visible)
     self.frame_checkbox.set_visibility(self.ui_visible)
 
-    if self.surface_slider is not None:
+    if self.surface_slider is not None and not self.disp_all_iso:
       self.surface_slider.set_visibility(vis)
       self.surface_slider.update()
 
@@ -209,6 +213,9 @@ class XtraCrysPy:
       else:
         self.scene.rm(self.frame)
 
+  def iso_slider_handle_color (self, i_ren, _obj, _slider):
+    self.surface_slider.handle.color = self.font_color
+    i_ren.force_render()
 
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()
@@ -286,6 +293,7 @@ class XtraCrysPy:
     from .iso_surface import iso_surface
     from fury import ui
 
+    self.disp_all_iso = disp_all
     data = np.array(data)
     if len(data.shape) != 3:
       raise Exception('Argument data must be a 3D array')
@@ -454,6 +462,9 @@ class XtraCrysPy:
             self.surface_index = 0
             self.surface_slider = ui.LineSlider2D(center=(self.wsize[0]/2,self.wsize[1]-50), initial_value=1, orientation='horizontal', min_value=1, max_value=len(self.surfaces), text_template='{value:0.0f}')
             self.surface_slider.on_change = self.update_iso_surface
+            self.surface_slider.text.color = self.font_color
+            self.surface_slider.handle.color = self.font_color
+            self.surface_slider.handle.on_left_mouse_button_released = self.iso_slider_handle_color
             self.scene.add(self.surface_slider)
           else:
             self.surface_slider.max_value = len(self.surfaces)

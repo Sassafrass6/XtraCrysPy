@@ -38,6 +38,7 @@ class Reciprocal ( XtraCrysPy ):
       else:
         raise ValueError('Argument \'model\' must be a Model object or a dictionary.')
 
+      self.shift_step = 0.01
       self.bravais_boundaries(render=boundary)
 
 

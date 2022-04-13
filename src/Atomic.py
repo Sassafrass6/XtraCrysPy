@@ -45,6 +45,7 @@ class Atomic ( XtraCrysPy ):
     self.relax_index = 0
     self.nrelax = self.model.atoms.shape[0]
 
+    self.shift_step = 0.25
     self.units = unit.lower()
     self.runits = runit.lower()
     if self.units not in ['angstrom', 'bohr']:
@@ -87,6 +88,7 @@ class Atomic ( XtraCrysPy ):
     self.sel_type_menu = ui.ListBox2D(sel_types, multiselection=False,
                          font_size=24, line_spacing=2, size=(150,220),
                          background_opacity=.9)
+    self.sel_type_menu.panel.color = (.1,.1,.1)
 
     sel = sel_types.index(self.sel_type)
     self.sel_type_menu.select(self.sel_type_menu.slots[sel])
@@ -101,10 +103,13 @@ class Atomic ( XtraCrysPy ):
                               position=(10,size[1]-65))
     self.scene.add(self.constrain_checkbox)
     self.constrain_checkbox.on_change = self.update_constrain
+    for label in self.constrain_checkbox.labels:
+      tactor = self.constrain_checkbox.options[label].text.actor
+      tactor.GetTextProperty().SetColor(self.font_color)
 
     self.ncell_panel_vis = False
-    self.ncell_panel = ui.Panel2D(size=(180,140), color=(0,0,0), opacity=.8)
-    self.ncell_panel.center = (300, size[1]-80)
+    self.ncell_panel = ui.Panel2D(size=(180,140), color=(.1,.1,.1), opacity=.9)
+    self.ncell_panel.center = (260, size[1]-80)
 
     nsc = self.nsc
     nmax = [max(n, 4) for n in nsc]
@@ -138,9 +143,10 @@ class Atomic ( XtraCrysPy ):
     self.sel_panel = ui.Panel2D((110,40), (60, size[1]-110), opacity=0)
     self.sel_panel.add_element(self.ncell_button, (50,0))
     self.sel_panel.add_element(self.sel_type_button, (0,0))
-    self.sel_panel.add_element(self.sel_type_menu, (50,-230))
+    self.sel_panel.add_element(self.sel_type_menu, (-50,-230))
     self.scene.add(self.sel_panel)
 
+    self.sel_text_vis = False
     self.sel_tpanel = ui.Panel2D(size=(300,80), color=(0,0,0))
     self.sel_tpanel.center = (size[1]-160, 50)
     self.sel_text = ui.TextBlock2D(font_size=30, justification='left',
@@ -193,6 +199,7 @@ class Atomic ( XtraCrysPy ):
 
 
   def clear_selection_text ( self ):
+    self.sel_text_vis = False
     self.sel_text.message = ''
     self.sel_tpanel.set_visibility(False)
 
@@ -203,6 +210,7 @@ class Atomic ( XtraCrysPy ):
 
 
   def update_selection_text ( self, text ):
+    self.sel_text_vis = True
     self.sel_text.message = text
     self.sel_tpanel.set_visibility(True)
 
@@ -244,6 +252,9 @@ class Atomic ( XtraCrysPy ):
 
     ncell_vis = self.ui_visible and self.ncell_panel_vis
     self.ncell_panel.set_visibility(ncell_vis)
+
+    sel_tvis = self.ui_visible and self.sel_text_vis
+    self.sel_tpanel.set_visibility(sel_tvis)
 
     self.ncell_button.set_visibility(self.ui_visible)
     self.sel_type_button.set_visibility(self.ui_visible)
