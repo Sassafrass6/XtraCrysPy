@@ -57,6 +57,8 @@ class Atomic ( XtraCrysPy ):
     self.setup_ui()
 
     self.render_atomic_model()
+    self.scene.ResetCamera()
+    self.smanager.render()
 
 
   def setup_ui ( self ):
@@ -472,6 +474,7 @@ class Atomic ( XtraCrysPy ):
     for ind in sel_inds:
       self.selection_logic(colors, ind, nvert)
 
+    self.scene.ResetCameraClippingRange()
     self.smanager.render()
 
 
@@ -504,8 +507,6 @@ class Atomic ( XtraCrysPy ):
     self.frame = actor.streamtube(linfo[1], colors=(1,1,1), linewidth=0.1)
     if 'Boundary' in self.frame_checkbox.checked_labels:
       self.scene.add(self.frame)
-
-    self.scene.ResetCamera()
 
 
   def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.025, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True):
