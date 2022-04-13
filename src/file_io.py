@@ -75,6 +75,7 @@ def read_relaxed_coordinates_QE ( fname:str ):
   from os.path import isfile,join
   from os import getcwd
   import numpy as np
+  import re
 
   abc = []
   cell_params = []
@@ -108,10 +109,18 @@ def read_relaxed_coordinates_QE ( fname:str ):
         elif 'CELL_PARAMETERS' in lines[eL]:
           coord = []
           unit = lines[eL].split()[1].strip('(){{}}')
-          if len(unit) > 1:
+
+          alat = 1
+          if 'alat' in unit or len(unit) == 0:
+            struct['lunit'] = 'alat'
+            if 'alat' in unit:
+              cpattern = re.search('\(([^\)]+)\)', lines[eL])
+              if cpattern is not None:
+                alat = float(cpattern.group(0)[1:-1].split('=')[1])
+          else:
             struct['lunit'] = unit
           for l in lines[eL+1:eL+4]:
-            coord.append(np.array([float(v) for v in l.split()]))
+            coord.append(alat*np.array([float(v) for v in l.split()]))
           cell_params.append(coord)
           eL += 4
 
