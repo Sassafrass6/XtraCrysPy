@@ -13,6 +13,9 @@ if '__main__' == __name__:
     print('  \'a\' : Toggle Axis visibility')
     print('  SHIFT + \'s\' : Take snapshot')
     print('  CTRL + \'w\' : Exit')
+    print('  Arrow Keys : Rotate model')
+    print('  SHIFT + Arrow Keys : Translate camera')
+    print('  CTRL + Arrow Keys (+ SHIFT) : Rotate (or Translate) in smaller steps')
     exit()
 
   b_len = 4.2 # Bohr

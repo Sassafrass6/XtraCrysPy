@@ -104,22 +104,34 @@ class XtraCrysPy:
       if key == 's':
         self.save_image(self.fprefix)
 
-    if key in ['up', 'down', 'left', 'right']:
+    if key == 'u':
+      self.toggle_ui()
+    elif key == 'a':
+      self.toggle_axes()
+
+    elif key in ['up', 'down', 'left', 'right']:
+
       camera = self.scene.GetActiveCamera()
       if shift:
-        step = 0.5 if control else 2.5
+        trans = 0
+        step = .25 if control else 2.5
+        camera.OrthogonalizeViewUp()
+        up = np.array(camera.GetViewUp())
+        focal = np.array(camera.GetFocalPoint())
+        position = np.array(camera.GetPosition())
         if key == 'up':
-         # camera.Pitch(-step)
-         pass
+          trans = -step * up
         elif key == 'down':
-         # camera.Pitch(step)
-         pass
+          trans = step * up
         elif key == 'left':
-         # camera.Yaw(-step)
-         pass
+          right = np.cross(focal - position, up)
+          trans = step * right / np.linalg.norm(right)
         elif key == 'right':
-         # camera.Yaw(step)
-         pass
+          right = np.cross(focal - position, up)
+          trans = -step * right / np.linalg.norm(right)
+        camera.SetPosition(position + trans)
+        camera.SetFocalPoint(focal + trans)
+
       else:
         step = 1 if control else 5
         if key == 'up':
@@ -130,15 +142,11 @@ class XtraCrysPy:
           camera.Azimuth(step)
         elif key == 'right':
           camera.Azimuth(-step)
+
       camera.OrthogonalizeViewUp()
       self.update_axes(None, None)
       self.scene.ResetCameraClippingRange()
       self.smanager.render()
-
-    elif key == 'u':
-      self.toggle_ui()
-    elif key == 'a':
-      self.toggle_axes()
 
 
   def camera_engaged ( self, iren, caller, event ):

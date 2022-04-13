@@ -39,6 +39,9 @@ Usage:
     'a' : Toggle Axis visibility
     SHIFT + 's' : Take snapshot
     CTRL + 'w' : Exit
+    Arrow Keys : Rotate model
+    SHIFT + Arrow Keys : Translate camera
+    CTRL + Arrow Keys (+ SHIFT) : Rotate (or Translate) in smaller steps
 
 
 See examples directory for crystal and Brillouin zone plotting:
@@ -59,6 +62,7 @@ See examples directory for crystal and Brillouin zone plotting:
 
   Relax QE outputfile:
     python example_relax.py
+
   Charge Density:
     python example_charge_density.py
 
