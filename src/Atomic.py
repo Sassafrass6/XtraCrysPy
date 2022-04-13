@@ -172,6 +172,7 @@ class Atomic ( XtraCrysPy ):
       self.relax_text = ui.TextBlock2D(text=stext, 
                         justification='center', font_size=30,
                         vertical_justification='top')
+      self.relax_text.actor.GetTextProperty().SetColor(self.font_color)
       self.relax_panel.add_element(self.relax_text, (55,-10))
       self.scene.add(self.relax_panel)
 
