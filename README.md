@@ -24,6 +24,7 @@ Requirements:
 - numpy 1.19
 - matplotlib 3.5
 - [fury 0.8](https://github.com/fury-gl/fury)
+- [ase](https://wiki.fysik.dtu.dk/ase/)
   
 Installation (only use --user if you do not have permission to install python packages):  
 - `python setup.py install`  
