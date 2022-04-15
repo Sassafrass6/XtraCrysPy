@@ -13,8 +13,13 @@ class Model:
     self.species = None
     if fname is not None:
       if relax:
-        from .file_io import read_relaxed_coordinates
-        params.update(read_relaxed_coordinates(fname))
+        if isinstance(fname, str):
+          from .file_io import read_relaxed_coordinates
+          params.update(read_relaxed_coordinates(fname))
+        else:
+          from .file_io import struct_from_file_sequence
+          self.relax = True
+          params.update(struct_from_file_sequence(fname))
       else:
         from .file_io import struct_from_inputfile
         params.update(struct_from_inputfile(fname))

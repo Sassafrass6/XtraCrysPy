@@ -24,6 +24,6 @@ if '__main__' == __name__:
 
   fname = argv[1]
   a_info = {'bonds':b_len}
-  xcp = XCP.Atomic(params=a_info, model=fname, sel_type='Chain')
+  xcp = XCP.Atomic(params=a_info, model=[fname]*46, sel_type='Chain')
   xcp.start_crystal_view()
 

@@ -26,6 +26,7 @@ if __name__ == '__main__':
               'example_poscar.py',
               'example_cif.py',
               'example_relax.py',
+              'example_charge_density.py',
               'example_BZ.py',
               'example_fermi_surface1.py',
               'example_fermi_surface2.py',

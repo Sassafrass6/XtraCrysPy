@@ -19,6 +19,9 @@ class Atomic ( XtraCrysPy ):
     self.bond_type = bond_type
     self.constrain_atoms = True
 
+    self.relax = relax
+    self.relax_index = 0
+
     self.sel_inds = []
     self.sel_cols = []
     self.sel_bnds = []
@@ -32,8 +35,15 @@ class Atomic ( XtraCrysPy ):
         if not isfile(model):
           raise FileNotFoundError('File {} not found'.format(model))
         model = Model(params, fname=model, relax=relax)
+      elif isinstance(model, (list, tuple)):
+        from os.path import isfile
+        for mfn in model:
+          if not isfile(mfn):
+            raise FileNotFoundError('File {} not found'.format(mfn))
+        self.relax = True
+        model = Model(params, fname=model, relax=True)
       else:
-        s = 'Argument \'model\' must be a file name or a Model object.'
+        s = 'Argument \'model\' must be a file name, a list of file names, or a Model object.'
         raise TypeError(s)
     elif params:
       model = Model(params, fname=None, relax=relax)
@@ -41,8 +51,6 @@ class Atomic ( XtraCrysPy ):
       raise Exception('Must specify model or params arguments')
 
     self.model = model
-    self.relax = relax
-    self.relax_index = 0
     self.nrelax = self.model.atoms.shape[0]
 
     self.shift_step = 0.25

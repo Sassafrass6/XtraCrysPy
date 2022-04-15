@@ -308,7 +308,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     if struct['aunit'] == 'angstrom':
       struct['abc'] *= ANG_BOHR
     elif struct['aunit'] == 'alat':
-      struct['abc'] *= celldm[0]
+      struct['abc'] = struct['abc'] @ struct['lattice']
     struct['abc'] = struct['abc'] @ np.linalg.inv(struct['lattice'])
 
   return struct
@@ -417,6 +417,33 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
   except Exception as e:
     print('Failed to read file {}'.format(fname))
     raise e
+
+
+def struct_from_file_sequence ( fnames ):
+  '''
+  '''
+  import numpy as np
+
+  nfn = len(fnames)
+  if nfn == 0:
+    raise Exception('File list is empty')
+
+  struct = struct_from_inputfile(fnames[0])
+
+  spec = struct['species']
+  lats = np.empty((nfn,3,3), dtype=float)
+  abcs = np.empty((nfn,len(spec),3), dtype=float)
+  lats[0] = struct['lattice']
+  abcs[0] = struct['abc']
+  for i in range(1,nfn):
+    struct = struct_from_inputfile(fnames[i])
+    lats[i] = struct['lattice']
+    abcs[i] = struct['abc']
+
+  struct['lattice'] = lats
+  struct['abc'] = abcs
+
+  return struct
 
 
 def read_dos_QE ( fname:str, read_ef=True ):
