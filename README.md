@@ -38,6 +38,9 @@ Usage:
   Control Inputs:
     'u' : Toggle UI visibility
     'a' : Toggle Axis visibility
+    '>' : Step forward in relax or MD
+    '<' : Step backward in relax or MD
+    SHIFT + 'c' : Reset camera to default position
     SHIFT + 's' : Take snapshot
     CTRL + 'w' : Exit
     Arrow Keys : Rotate model

@@ -314,24 +314,6 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   return struct
 
 
-def infer_file_type ( fname:str ):
-
-  extension = fname.split('.')
-  if len(extension) <= 1:
-    print('Cannot infer file type without an extension. Assuming qe')
-    return 'qe'
-
-  extension = extension[-1].lower()
-  if extension in ['in', 'out']:
-    ftype = 'qe' + extension
-  elif extension == 'poscar':
-    ftype = 'poscar'
-  else:
-    ftype = extension
-
-  return ftype
-
-
 def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
   '''
     Assumed that the file type is a QE relax output file
@@ -344,6 +326,45 @@ def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
     return read_relaxed_coordinates_QE(fname)
   else:
     raise ValueError('Cannot read relax file type {}'.format(ftype))
+
+
+def md_coordinates_LAMMPS ( fname:str ):
+  '''
+  '''
+  import numpy as np
+
+  lines = None
+  with open(fname, 'r') as f:
+    lines = f.readlines()
+
+  il = 0
+  ll = len(lines)
+  species = None
+  positions = []
+  while il < ll:
+    nat = int(lines[il].split()[0])
+    il += 2
+    atoms = []
+    species = []
+    for _ in range(nat):
+      ls = lines[il].split()
+      spec = int(ls[0]) if ls[0].isnumeric() else ls[0]
+      species.append(spec)
+      atoms.append([float(v) for v in ls[1:]])
+      il += 1
+    positions.append(atoms)
+
+  struct = {}
+  struct['species'] = species
+  struct['abc'] = np.array(positions)
+  struct['lattice'] = np.array([[[1,0,0],[0,1,0],[0,0,1]]], dtype=float)
+  for i in range(3):
+    struct['lattice'][0,i] *= np.max(struct['abc'][:,:,i])
+  linv = np.linalg.inv(struct['lattice'])
+  for i,p in enumerate(struct['abc']):
+    struct['abc'][i] = p @ linv
+
+  return struct
 
 
 def struct_from_inputfile_ASE ( fname:str ):
@@ -398,6 +419,24 @@ def struct_from_inputfile_ASE ( fname:str ):
   return struct
 
 
+def infer_file_type ( fname:str ):
+
+  extension = fname.split('.')
+  if len(extension) <= 1:
+    print('Cannot infer file type without an extension. Assuming qe')
+    return 'qe'
+
+  extension = extension[-1].lower()
+  if extension in ['in', 'out']:
+    return 'qe' + extension
+  elif extension == 'poscar':
+    return 'poscar'
+  elif extension in ['lmp', 'lmps'] or 'lammps' in extension:
+    return 'lammps'
+
+  return extension
+
+
 def struct_from_inputfile ( fname:str, ftype='automatic' ):
   '''
   '''
@@ -411,6 +450,8 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
         return struct_from_outputfile_QE(fname)
       else:
         return struct_from_inputfile_QE(fname)
+    elif ftype == 'lammps':
+      return md_coordinates_LAMMPS(fname)
     else:
       return struct_from_inputfile_ASE(fname)
 

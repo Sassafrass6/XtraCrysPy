@@ -2,12 +2,15 @@ import numpy as np
 
 class Model:
 
-  def __init__ ( self, params={}, fname=None, relax=False ):
+  def __init__ ( self, params=None, fname=None, relax=False ):
     '''
 
     Arguments:
     '''
     from .defaults import atom_defaults
+
+    if params is None:
+      params = {}
 
     self.relax = relax
     self.species = None
@@ -18,14 +21,15 @@ class Model:
           params.update(read_relaxed_coordinates(fname))
         else:
           from .file_io import struct_from_file_sequence
-          self.relax = True
           params.update(struct_from_file_sequence(fname))
       else:
         from .file_io import struct_from_inputfile
+        from .file_io import infer_file_type
+        if infer_file_type(fname) == 'lammps':
+          self.relax = True
         params.update(struct_from_inputfile(fname))
-
     elif relax:
-      raise ValueError('Relax mode only supported for QE output files.')
+      raise ValueError('Relax mode supported for QE output files, and LAMMPS trajectory files.')
 
     try:
       self.units = 'bohr'
@@ -38,7 +42,7 @@ class Model:
       print('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
       raise e
 
-    ati = 0 if not relax else 1
+    ati = 0 if not self.relax else 1
     if self.species is None:
       self.species = [str(s) for s in range(self.atoms.shape[ati])]
 
@@ -47,7 +51,7 @@ class Model:
     if self.natoms != shape:
       raise ValueError('Number of atoms and species do not match')
 
-    if not relax:
+    if not self.relax:
       self.volume = self.lattice[0].dot(np.cross(self.lattice[1], self.lattice[2]))
 
       self.rlattice = np.empty_like(self.lattice)

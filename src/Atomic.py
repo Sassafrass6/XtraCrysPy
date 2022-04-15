@@ -40,7 +40,6 @@ class Atomic ( XtraCrysPy ):
         for mfn in model:
           if not isfile(mfn):
             raise FileNotFoundError('File {} not found'.format(mfn))
-        self.relax = True
         model = Model(params, fname=model, relax=True)
       else:
         s = 'Argument \'model\' must be a file name, a list of file names, or a Model object.'
@@ -51,6 +50,7 @@ class Atomic ( XtraCrysPy ):
       raise Exception('Must specify model or params arguments')
 
     self.model = model
+    self.relax = model.relax
     self.nrelax = self.model.atoms.shape[0]
 
     self.shift_step = 0.25
@@ -67,7 +67,11 @@ class Atomic ( XtraCrysPy ):
 
     self.render_atomic_model()
     self.scene.ResetCamera()
+    cam = self.scene.GetActiveCamera()
     self.smanager.render()
+    self.cam_defaults = (cam.GetPosition(),
+                         cam.GetFocalPoint(),
+                         cam.GetViewUp())
 
 
   def setup_ui ( self ):
@@ -183,6 +187,20 @@ class Atomic ( XtraCrysPy ):
       self.relax_text.actor.GetTextProperty().SetColor(self.font_color)
       self.relax_panel.add_element(self.relax_text, (55,-10))
       self.scene.add(self.relax_panel)
+
+
+  def key_press_callback ( self, obj, event ):
+
+    key = obj.GetKeySym().lower()
+
+    if key in ['less', 'greater']:
+      if self.relax:
+        if key == 'less':
+          self.relax_backward(None, obj, event)
+        else:
+          self.relax_forward(None, obj, event)
+    else:
+      super().key_press_callback(obj, event)
 
 
   def update_buttons ( self, caller, event ):

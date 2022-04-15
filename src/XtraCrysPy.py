@@ -32,6 +32,11 @@ class XtraCrysPy:
     if not perspective:
       self.scene.projection('parallel')
 
+    cam = self.scene.GetActiveCamera()
+    self.cam_defaults = (cam.GetPosition(),
+                         cam.GetFocalPoint(),
+                         cam.GetViewUp())
+
     checkbox = ['Boundary']
     initial = checkbox if boundary else []
     self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
@@ -107,6 +112,9 @@ class XtraCrysPy:
     if shift:
       if key == 's':
         self.save_image(self.fprefix)
+      elif key == 'c':
+        self.camera_default_position()
+        self.smanager.render()
 
     if key == 'u':
       self.toggle_ui()
@@ -151,6 +159,15 @@ class XtraCrysPy:
       self.update_axes(None, None)
       self.scene.ResetCameraClippingRange()
       self.smanager.render()
+
+
+  def camera_default_position ( self ):
+    cam = self.scene.GetActiveCamera()
+    cam.SetPosition(self.cam_defaults[0])
+    cam.SetFocalPoint(self.cam_defaults[1])
+    cam.SetViewUp(self.cam_defaults[2])
+    self.scene.ResetCamera()
+    self.update_axes(None, None)
 
 
   def camera_engaged ( self, iren, caller, event ):
