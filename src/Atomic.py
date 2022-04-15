@@ -218,7 +218,7 @@ class Atomic ( XtraCrysPy ):
 
   def update_constrain ( self, checkboxes ):
     self.constrain_atoms = not self.constrain_atoms
-    self.update_atomic_model()
+    self.redraw_atomic_model()
 
 
   def update_nsc_x ( self, slider ):
@@ -226,7 +226,7 @@ class Atomic ( XtraCrysPy ):
     ind = int(np.round(slider.value))
     if ind != self.nsc[0]:
       self.nsc[0] = ind
-      self.update_atomic_model()
+      self.redraw_atomic_model()
 
 
   def update_nsc_y ( self, slider ):
@@ -234,7 +234,7 @@ class Atomic ( XtraCrysPy ):
     ind = int(np.round(slider.value))
     if ind != self.nsc[1]:
       self.nsc[1] = ind
-      self.update_atomic_model()
+      self.redraw_atomic_model()
 
 
   def update_nsc_z ( self, slider ):
@@ -242,7 +242,7 @@ class Atomic ( XtraCrysPy ):
     ind = int(np.round(slider.value))
     if ind != self.nsc[2]:
       self.nsc[2] = ind
-      self.update_atomic_model()
+      self.redraw_atomic_model()
 
 
   def toggle_ui ( self ):
@@ -463,7 +463,27 @@ class Atomic ( XtraCrysPy ):
     update_actor(obj)
 
 
-  def update_atomic_model ( self ):
+  def update_atomic_positions ( self ):
+    from fury.utils import vertices_from_actor,update_actor
+
+    ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc,
+                        self.bond_type, self.relax_index,
+                        self.constrain_atoms)
+
+    verts = vertices_from_actor(self.atoms)
+
+    diffs = ainfo[0] - self.aposs
+    self.aposs = ainfo[0]
+    sec = verts.shape[0] // diffs.shape[0]
+    for i,d in enumerate(diffs):
+      strt,end = i * sec, (i+1) * sec
+      verts[strt:end] += d
+    update_actor(self.atoms)
+    self.scene.ResetCameraClippingRange()
+    self.smanager.render()
+
+
+  def redraw_atomic_model ( self ):
     from fury.utils import update_actor
 
     self.scene.rm(self.frame)
@@ -488,6 +508,13 @@ class Atomic ( XtraCrysPy ):
 
     self.scene.ResetCameraClippingRange()
     self.smanager.render()
+
+
+  def update_atomic_model ( self ):
+    if self.model.bonds:
+      self.redraw_atomic_model()
+    else:
+      self.update_atomic_positions()
 
 
   def render_atomic_model ( self ):

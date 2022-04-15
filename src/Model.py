@@ -42,8 +42,6 @@ class Model:
     if self.natoms != shape:
       raise ValueError('Number of atoms and species do not match')
 
-    
-
     if not relax:
       self.volume = self.lattice[0].dot(np.cross(self.lattice[1], self.lattice[2]))
 
