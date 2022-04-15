@@ -1,5 +1,5 @@
 from .XtraCrysPy import XtraCrysPy
-from .r_diagram import r_diagram
+from .r_diagram import helix,r_diagram
 import numpy as np
 
 class Richardson ( XtraCrysPy ):
@@ -25,8 +25,12 @@ class Richardson ( XtraCrysPy ):
     # UI SETUP
 
     # Build spirals like this...
-    r_actor = r_diagram(points, normals, .5, [1,.3,0])
-    self.scene.add(r_actor)
+    #r_actor = r_diagram(points, normals, .5, [1,.3,0])
+    #self.scene.add(r_actor)
+
+    # Build a helix like this?
+    h_actor = helix([[-1,-2,-3],[3,2,1]], 4, 3, .5, [1,.3,0])
+    self.scene.add(h_actor)
 
     # Finish setting up the scene
     self.scene.ResetCamera()
