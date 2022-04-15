@@ -67,11 +67,7 @@ class Atomic ( XtraCrysPy ):
 
     self.render_atomic_model()
     self.scene.ResetCamera()
-    cam = self.scene.GetActiveCamera()
     self.smanager.render()
-    self.cam_defaults = (cam.GetPosition(),
-                         cam.GetFocalPoint(),
-                         cam.GetViewUp())
 
 
   def setup_ui ( self ):
@@ -192,13 +188,15 @@ class Atomic ( XtraCrysPy ):
   def key_press_callback ( self, obj, event ):
 
     key = obj.GetKeySym().lower()
+    control = obj.GetControlKey()
 
     if key in ['less', 'greater']:
       if self.relax:
+        step = 1 if not control else int(np.round(self.nrelax/20))
         if key == 'less':
-          self.relax_backward(None, obj, event)
+          self.relax_backward(None, obj, event, step=step)
         else:
-          self.relax_forward(None, obj, event)
+          self.relax_forward(None, obj, event, step=step)
     else:
       super().key_press_callback(obj, event)
 
@@ -346,7 +344,7 @@ class Atomic ( XtraCrysPy ):
 
     brad = self.model.bond_radius(dist, ai1, ai2, self.bond_type)
     if self.bond_type != 'Sphere':
-      brad = 0.01 + brad / 2
+      brad *= 0.51
       tbond = actor.cylinder([cent], [conn], [self.scolor/255],
                              radius=brad, heights=dist, resolution=20)
     else:
@@ -459,18 +457,26 @@ class Atomic ( XtraCrysPy ):
           self.push_sbond()
 
 
-  def relax_forward ( self, iren, obj, event ):
-    if self.relax_index < self.nrelax-1:
-      self.relax_index += 1
-      self.update_relax_text()
-      self.update_atomic_model()
+  def relax_forward ( self, iren, obj, event, step=1 ):
+    if self.relax_index == self.nrelax-1:
+      return
+    if self.relax_index + step >= self.nrelax:
+      self.relax_index = self.nrelax-1
+    else:
+      self.relax_index += step
+    self.update_relax_text()
+    self.update_atomic_model()
 
 
-  def relax_backward ( self, iren, obj, event ):
-    if self.relax_index > 0:
-      self.relax_index -= 1
-      self.update_relax_text()
-      self.update_atomic_model()
+  def relax_backward ( self, iren, obj, event, step=1 ):
+    if self.relax_index == 0:
+      return
+    if self.relax_index - step < 0:
+      self.relax_index = 0
+    else:
+      self.relax_index -= step
+    self.update_relax_text()
+    self.update_atomic_model()
 
 
   def pick_atom ( self, obj, event ):
@@ -505,6 +511,12 @@ class Atomic ( XtraCrysPy ):
       strt,end = i * sec, (i+1) * sec
       verts[strt:end] += d
     update_actor(self.atoms)
+
+    mem = colors_from_actor(self.atoms, 'colors')
+    for i,aind in enumerate(self.sel_inds):
+      self.set_atom_color(mem, aind, sec, self.sel_cols[i])
+
+    self.update_selections()
     self.scene.ResetCameraClippingRange()
     self.smanager.render()
 
@@ -516,10 +528,18 @@ class Atomic ( XtraCrysPy ):
     self.scene.rm(self.atoms)
     for b in self.bonds:
       self.scene.rm(b)
-    for b in self.sel_bnds:
-      self.scene.rm(b)
 
     self.render_atomic_model()
+    self.update_selections()
+
+    self.scene.ResetCameraClippingRange()
+    self.smanager.render()
+
+
+  def update_selections ( self ):
+
+    for b in self.sel_bnds:
+      self.scene.rm(b)
 
     self.sel_forward = True
     sel_inds = self.sel_inds.copy()
@@ -532,8 +552,6 @@ class Atomic ( XtraCrysPy ):
     for ind in sel_inds:
       self.selection_logic(colors, ind, nvert)
 
-    self.scene.ResetCameraClippingRange()
-    self.smanager.render()
 
 
   def update_atomic_model ( self ):

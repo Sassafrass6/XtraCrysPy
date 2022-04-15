@@ -40,6 +40,7 @@ Usage:
     'a' : Toggle Axis visibility
     '>' : Step forward in relax or MD
     '<' : Step backward in relax or MD
+    CTRL + ('>' or '<') : Step 5% through the relaxation or MD steps
     SHIFT + 'c' : Reset camera to default position
     SHIFT + 's' : Take snapshot
     CTRL + 'w' : Exit

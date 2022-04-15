@@ -40,6 +40,11 @@ class Reciprocal ( XtraCrysPy ):
 
       self.shift_step = 0.01
       self.bravais_boundaries(render=boundary)
+      cam = self.scene.GetActiveCamera()
+      self.smanager.render()
+      self.cam_defaults = (cam.GetPosition(),
+                           cam.GetFocalPoint(),
+                           cam.GetViewUp())
 
 
   def display_points ( self, points, colors=(1,1,1), radii=0.04 ):

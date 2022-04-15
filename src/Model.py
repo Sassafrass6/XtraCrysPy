@@ -165,8 +165,8 @@ class Model:
       raise ValueError('Bond types are Stick, Primary, and Sphere')
     s1 = self.species[aind1%self.natoms]
     s2 = self.species[aind2%self.natoms]
-    bspec = 0.9*np.min([self.radii[s1], self.radii[s2]])
-    return self.bond_thickness * np.min([brad, bspec])
+    bspec = 1.8 / dist * np.min([self.radii[s1], self.radii[s2]])
+    return np.min([self.bond_thickness*brad, bspec])
 
 
   def lattice_atoms_bonds ( self, nc1, nc2, nc3, bond_type='stick', relax_index=0, constrain_atoms=True ):

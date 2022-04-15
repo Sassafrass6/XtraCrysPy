@@ -32,11 +32,6 @@ class XtraCrysPy:
     if not perspective:
       self.scene.projection('parallel')
 
-    cam = self.scene.GetActiveCamera()
-    self.cam_defaults = (cam.GetPosition(),
-                         cam.GetFocalPoint(),
-                         cam.GetViewUp())
-
     checkbox = ['Boundary']
     initial = checkbox if boundary else []
     self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
@@ -504,6 +499,11 @@ class XtraCrysPy:
       Begin the render sequence and allow interaction
     '''
     from fury import pick
+
+    cam = self.scene.GetActiveCamera()
+    self.cam_defaults = (cam.GetPosition(),
+                         cam.GetFocalPoint(),
+                         cam.GetViewUp())
 
     self.picker = pick.PickingManager()
     self.smanager.iren.AddObserver('WindowResizeEvent', self.update_buttons)
