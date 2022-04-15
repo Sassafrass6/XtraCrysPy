@@ -36,7 +36,7 @@ class XtraCrysPy:
     initial = checkbox if boundary else []
     self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
     self.scene.add(self.frame_checkbox)
-    self.frame_checkbox.on_change = self.toggle_frame
+    self.frame_checkbox.on_change = self.draw_frame
     for label in self.frame_checkbox.labels:
       tactor = self.frame_checkbox.options[label].text.actor
       tactor.GetTextProperty().SetColor(self.font_color)
@@ -115,6 +115,9 @@ class XtraCrysPy:
       self.toggle_ui()
     elif key == 'a':
       self.toggle_axes()
+    elif key == 'b':
+      self.toggle_frame()
+      self.smanager.render()
 
     elif key in ['up', 'down', 'left', 'right']:
 
@@ -218,16 +221,31 @@ class XtraCrysPy:
       self.smanager.render()
 
 
-  def toggle_frame ( self, checkboxes ):
+  def toggle_frame ( self ):
+    if self.frame is not None:
+      option = self.frame_checkbox.options['Boundary']
+      option.checked = not option.checked
+      if option.checked:
+        option.select()
+      else:
+        option.deselect()
+      self.frame_checkbox._handle_option_change(option)
+      self.draw_frame(self.frame_checkbox)
+      self.smanager.render()
+
+
+  def draw_frame ( self, checkboxes ):
     if self.frame is not None:
       if 'Boundary' in checkboxes.checked_labels:
         self.scene.add(self.frame)
       else:
         self.scene.rm(self.frame)
 
+
   def iso_slider_handle_color (self, i_ren, _obj, _slider):
     self.surface_slider.handle.color = self.font_color
     i_ren.force_render()
+
 
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()

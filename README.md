@@ -15,14 +15,15 @@ Features:
 Supported File Types:
 - Quantum ESPRESSO input or output
 - POSCAR
-- CIF (in progress)
+- CIF
 - XSF
+- CP2K (coming soon)
 - BXSF (coming soon)
+- Any ASE supported format
 
 Requirements:
 - python 3.8
 - numpy 1.19
-- matplotlib 3.5
 - [fury 0.8](https://github.com/fury-gl/fury)
 - [ase](https://wiki.fysik.dtu.dk/ase/)
   
@@ -38,6 +39,7 @@ Usage:
   Control Inputs:
     'u' : Toggle UI visibility
     'a' : Toggle Axis visibility
+    'b' : Toggle Boundary visiblity
     '>' : Step forward in relax or MD
     '<' : Step backward in relax or MD
     CTRL + ('>' or '<') : Step 5% through the relaxation or MD steps
@@ -67,6 +69,9 @@ See examples directory for crystal and Brillouin zone plotting:
 
   Relax QE outputfile:
     python example_relax.py
+
+  LAMMPS MD trajectory:
+    python example_lammps_md.py
 
   Charge Density:
     python example_charge_density.py
