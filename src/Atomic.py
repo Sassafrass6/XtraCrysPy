@@ -573,8 +573,15 @@ class Atomic ( XtraCrysPy ):
  
     self.aposs = ainfo[0]
     self.natoms = ainfo[0].shape[0]
+
+    phi = theta = 16
+    if self.natoms > 4000:
+      phi = 8; theta = 6
+    elif self.natoms > 2000:
+      phi = 12; theta = 10
+
     if self.natoms > 0:
-      self.atoms = actor.sphere(centers=ainfo[0],
+      self.atoms = actor.sphere(centers=ainfo[0], theta=theta, phi=phi,
                                 colors=ainfo[1], radii=ainfo[2])
       self.scene.add(self.atoms)
       self.atoms.AddObserver('LeftButtonPressEvent', self.pick_atom, 1)
