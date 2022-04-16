@@ -139,6 +139,59 @@ def read_relaxed_coordinates_QE ( fname:str ):
   return struct
 
 
+def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
+  '''
+    Assumed that the file type is a QE relax output file
+  '''
+
+  if ftype == 'automatic':
+    ftype = infer_file_type(fname)
+
+  if 'qe' in ftype:
+    return read_relaxed_coordinates_QE(fname)
+  else:
+    raise ValueError('Cannot read relax file type {}'.format(ftype))
+
+
+def md_coordinates_LAMMPS ( fname:str ):
+  '''
+  '''
+  import numpy as np
+
+  lines = None
+  with open(fname, 'r') as f:
+    lines = f.readlines()
+
+  il = 0
+  ll = len(lines)
+  species = None
+  positions = []
+  while il < ll:
+    nat = int(lines[il].split()[0])
+    il += 2
+    atoms = []
+    species = []
+    for _ in range(nat):
+      ls = lines[il].split()
+      spec = int(ls[0]) if ls[0].isnumeric() else ls[0]
+      species.append(spec)
+      atoms.append([float(v) for v in ls[1:]])
+      il += 1
+    positions.append(atoms)
+
+  struct = {}
+  struct['species'] = species
+  struct['abc'] = np.array(positions)
+  struct['lattice'] = np.array([[[1,0,0],[0,1,0],[0,0,1]]], dtype=float)
+  for i in range(3):
+    struct['lattice'][0,i] *= np.max(struct['abc'][:,:,i])
+  linv = np.linalg.inv(struct['lattice'])
+  for i,p in enumerate(struct['abc']):
+    struct['abc'][i] = p @ linv
+
+  return struct
+
+
 def struct_from_inputfile_QE ( fname:str ) -> dict:
   '''
     Generate a dictionary containing all atomic information from a QE inputfile
@@ -314,55 +367,54 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   return struct
 
 
-def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
-  '''
-    Assumed that the file type is a QE relax output file
-  '''
-
-  if ftype == 'automatic':
-    ftype = infer_file_type(fname)
-
-  if 'qe' in ftype:
-    return read_relaxed_coordinates_QE(fname)
-  else:
-    raise ValueError('Cannot read relax file type {}'.format(ftype))
-
-
-def md_coordinates_LAMMPS ( fname:str ):
+def struct_from_inputfile_ASE ( fname:str ):
   '''
   '''
+  from .conversion import ANG_BOHR
+  import ase.io as aio
   import numpy as np
 
-  lines = None
-  with open(fname, 'r') as f:
-    lines = f.readlines()
+  atoms = aio.read(fname)
+  syms = atoms.symbols
+  la = len(syms)
 
-  il = 0
-  ll = len(lines)
-  species = None
-  positions = []
-  while il < ll:
-    nat = int(lines[il].split()[0])
-    il += 2
-    atoms = []
-    species = []
-    for _ in range(nat):
-      ls = lines[il].split()
-      spec = int(ls[0]) if ls[0].isnumeric() else ls[0]
-      species.append(spec)
-      atoms.append([float(v) for v in ls[1:]])
-      il += 1
-    positions.append(atoms)
+  def extract_number ( ind ):
+    nn = 1
+    while ind+nn < la and syms[ind+nn].isnumeric():
+      nn += 1
+    return nn-1, int(syms[ind:ind+nn])
+
+  ci = 0
+  spec = []
+  while ci < la:
+    if ci == la-1:
+      spec.append(syms[ci])
+      ci += 1
+    else:
+      num = 1
+      sym = syms[ci]
+      if syms[ci+1].isnumeric():
+        ci += 1
+        nn,num = extract_number(ci)
+        ci += nn
+      elif syms[ci+1].islower():
+        ci += 2
+        sym += syms[ci-1]
+        if ci < la and syms[ci].isnumeric():
+          nn,num = extract_number(ci)
+          ci += nn
+      else:
+        ci += 1
+      spec += num * [sym]
+
+  lat = np.empty((3,3), dtype=float)
+  for i,v in enumerate(atoms.cell):
+    lat[i,:] = v[:]
 
   struct = {}
-  struct['species'] = species
-  struct['abc'] = np.array(positions)
-  struct['lattice'] = np.array([[[1,0,0],[0,1,0],[0,0,1]]], dtype=float)
-  for i in range(3):
-    struct['lattice'][0,i] *= np.max(struct['abc'][:,:,i])
-  linv = np.linalg.inv(struct['lattice'])
-  for i,p in enumerate(struct['abc']):
-    struct['abc'][i] = p @ linv
+  struct['lattice'] = lat * ANG_BOHR
+  struct['species'] = spec
+  struct['abc'] = (atoms.positions.copy()) @ np.linalg.inv(lat)
 
   return struct
 
@@ -420,13 +472,20 @@ def struct_from_inputfile_CP2K ( fname:str ):
         if unit is not None:
           lines[nc+isl] = lines[nc+isl].replace(unit.group(0), '')
         ls = lines[nc+isl].split()
-        cell[ls[0]] = conv * np.array([float(v) for v in ls[1:]])
+        if len(ls) > 2:
+          cell[ls[0]] = conv * np.array([float(v) for v in ls[1:]])
+        else:
+          cell[ls[0]] = ls[1].lower() if len(ls)==2 else 'cp2k'
         nc += 1
       isl += nc
 
       abg = None
       abc = ['A', 'B', 'C']
-      if 'ALPHA_BETA_GAMMA' in cell:
+      cff = 'CELL_FILE_FORMAT'
+      if cff in cell and not cell[cff] == 'cp2k':
+        lfname = cell['CELL_FILE_NAME']
+        lattice = struct_from_inputfile_ASE(lfname)['lattice']
+      elif 'ALPHA_BETA_GAMMA' in cell:
         from .lattice_format import lattice_format_abc_abg
         if 'ABC' in cell:
           cABC = cell['ABC']
@@ -468,58 +527,6 @@ def struct_from_inputfile_CP2K ( fname:str ):
 
   if not crystal_positions:
     struct['abc'] = struct['abc'] @ np.linalg.inv(struct['lattice'])
-
-  return struct
-
-
-def struct_from_inputfile_ASE ( fname:str ):
-  '''
-  '''
-  from .conversion import ANG_BOHR
-  import ase.io as aio
-  import numpy as np
-
-  atoms = aio.read(fname)
-  syms = atoms.symbols
-  la = len(syms)
-
-  def extract_number ( ind ):
-    nn = 1
-    while ind+nn < la and syms[ind+nn].isnumeric():
-      nn += 1
-    return nn-1, int(syms[ind:ind+nn])
-
-  ci = 0
-  spec = []
-  while ci < la:
-    if ci == la-1:
-      spec.append(syms[ci])
-      ci += 1
-    else:
-      num = 1
-      sym = syms[ci]
-      if syms[ci+1].isnumeric():
-        ci += 1
-        nn,num = extract_number(ci)
-        ci += nn
-      elif syms[ci+1].islower():
-        ci += 2
-        sym += syms[ci-1]
-        if ci < la and syms[ci].isnumeric():
-          nn,num = extract_number(ci)
-          ci += nn
-      else:
-        ci += 1
-      spec += num * [sym]
-
-  lat = np.empty((3,3), dtype=float)
-  for i,v in enumerate(atoms.cell):
-    lat[i,:] = v[:]
-
-  struct = {}
-  struct['lattice'] = lat * ANG_BOHR
-  struct['species'] = spec
-  struct['abc'] = (atoms.positions.copy()) @ np.linalg.inv(lat)
 
   return struct
 
