@@ -367,6 +367,111 @@ def md_coordinates_LAMMPS ( fname:str ):
   return struct
 
 
+def struct_from_inputfile_CP2K ( fname:str ):
+  '''
+  '''
+  from .conversion import ANG_BOHR
+  import numpy as np
+  import re
+
+  lines = None
+  with open(fname, 'r') as f:
+    lines = f.readlines()
+
+  isl = 0
+  nl = len(lines)
+  while '&SUBSYS' not in lines[isl]:
+    isl += 1
+  isl += 1
+  ssl = isl
+
+  def unit_conv ( unit, angular=False ):
+    if angular:
+      if unit is None or 'deg' in unit.group(0).lower():
+        return np.pi / 180
+    else:
+      if unit is None:
+        return ANG_BOHR
+      else:
+        unit = unit.group(0).lower()
+        if 'bohr' not in unit:
+          if 'angstrom' in unit:
+            return ANG_BOHR
+          elif 'pm' in unit:
+            return 100 * ANG_BOHR
+          elif 'nm' in unit:
+            return 0.1 * ANG_BOHR
+          else:
+            return 1e-10 * ANG_BOHR
+    return 1
+
+  struct = {}
+  crystal_positions = False
+  while 'SUBSYS' not in lines[isl]:
+
+    if '&CELL' in lines[isl]:
+      nc = 1
+      cell = {}
+      lattice = np.zeros((3,3), dtype=float)
+      while 'CELL' not in lines[nc+isl]:
+        unit = re.search('\[([^.]+)\]', lines[nc+isl])
+        angular = 'ALPHA' in lines[nc+isl]
+        conv = unit_conv(unit, angular=angular)
+        if unit is not None:
+          lines[nc+isl] = lines[nc+isl].replace(unit.group(0), '')
+        ls = lines[nc+isl].split()
+        cell[ls[0]] = conv * np.array([float(v) for v in ls[1:]])
+        nc += 1
+      isl += nc
+
+      abg = None
+      abc = ['A', 'B', 'C']
+      if 'ALPHA_BETA_GAMMA' in cell:
+        from .lattice_format import lattice_format_abc_abg
+        if 'ABC' in cell:
+          cABC = cell['ABC']
+        else:
+          cABC = [cell[c] for c in abc]
+        abg = cell['ALPHA_BETA_GAMMA']
+        args = [cell[c] for c in cABC] + [v for v in abg]
+        lattice[:,:] = lattice_format_abc_abg(*args)
+      else:
+        for i,c in enumerate(abc):
+          lattice[i,:] = cell[c]
+      struct['lattice'] = lattice
+
+    elif '&COORD' in lines[isl]:
+      nc = 2
+      conv = 1
+      species = []
+      positions = []
+      ls = lines[1+isl].split()
+      if 'SCALED' in ls:
+        crystal_positions = True
+        if len(ls) > 1 and 'false' in ls[1].lower():
+          raise Exception('Specify units with UNIT tag')
+      elif 'UNIT' in ls:
+        if len(ls) > 1:
+          conv = unit_conv(ls[1])
+      while 'COORD' not in lines[nc+isl]:
+        ls = lines[nc+isl].split()
+        species.append(ls[0])
+        positions.append([float(v) for v in ls[1:4]])
+        nc += 1
+      positions = conv * np.array(positions)
+      struct['abc'] = positions
+      struct['species'] = species
+      isl += nc
+
+    else:
+      isl += 1
+
+  if not crystal_positions:
+    struct['abc'] = struct['abc'] @ np.linalg.inv(struct['lattice'])
+
+  return struct
+
+
 def struct_from_inputfile_ASE ( fname:str ):
   '''
   '''
@@ -433,6 +538,8 @@ def infer_file_type ( fname:str ):
     return 'poscar'
   elif extension in ['lmp', 'lmps'] or 'lammps' in extension:
     return 'lammps'
+  elif extension in ['inp', 'cp2k', 'popt']:
+    return 'cp2k'
 
   return extension
 
@@ -450,6 +557,8 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
         return struct_from_outputfile_QE(fname)
       else:
         return struct_from_inputfile_QE(fname)
+    elif ftype == 'cp2k':
+      return struct_from_inputfile_CP2K(fname)
     elif ftype == 'lammps':
       return md_coordinates_LAMMPS(fname)
     else:
@@ -485,186 +594,6 @@ def struct_from_file_sequence ( fnames ):
   struct['abc'] = abcs
 
   return struct
-
-
-def read_dos_QE ( fname:str, read_ef=True ):
-  '''
-  '''
-  import numpy as np
-
-  ef = None
-  es = []
-  dos = []
-  int_dos = []
-  with open(fname, 'r') as f:
-    lines = f.readlines()
-
-    ef = float(lines[0].split()[8]) if read_ef else 0.
-
-    for l in lines[1:]:
-      ls = l.split()
-      for i,a in enumerate([es,dos,int_dos]):
-        a.append(float(ls[i]))
-
-  es = np.array(es)
-  dos = np.array(dos)
-  int_dos = np.array(int_dos)
-
-  return (ef, es, dos)
-
-
-def read_bands_QE_dat ( fname:str ):
-  '''
-  '''
-  import numpy as np
-
-  ks = []
-  bands = []
-  with open(fname, 'r') as f:
-    lines = f.readlines()
-
-    ls = lines[0].split()
-    nbnd = int(ls[2][:-1])
-    nks = int(ls[4])
-
-    li = 1
-    while len(ks) < nks:
-      ks.append([float(v) for v in lines[li].split()])
-      band = []
-      while len(band) < nbnd:
-        li += 1
-        band += [float(v) for v in lines[li].split()]
-      bands.append(band)
-      li += 1
-
-  ks = np.array(ks)
-  bands = np.array(bands).T
-
-  return ks, bands
-
-
-def read_bands_QE_agr ( fname:str ):
-  '''
-  '''
-  import numpy as np
-
-  bands = []
-  with open(fname, 'r') as f:
-    band = []
-    for l in f.readlines():
-      ls = l.split()
-      if len(ls) == 0:
-        bands.append(band)
-        band = []
-      else:
-        band.append(float(ls[1]))
-  return np.array(bands)
-
-
-def read_band_path_PAO ( fname:str ):
-  '''
-  '''
-  import numpy as np
-
-  tags = []
-  npnts = []
-  with open(fname, 'r') as f:
-    ls = f.readline().split()
-    while not len(ls) == 0:
-      tags.append(ls[0])
-      npnts.append(int(ls[1]))
-      ls = f.readline().split()
-
-  kcnt = 0
-  ftags = []
-  findex = [0]
-  for i in range(len(tags)-1):
-    if tags[i] == 'G' or tags[i] == 'gG':
-      tags[i] = r'$\Gamma$'
-
-    if npnts[i] == 0:
-      ftags[-1] += '|' + tags[i]
-    else:
-      ftags.append(tags[i])
-      findex.append(npnts[i] + findex[-1])
-  ftags.append(tags[-1] if not tags[-1]=='G' else r'$\Gamma$')
-    
-  return findex, ftags
-
-
-def read_dos_PAO ( fname:str ):
-  '''
-  '''
-  import numpy as np
-
-  es = []
-  dos = []
-  with open(fname, 'r') as f:
-    for l in f.readlines():
-      ls = l.split()
-      es.append(float(ls[0]))
-      dos.append(float(ls[1]))
-
-  es = np.array(es)
-  dos = np.array(dos)
-
-  return es, dos
-
-
-def read_bands_PAO ( fname:str ):
-  '''
-  '''
-  import numpy as np
-
-  bands = []
-  with open(fname, 'r') as f:
-    for l in f.readlines():
-      bands.append([float(v) for v in l.split()[1:]])
-
-  return np.array(bands).T
-
-
-def read_transport_PAO ( fname:str ):
-
-  import numpy as np
-
-  nene = 0
-  ntemp = 0
-  enes = temps = tensors = None
-
-  with open(fname, 'r') as f:
-    lines = f.readlines()
-
-    nl = len(lines)
-    ftemp = float(lines[ntemp].split()[0])
-    ptemp = ftemp
-    while ftemp == ptemp and nene < nl-1:
-      nene += 1
-      ptemp = float(lines[nene].split()[0])
-    if nene == nl-1:
-      nene += 1
-
-    while ntemp*nene < nl:
-      ntemp += 1
-
-    enes = np.empty(nene, dtype=float)
-    temps = np.empty(ntemp, dtype=float)
-    tensors = np.empty((ntemp,nene,3,3), dtype=float)
-
-    iL = 0
-    for i in range(ntemp):
-      temps[i] = float(lines[iL].split()[0])
-      for j in range(nene):
-        ls = lines[iL].split()
-        if i == 0:
-          enes[j] = float(ls[1])
-        for k in range(3):
-          tensors[i,j,k,k] = float(ls[2+k])
-        for ik,k in enumerate([(0,1), (0,2), [1,2]]):
-          tensors[i,j,k[0],k[1]] = tensors[i,j,k[1],k[0]] = float(ls[5+ik])
-        iL += 1
- 
-    return enes, temps, tensors
 
 
 def read_CUBE ( fname:str ):

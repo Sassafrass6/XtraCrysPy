@@ -74,3 +74,20 @@ def lattice_format_QE ( ibrav, celldm ):
     nlat = a * np.array([[1,0,0],[0,boa/2,-coa/2],[0,boa/2,coa/2]])
 
   return nlat
+
+
+def lattice_format_abc_abg ( A, B, C, a, b, g ):
+  '''
+    Arguments:
+      A : Lattice vector distance A
+      B : Lattice vector distance B
+      C : Lattice vector distance C
+      a : Alpha, angle between B and C
+      b : Beta, angle between A and C
+      g : Gamma, angle between A and B
+  '''
+  from numpy import cos
+
+  celldm = [A, B, C] + [cos(r) for r in [a,b,g]]
+  return lattice_format_QE(14, celldm)
+
