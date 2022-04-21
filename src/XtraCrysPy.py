@@ -180,6 +180,7 @@ class XtraCrysPy:
     print('Taking snapshot...')
     window_to_image_filter = WindowToImageFilter()
     window_to_image_filter.SetInput(self.scene.GetRenderWindow())
+    window_to_image_filter.SetScale(6)
     window_to_image_filter.Update()
 
     vtk_image = window_to_image_filter.GetOutput()
@@ -195,7 +196,9 @@ class XtraCrysPy:
 
     fname = fname(nim)
     print('  Saving image as: {}'.format(fname))
-    save_image(arr, fname)
+    save_image(arr, fname, compression_quality=100)
+
+    self.smanager.render()
 
 
   def toggle_ui ( self ):
