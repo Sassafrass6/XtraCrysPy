@@ -67,11 +67,19 @@ class Model:
     if 'bonds' in params:
       bval = params['bonds']
       if isinstance(bval, dict):
+        bval = bval.copy()
         if 'thickness' in bval:
           self.bond_thickness = bval['thickness']
+          del bval['thickness']
         if 'distance' in bval:
           bval = bval['distance']
-      if isinstance(bval, (int,float)):
+          del bval['distance']
+        for k,v in bval.items():
+          key = k
+          if '_' not in key:
+            key = '{}_{}'.format(key, key)
+          self.bonds[key] = v
+      elif isinstance(bval, (int,float)):
         bonds = {}
         uspec = list(set(self.species))
         nuat = len(uspec)
@@ -82,8 +90,6 @@ class Model:
             s2 = uspec[j]
             bonds['{}_{}'.format(s1,s2)] = bval
         self.bonds = bonds
-      elif isinstance(bval, dict):
-        self.bonds = bval
       else:
         raise TypeError('bonds value in params dictionary must be either a dictionary or number')
 
