@@ -3,21 +3,19 @@ A Python tool for visualizing atomic systems and properties of condensed matter.
 
 Features:
 - Plot molecular systems with minimal setup
-- Plot systems from DFT input- or output- files
+- Plot systems from DFT or MD input/output files
 - Interact with the system to caluclate distances, angles, or receive atomic information
-- Display relaxation steps from QE relax output files
+- Display relaxation or MD steps from QE relax output or LAMMPS trajectory files. (CP2K xyz coming soon)
 - Display reciprocal space features
 - Plot real space iso-surfaces (charge density, etc)
 - Plot reciprocal iso-surfaces (Fermi surface, spin-texture, etc)
-- Band structure and DoS plots from QE or PAOFLOW data
-- Electron Transport plots from PAOFLOW data
 
 Supported File Types:
 - Quantum ESPRESSO input or output
 - POSCAR
 - CIF
 - XSF
-- CP2K (coming soon)
+- CP2K
 - BXSF (coming soon)
 - Any ASE supported format
 
@@ -64,6 +62,7 @@ See examples directory for crystal and Brillouin zone plotting:
   From inputfile (programmatic):
     python SnTe_2D.py
     python example_cif.py
+    python example_cp2k.py
     python example_qe_in.py
     python example_poscar.py
 
