@@ -24,8 +24,9 @@ Requirements:
 - numpy 1.19
 - [fury 0.8](https://github.com/fury-gl/fury) (Use the latest GitHub commit. The latest release contains a bug with cylinder orientation used for drawing bonds.)
 - [ase](https://wiki.fysik.dtu.dk/ase/)
-  
+
 Installation (only use --user if you do not have permission to install python packages):  
+INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contains a bug causing misaligned cylinder orientation.
 -  python setup.py install
 -  python setup.py install --user
   
