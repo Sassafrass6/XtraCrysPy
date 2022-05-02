@@ -15,8 +15,8 @@ class Atomic ( XtraCrysPy ):
 
     self.nsc = list(nsc)
     self.sel_forward = True
-    self.sel_type = sel_type
-    self.bond_type = bond_type
+    self.sel_type = sel_type.lower()
+    self.bond_type = bond_type.lower()
     self.constrain_atoms = True
 
     self.relax = relax
@@ -86,11 +86,11 @@ class Atomic ( XtraCrysPy ):
     self.ncell_button.on_left_mouse_button_clicked = self.toggle_ncell_menu
     self.sel_type_button.on_left_mouse_button_clicked = self.toggle_sel_menu
 
-    sel_types = ['Chain', 'Info', 'Angle', 'Distance']
+    sel_types = ['chain', 'info', 'angle', 'distance']
     if self.sel_type not in sel_types:
       s = '''{} is not a valid selection type. Choose from:
                Info, Angle Chain, or Distance.'''
-      self.sel_type = 'Chain'
+      self.sel_type = 'chain'
       print(s)
 
     self.sel_type_menu = ui.ListBox2D(sel_types, multiselection=False,
@@ -343,7 +343,7 @@ class Atomic ( XtraCrysPy ):
     cent = (self.aposs[ai1] + self.aposs[ai2]) / 2
 
     brad = self.model.bond_radius(dist, ai1, ai2, self.bond_type)
-    if self.bond_type != 'Sphere':
+    if self.bond_type != 'sphere':
       brad *= 0.51
       tbond = actor.cylinder([cent], [conn], [self.scolor/255],
                              radius=brad, heights=dist, resolution=20)
@@ -386,7 +386,7 @@ class Atomic ( XtraCrysPy ):
     if index in self.sel_inds:
       self.clear_selection_text()
 
-      if self.sel_type == 'Info':
+      if self.sel_type == 'info':
         self.pop_atom(colors, index, nvert)
       else:
         nsi = len(self.sel_inds)
@@ -414,7 +414,7 @@ class Atomic ( XtraCrysPy ):
               self.pop_sbond(ind=rng[0]-1)
 
     else:
-      if self.sel_type == 'Info':
+      if self.sel_type == 'info':
         if len(self.sel_inds) != 0:
           self.pop_atom(colors, self.sel_inds[-1], nvert)
         self.push_atom(colors, index, nvert)
@@ -424,7 +424,7 @@ class Atomic ( XtraCrysPy ):
         self.update_selection_text(message)
         print(message)
 
-      elif self.sel_type == 'Distance':
+      elif self.sel_type == 'distance':
         if len(self.sel_inds) == 0:
           self.push_atom(colors, index, nvert)
         elif len(self.sel_inds) == 1:
@@ -437,7 +437,7 @@ class Atomic ( XtraCrysPy ):
             print(dtext.format(*self.sel_inds))
             print('\t{}'.format(message))
 
-      elif self.sel_type == 'Angle':
+      elif self.sel_type == 'angle':
         if len(self.sel_inds) == 0:
           self.push_atom(colors, index, nvert)
         elif len(self.sel_inds) in [1,2]:
@@ -451,7 +451,7 @@ class Atomic ( XtraCrysPy ):
               print(dtext.format(*self.sel_inds))
               print('\t{}'.format(message))
 
-      elif self.sel_type == 'Chain':
+      elif self.sel_type == 'chain':
         selected = self.push_atom(colors, index, nvert)
         if selected and len(self.sel_inds) > 1:
           self.push_sbond()

@@ -4,11 +4,13 @@ import numpy as np
 
 class Reciprocal ( XtraCrysPy ):
 
-  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, model=None, frame_width=4e-3, image_prefix='XCP_Image' ):
+  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, model=None, frame_width=4e-3, frame_color=(1,1,1), frame_style='Wire', image_prefix='XCP_Image' ):
     super().__init__(size, axes, boundary, background, perspective, image_prefix)
 
     self.model = model
     self.point_actors = []
+    self.frame_type = frame_type.lower()
+    self.frame_color = frame_color
     self.frame_width = frame_width
     if model is not None:
       if isinstance(model, dict):
@@ -138,7 +140,16 @@ class Reciprocal ( XtraCrysPy ):
     self.bound_planes = np.array([np.array(planes)/2]*2)
     self.bound_points = np.unique(np.array(lines).reshape((2*len(lines),3)), axis=0)
 
-    self.frame = actor.streamtube(lines, colors=(1,1,1), linewidth=self.frame_width)
+    if self.frame_type == 'wire':
+      print('ADD VTK FUNCTIONALITY HERE')
+    else:
+      if self.frame_type != 'tube':
+        print(f'Unsupported frame type: {self.frame_type}')
+        print('Accepted frame types are Wire and Tube. Choosing Tube.')
+      color = self.frame_color
+      width = 4e-3 * self.frame_width
+      self.frame = actor.streamtube(lines, colors=color, linewidth=width)
+
     if render:
       self.scene.add(self.frame)
 

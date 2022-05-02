@@ -163,11 +163,11 @@ class Model:
 
   def bond_radius ( self, dist, aind1, aind2, bond_type ):
     brad = .1
-    if bond_type == 'Stick':
+    if bond_type == 'stick':
       brad = .5 / dist
-    elif bond_type == 'Primary':
+    elif bond_type == 'primary':
       brad = 1.5 * self.primary_radius / dist
-    elif bond_type != 'Sphere':
+    elif bond_type != 'sphere':
       raise ValueError('Bond types are Stick, Primary, and Sphere')
     s1 = self.species[aind1%self.natoms]
     s2 = self.species[aind2%self.natoms]
@@ -245,7 +245,7 @@ class Model:
     bheight = []
     natsc = atoms.shape[0]
     skey = lambda v1,v2 : v1 + '_' + v2
-    if bond_type == 'Sphere':
+    if bond_type == 'sphere':
       dist_min = 1e5
       for i1 in range(natsc-1):
         for i2 in range(i1+1, natsc):
