@@ -1,5 +1,5 @@
 # XtraCrysPy
-A Python tool for visualizing atomic systems and properties of condensed matter.
+A Python tool for visualizing atomic systems and spatial properties of condensed matter.
 
 Features:
 - Plot molecular systems with minimal setup
