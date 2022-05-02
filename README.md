@@ -22,7 +22,7 @@ Supported File Types:
 Requirements:
 - python 3.8
 - numpy 1.19
-- [fury 0.8](https://github.com/fury-gl/fury)
+- [fury 0.8](https://github.com/fury-gl/fury) (Use the latest GitHub commit. The latest release contains a bug with cylinder orientation used for drawing bonds.)
 - [ase](https://wiki.fysik.dtu.dk/ase/)
   
 Installation (only use --user if you do not have permission to install python packages):  
