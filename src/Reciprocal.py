@@ -4,8 +4,9 @@ import numpy as np
 
 class Reciprocal ( XtraCrysPy ):
 
-  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, model=None, frame_width=4e-3, image_prefix='XCP_Image' ):
-    super().__init__(size, axes, boundary, background, perspective, image_prefix)
+  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, model=None, frame_width=4e-3, image_prefix='XCP_Image', resolution=4 ):
+    super().__init__(size, axes, boundary, background,
+                     perspective, image_prefix, resolution)
 
     self.model = model
     self.point_actors = []

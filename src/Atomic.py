@@ -8,9 +8,11 @@ class Atomic ( XtraCrysPy ):
   def __init__ ( self, size=(1024, 1024), axes=True, boundary=True,
                  background=(0,0,0), perspective=False, model=None,
                  params={}, relax=False, nsc=(1,1,1),
-		 bond_type='Stick', sel_type='Chain', unit='angstrom',
-		 runit='degree', image_prefix='XCP_Image' ):
-    super().__init__(size, axes, boundary, background, perspective, image_prefix)
+                 bond_type='Stick', sel_type='Chain', unit='angstrom',
+		 runit='degree',
+                 image_prefix='XCP_Image', resolution=4 ):
+    super().__init__(size, axes, boundary, background,
+                     perspective, image_prefix, resolution)
     from .Model import Model
 
     self.nsc = list(nsc)

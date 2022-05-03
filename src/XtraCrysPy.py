@@ -3,7 +3,7 @@ import numpy as np
 
 class XtraCrysPy:
 
-  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, image_prefix='XCP_Image' ):
+  def __init__ ( self, size=(1024, 1024), axes=True, boundary=True, background=(0,0,0), perspective=False, image_prefix='XCP_Image', resolution=4 ):
     '''
     Arguments:
     '''
@@ -42,6 +42,7 @@ class XtraCrysPy:
       tactor.GetTextProperty().SetColor(self.font_color)
 
     self.fprefix = image_prefix
+    self.image_res = resolution
     cam_icon = ('camera',read_viz_icons(fname='camera.png'))
     self.cam_panel = ui.Panel2D((40,40), (5, size[1]-108), opacity=0)
     self.cam_button = ui.Button2D(icon_fnames=[cam_icon], size=(40,40))
@@ -180,7 +181,7 @@ class XtraCrysPy:
     print('Taking snapshot...')
     window_to_image_filter = WindowToImageFilter()
     window_to_image_filter.SetInput(self.scene.GetRenderWindow())
-    window_to_image_filter.SetScale(6)
+    window_to_image_filter.SetScale(self.image_res)
     window_to_image_filter.Update()
 
     vtk_image = window_to_image_filter.GetOutput()
