@@ -1,5 +1,5 @@
 # XtraCrysPy
-A Python tool for visualizing atomic systems and spatial properties of condensed matter.
+## A Python tool for visualizing atomic systems and spatial properties of condensed matter.
 
 ![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Caffeine.png?raw=true)
 ![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Si_charge_density.png?raw=true)
@@ -7,7 +7,7 @@ A Python tool for visualizing atomic systems and spatial properties of condensed
 ![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Colored_surface.png?raw=true)
 ![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Textured_surface.png?raw=true)
 
-Features:
+## Features:
 - Plot molecular systems with minimal setup
 - Plot systems from DFT or MD input/output files
 - Interact with the system to caluclate distances, angles, or receive atomic information
@@ -16,7 +16,7 @@ Features:
 - Plot real space iso-surfaces (charge density, etc)
 - Plot reciprocal iso-surfaces (Fermi surface, spin-texture, etc)
 
-Supported File Types:
+## Supported File Types:
 - Quantum ESPRESSO input or output
 - POSCAR
 - CIF
@@ -25,24 +25,18 @@ Supported File Types:
 - BXSF (coming soon)
 - Any ASE supported format
 
-Requirements:
+## Requirements:
 - python 3.8
 - numpy 1.19
 - [fury 0.8](https://github.com/fury-gl/fury) (Use the latest GitHub commit. The latest release contains a bug with cylinder orientation used for drawing bonds.)
 - [ase](https://wiki.fysik.dtu.dk/ase/)
 
-Installation (only use --user if you do not have permission to install python packages):  
+## Installation (only use --user if you do not have permission to install python packages):  
 INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contains a bug causing misaligned cylinder orientation.
 -  python setup.py install
 -  python setup.py install --user
-  
-Usage:
 
-Display an atomic model from inputfile, with the examples/main.py script:
-- python main.py <inputfile>
-- python main.py <inputfile> <bond_distance>
-
-Control Inputs:
+## Control Inputs:
 - 'u' : Toggle UI visibility
 - 'a' : Toggle Axis visibility
 - 'b' : Toggle Boundary visiblity
@@ -56,16 +50,20 @@ Control Inputs:
 - SHIFT + Arrow Keys : Translate camera
 - CTRL + Arrow Keys (+ SHIFT) : Rotate (or Translate) in smaller steps
 
+## Display an atomic model from inputfile, with the examples/main.py script:
+- python main.py <input_file>
+- python main.py <input_file> <bond_distance>
 
-See examples directory for crystal and Brillouin zone plotting:
+## Examples:
+Available in the examples directory
 
 From scratch:
 - python caffeine.py
 - python silicon_fcc.py
 
 From inputfile (with main.py script):
-- python main.py <inputfile>
-- python main.py <inputfile> <bond_length>
+- python main.py <input_file>
+- python main.py <input_file> <bond_distance>
 
 From inputfile (programmatic):
 - python SnTe_2D.py
