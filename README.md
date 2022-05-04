@@ -1,11 +1,9 @@
 # XtraCrysPy
 ## A Python tool for visualizing atomic systems and spatial properties of condensed matter.
 
-![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Caffeine.png?raw=true)
-![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Si_charge_density.png?raw=true)
+![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Caffeine.png?raw=true) ![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Si_charge_density.png?raw=true)
 
-![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Colored_surface.png?raw=true)
-![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Textured_surface.png?raw=true)
+![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Colored_surface.png?raw=true) ![Alt text](https://github.com/Sassafrass6/XtraCrysPy/blob/master/examples/img/Textured_surface.png?raw=true)
 
 ## Features:
 - Plot molecular systems with minimal setup
