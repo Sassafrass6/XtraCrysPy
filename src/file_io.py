@@ -139,6 +139,46 @@ def read_relaxed_coordinates_QE ( fname:str ):
   return struct
 
 
+def read_relaxed_coordinates_XYZ ( fname:str ):
+  import numpy as np
+
+  lines = None
+  with open(fname, 'r') as f:
+    lines = f.readlines()
+
+  i = 0
+  abc = []
+  enes = []
+  specs = []
+  nl = len(lines)
+  while i < nl:
+    nat = int(lines[i].strip())
+    ls = lines[i+1].split()
+    niter = int(ls[2].strip(','))
+    enes.append(float(ls[-1]))
+    i += 2
+    pos = []
+    for j in range(nat):
+      ls = lines[i+j].split()
+      if niter == 1:
+        specs.append(ls[0])
+      pos.append([float(v) for v in ls[1:]])
+    i += nat
+    abc.append(pos)
+
+  struct = {}
+  struct['species'] = specs
+  struct['abc'] = 1.88973 * np.array(abc)
+  struct['lattice'] = np.array([np.eye(3)], dtype=float)
+  for i in range(3):
+    struct['lattice'][0,i] *= np.max(struct['abc'][:,:,i])
+  linv = np.linalg.inv(struct['lattice'])
+  for i,p in enumerate(struct['abc']):
+    struct['abc'][i] = p @ linv
+
+  return struct
+
+
 def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
   '''
     Assumed that the file type is a QE relax output file
@@ -149,6 +189,10 @@ def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
 
   if 'qe' in ftype:
     return read_relaxed_coordinates_QE(fname)
+  elif 'lammps' in ftype:
+    return md_coordinates_LAMMPS(fname)
+  elif 'xyz' in ftype:
+    return read_relaxed_coordinates_XYZ(fname)
   else:
     raise ValueError('Cannot read relax file type {}'.format(ftype))
 
@@ -182,7 +226,7 @@ def md_coordinates_LAMMPS ( fname:str ):
   struct = {}
   struct['species'] = species
   struct['abc'] = np.array(positions)
-  struct['lattice'] = np.array([[[1,0,0],[0,1,0],[0,0,1]]], dtype=float)
+  struct['lattice'] = np.array([np.eye(3)], dtype=float)
   for i in range(3):
     struct['lattice'][0,i] *= np.max(struct['abc'][:,:,i])
   linv = np.linalg.inv(struct['lattice'])
