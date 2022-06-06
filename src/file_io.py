@@ -139,7 +139,7 @@ def read_relaxed_coordinates_QE ( fname:str ):
   return struct
 
 
-def read_relaxed_coordinates_XYZ ( fname:str ):
+def read_relaxed_coordinates_CP2K_XYZ ( fname:str ):
   import numpy as np
 
   lines = None
@@ -192,7 +192,7 @@ def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
   elif 'lammps' in ftype:
     return md_coordinates_LAMMPS(fname)
   elif 'xyz' in ftype:
-    return read_relaxed_coordinates_XYZ(fname)
+    return read_relaxed_coordinates_CP2K_XYZ(fname)
   else:
     raise ValueError('Cannot read relax file type {}'.format(ftype))
 
@@ -450,6 +450,11 @@ def struct_from_inputfile_ASE ( fname:str ):
       else:
         ci += 1
       spec += num * [sym]
+
+  if np.all(atoms.cell == 0.0):
+    msg = 'Cannot read atomic system from file: fname\n'
+    msg += 'Set \'relax=True\' if this is an MD/relaxation animation.'
+    raise Exception(msg)
 
   lat = np.empty((3,3), dtype=float)
   for i,v in enumerate(atoms.cell):
