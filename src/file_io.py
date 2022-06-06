@@ -160,7 +160,7 @@ def read_relaxed_coordinates_CP2K_XYZ ( fname:str ):
     pos = []
     for j in range(nat):
       ls = lines[i+j].split()
-      if niter == 1:
+      if i < nat:
         specs.append(ls[0])
       pos.append([float(v) for v in ls[1:]])
     i += nat
