@@ -151,8 +151,8 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
       arrow_glyph.SetInputData(iso_transformed.GetOutput())
       arrow_glyph.OrientOn()
       arrow_glyph.SetSourceConnection(tarrow.GetOutputPort())
-      arrow_glyph.SetScaleModeToDataScalingOff()
-      arrow_glyph.SetScaleFactor(arrow_scale)
+      arrow_glyph.SetScaleModeToScaleByScalar()
+      arrow_glyph.SetScaleFactor(5e-4*arrow_scale)
       arrow_glyph.Update()
 
       amapper = PolyDataMapper()

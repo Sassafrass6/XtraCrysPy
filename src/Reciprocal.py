@@ -146,7 +146,7 @@ class Reciprocal ( XtraCrysPy ):
     self.scene.ResetCamera()
 
 
-  def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.025, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True ):
+  def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.25, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True ):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
