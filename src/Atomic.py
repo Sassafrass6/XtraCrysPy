@@ -23,6 +23,7 @@ class Atomic ( XtraCrysPy ):
 
     self.relax = relax
     self.relax_index = 0
+    self.relax_boundary = False
 
     self.sel_inds = []
     self.sel_cols = []
@@ -54,6 +55,7 @@ class Atomic ( XtraCrysPy ):
     self.model = model
     self.relax = model.relax
     self.nrelax = self.model.atoms.shape[0]
+    self.relax_boundary = self.model.lattice.shape[0] > 1
 
     self.shift_step = 0.25
     self.units = unit.lower()
@@ -497,6 +499,14 @@ class Atomic ( XtraCrysPy ):
     update_actor(obj)
 
 
+  def update_boundary ( self, planes, lines ):
+    from fury.actor import streamtube
+    self.bound_planes = planes
+    self.frame = streamtube(lines, colors=(1,1,1), linewidth=0.1)
+    if 'Boundary' in self.frame_checkbox.checked_labels:
+      self.scene.add(self.frame)
+
+
   def update_atomic_positions ( self ):
     from fury.utils import vertices_from_actor,update_actor
 
@@ -517,6 +527,10 @@ class Atomic ( XtraCrysPy ):
     mem = colors_from_actor(self.atoms, 'colors')
     for i,aind in enumerate(self.sel_inds):
       self.set_atom_color(mem, aind, sec, self.sel_cols[i])
+
+    if self.relax_boundary:
+      self.scene.rm(self.frame)
+      self.update_boundary(*linfo)
 
     self.update_selections()
     self.scene.ResetCameraClippingRange()
@@ -564,8 +578,6 @@ class Atomic ( XtraCrysPy ):
 
 
   def render_atomic_model ( self ):
-    '''
-    '''
     from fury import actor
     import numpy as np
 
@@ -596,10 +608,7 @@ class Atomic ( XtraCrysPy ):
       self.scene.add(tbond)
       self.bonds.append(tbond)
 
-    self.bound_planes = linfo[0]
-    self.frame = actor.streamtube(linfo[1], colors=(1,1,1), linewidth=0.1)
-    if 'Boundary' in self.frame_checkbox.checked_labels:
-      self.scene.add(self.frame)
+    self.update_boundary(*linfo)
 
 
   def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.25, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True):
