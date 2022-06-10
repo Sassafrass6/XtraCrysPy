@@ -58,37 +58,10 @@ class XtraCrysPy:
     self.surface_slider = None
 
     self.axes = axes
-    if axes:
-      self.axes_visible = True
-      self.axis_eles = [None]*3
-      self.axis_lines = [None]*3
-      self.axis_width = ax_wid = 200
-      self.ax_panel = ui.Panel2D(size=(ax_wid,ax_wid), color=(0,0,0))
-      self.ax_panel.center = (ax_wid/2, ax_wid/2)
-      self.ax_panel.background.\
-           on_left_mouse_button_dragged = lambda a,b,c : None
-      self.scene.add(self.ax_panel)
-
-      axis_vecs = np.array([[1,0,0],[0,1,0],[0,0,1]])
-      centers = self.axis_endpoint_positions(axis_vecs)
-      for i in range(3):
-        self.axis_eles[i] = ui.Disk2D(outer_radius=8, center=centers[i], color=axis_vecs[i])
-        self.axis_lines[i] = Line2D((ax_wid/2,ax_wid/2), centers[i], color=axis_vecs[i])
-        self.axis_lines[i].width = 5
-
-        self.scene.add(self.axis_eles[i])
-        self.scene.add(self.axis_lines[i])
+    self.axes_marker = None
+    self.axes_visible = True
 
     self.smanager.add_iren_callback(self.key_press_callback, event='KeyPressEvent')
-
-
-  def axis_endpoint_positions ( self, vecs ):
-    import numpy as np
-    centers = np.empty((3,3), dtype=float)
-    for i in range(3):
-      wid = self.axis_width / 2
-      centers[i,:] = np.array([wid,wid,0]) + 80*vecs[i]
-    return centers[:,:2]
 
 
   def left_click ( self, obj, event ):
@@ -155,7 +128,6 @@ class XtraCrysPy:
           camera.Azimuth(-step)
 
       camera.OrthogonalizeViewUp()
-      self.update_axes(None, None)
       self.scene.ResetCameraClippingRange()
       self.smanager.render()
 
@@ -166,7 +138,6 @@ class XtraCrysPy:
     cam.SetFocalPoint(self.cam_defaults[1])
     cam.SetViewUp(self.cam_defaults[2])
     self.scene.ResetCamera()
-    self.update_axes(None, None)
 
 
   def camera_engaged ( self, iren, caller, event ):
@@ -218,10 +189,7 @@ class XtraCrysPy:
   def toggle_axes ( self ):
     if self.axes:
       vis = self.axes_visible = not self.axes_visible
-      self.ax_panel.set_visibility(vis)
-      for i in range(3):
-        self.axis_eles[i].set_visibility(vis)
-        self.axis_lines[i].set_visibility(vis)
+      self.axes_marker.SetEnabled(vis)
       self.smanager.render()
 
 
@@ -257,40 +225,6 @@ class XtraCrysPy:
     self.frame_checkbox.position = (10, y-35)
     if self.surface_slider is not None:
       self.surface_slider.center = (x/2, y-50)
-
-
-  def update_axes ( self, caller, event ):
-
-    camera = self.scene.GetActiveCamera()
-
-    y = np.array(camera.GetViewUp())
-    y /= np.linalg.norm(y)
-    z = np.array(camera.GetFocalPoint()) - np.array(camera.GetPosition())
-    z /= np.linalg.norm(z)
-    x = np.cross(y, z)
-    x /= np.linalg.norm(x)
-
-    rot = []
-    unit = np.eye(3)
-    cam_vecs = np.array([-x,y,z])
-    for i,u in enumerate(unit[:2]):
-      v = np.cross(cam_vecs[i], u)
-      r = np.array([[0,-v[2],v[1]],[v[2],0,-v[0]],[-v[1],v[0],0]])
-      rot.append(np.eye(3) + r + r@r/(1 + cam_vecs[i].dot(u)))
-      cam_vecs = rot[-1] @ cam_vecs.T
-
-    axis_vecs = np.eye(3) @ np.linalg.inv(rot[0]) @ np.linalg.inv(rot[1])
-
-    for i,v in enumerate(axis_vecs):
-        axis_vecs[i] /= np.linalg.norm(v)
-    centers = self.axis_endpoint_positions(axis_vecs)
-    axis_order = np.argsort([v[2] for v in axis_vecs])
-    for i,o in enumerate(axis_order):
-      color = np.zeros(3); color[o] = 1
-      self.axis_lines[i].color = color
-      self.axis_lines[i].p2 = centers[o]
-      self.axis_eles[i].color = color
-      self.axis_eles[i].center = centers[o]
 
 
   def update_iso_surface ( self, slider ):
@@ -529,6 +463,13 @@ class XtraCrysPy:
 
     self.picker = pick.PickingManager()
     self.smanager.iren.AddObserver('WindowResizeEvent', self.update_buttons)
+
     if self.axes:
-      self.smanager.iren.AddObserver('InteractionEvent', self.update_axes)
+      from vtk import vtkAxesActor,vtkOrientationMarkerWidget
+      self.axes_marker = vtkOrientationMarkerWidget()
+      self.axes_marker.SetInteractor(self.scene.GetRenderWindow().GetInteractor())
+      self.axes_marker.SetOrientationMarker(vtkAxesActor())
+      self.axes_marker.SetViewport(0,0,.2,.2)
+      self.axes_marker.SetEnabled(1)
+
     self.smanager.start()
