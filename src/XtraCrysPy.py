@@ -194,14 +194,14 @@ class XtraCrysPy:
 
 
   def toggle_frame ( self ):
+    option = self.frame_checkbox.options['Boundary']
+    option.checked = not option.checked
+    if option.checked:
+      option.select()
+    else:
+      option.deselect()
+    self.frame_checkbox._handle_option_change(option)
     if self.frame is not None:
-      option = self.frame_checkbox.options['Boundary']
-      option.checked = not option.checked
-      if option.checked:
-        option.select()
-      else:
-        option.deselect()
-      self.frame_checkbox._handle_option_change(option)
       self.draw_frame(self.frame_checkbox)
       self.smanager.render()
 
@@ -255,7 +255,7 @@ class XtraCrysPy:
         arrow_anchor (str): Anchor position for arrows. Options are 'mid', 'tip', and 'tail'
         disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
-        clip_boundary (bool): Setting True disables clipping of the isosurface within the first BZ.
+        clip_boundary (bool): Setting False disables clipping of the isosurface within the first BZ.
     '''
     from scipy.spatial import ConvexHull
     from .iso_surface import iso_surface

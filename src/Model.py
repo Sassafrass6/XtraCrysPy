@@ -35,12 +35,15 @@ class Model:
       self.units = 'bohr'
       self.bond_type = None
       self.atoms = params['abc']
-      self.lattice = params['lattice']
+      if 'lattice' in params:
+        self.lattice = params['lattice']
+      else:
+        from numpy import eye
+        self.lattice = eye(3, dtype=float)
       if 'species' in params:
         self.species = params['species']
-    except Exception as e:
-      print('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
-      raise e
+    except:
+      raise Exception('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
 
     ati = 0 if not self.relax else 1
     if self.species is None:

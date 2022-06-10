@@ -19,7 +19,7 @@ class Atomic ( XtraCrysPy ):
     self.sel_forward = True
     self.sel_type = sel_type
     self.bond_type = bond_type
-    self.constrain_atoms = True
+    self.constrain_atoms = False
 
     self.relax = relax
     self.relax_index = 0
@@ -48,6 +48,9 @@ class Atomic ( XtraCrysPy ):
         s = 'Argument \'model\' must be a file name, a list of file names, or a Model object.'
         raise TypeError(s)
     elif params:
+      if 'lattice' not in params:
+        if self.frame_checkbox.options['Boundary'].checked:
+          self.toggle_frame()
       model = Model(params, fname=None, relax=relax)
     else:
       raise Exception('Must specify model or params arguments')
@@ -110,7 +113,8 @@ class Atomic ( XtraCrysPy ):
     self.sel_type_menu.set_visibility(False)
 
     checkbox = ['Constrain']
-    self.constrain_checkbox = ui.Checkbox(checkbox, checkbox,
+    initial = checkbox if self.constrain_atoms else []
+    self.constrain_checkbox = ui.Checkbox(checkbox, initial,
                               font_size=24, font_family='Arial',
                               position=(10,size[1]-65))
     self.scene.add(self.constrain_checkbox)
