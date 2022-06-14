@@ -19,7 +19,7 @@ if __name__ == '__main__':
       examples.append(argv[i])
 
   else:
-    for e in ['silicon_fcc.py',
+    for e in ['SiGe_fcc.py',
               'caffeine.py',
               'SnTe_2D.py',
               'example_qe_in.py',

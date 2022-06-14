@@ -2,7 +2,7 @@ import numpy as np
 
 class Model:
 
-  def __init__ ( self, params=None, fname=None, relax=False ):
+  def __init__ ( self, params=None, fname=None, multi_frame=False ):
     '''
 
     Arguments:
@@ -12,14 +12,14 @@ class Model:
     if params is None:
       params = {}
 
-    self.relax = relax
     self.species = None
     self.lunit = 'angstrom'
     self.aunit = 'angstrom'
+    self.relax = multi_frame
     if fname is not None:
       self.lunit = 'bohr'
       self.aunit = 'crystal'
-      if relax:
+      if self.relax:
         if isinstance(fname, str):
           from .file_io import read_relaxed_coordinates
           params.update(read_relaxed_coordinates(fname))
@@ -32,7 +32,7 @@ class Model:
         if infer_file_type(fname) == 'lammps':
           self.relax = True
         params.update(struct_from_inputfile(fname))
-    elif relax:
+    elif self.relax:
       raise ValueError('Relax mode supported for QE output files, and LAMMPS trajectory files.')
 
     try:
@@ -194,15 +194,15 @@ class Model:
     return np.min([self.bond_thickness*brad, bspec])
 
 
-  def lattice_atoms_bonds ( self, nc1, nc2, nc3, bond_type='stick', relax_index=0, constrain_atoms=True ):
+  def lattice_atoms_bonds ( self, nc1, nc2, nc3, bond_type='stick', frame_index=0, constrain_atoms=True ):
     '''
     '''
 
-    oatoms = self.atoms.copy() if not self.relax else self.atoms[relax_index].copy()
+    oatoms = self.atoms.copy() if not self.relax else self.atoms[frame_index].copy()
 
     lattice = self.lattice
     if self.relax:
-      lattice = lattice[(0 if lattice.shape[0]==1 else relax_index)]
+      lattice = lattice[(0 if lattice.shape[0]==1 else frame_index)]
     lattice = lattice.copy()
 
     if constrain_atoms:

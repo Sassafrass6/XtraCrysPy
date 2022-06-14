@@ -7,7 +7,7 @@ class Atomic ( XtraCrysPy ):
 
   def __init__ ( self, size=(1024, 1024), axes=True, boundary=True,
                  background=(0,0,0), perspective=False, model=None,
-                 params={}, relax=False, nsc=(1,1,1),
+                 params={}, multi_frame=False, nsc=(1,1,1),
                  bond_type='Stick', sel_type='Chain', unit='angstrom',
 		 runit='degree',
                  image_prefix='XCP_Image', resolution=4 ):
@@ -21,10 +21,6 @@ class Atomic ( XtraCrysPy ):
     self.bond_type = bond_type
     self.constrain_atoms = False
 
-    self.relax = relax
-    self.relax_index = 0
-    self.relax_boundary = False
-
     self.sel_inds = []
     self.sel_cols = []
     self.sel_bnds = []
@@ -37,13 +33,13 @@ class Atomic ( XtraCrysPy ):
         from os.path import isfile
         if not isfile(model):
           raise FileNotFoundError('File {} not found'.format(model))
-        model = Model(params, fname=model, relax=relax)
+        model = Model(params, fname=model, multi_frame=multi_frame)
       elif isinstance(model, (list, tuple)):
         from os.path import isfile
         for mfn in model:
           if not isfile(mfn):
             raise FileNotFoundError('File {} not found'.format(mfn))
-        model = Model(params, fname=model, relax=True)
+        model = Model(params, fname=model, multi_frame=True)
       else:
         s = 'Argument \'model\' must be a file name, a list of file names, or a Model object.'
         raise TypeError(s)
@@ -51,11 +47,12 @@ class Atomic ( XtraCrysPy ):
       if 'lattice' not in params:
         if self.frame_checkbox.options['Boundary'].checked:
           self.toggle_frame()
-      model = Model(params, fname=None, relax=relax)
+      model = Model(params, fname=None, multi_frame=multi_frame)
     else:
       raise Exception('Must specify model or params arguments')
 
     self.model = model
+    self.frame_index = 0
     self.relax = model.relax
     self.nrelax = self.model.atoms.shape[0]
     self.relax_boundary = self.model.lattice.shape[0] > 1
@@ -238,7 +235,7 @@ class Atomic ( XtraCrysPy ):
 
 
   def update_relax_text ( self ):
-    text = '{}/{}'.format(self.relax_index+1, self.nrelax)
+    text = '{}/{}'.format(self.frame_index+1, self.nrelax)
     self.relax_text.message = text
 
 
@@ -466,23 +463,23 @@ class Atomic ( XtraCrysPy ):
 
 
   def relax_forward ( self, iren, obj, event, step=1 ):
-    if self.relax_index == self.nrelax-1:
+    if self.frame_index == self.nrelax-1:
       return
-    if self.relax_index + step >= self.nrelax:
-      self.relax_index = self.nrelax-1
+    if self.frame_index + step >= self.nrelax:
+      self.frame_index = self.nrelax-1
     else:
-      self.relax_index += step
+      self.frame_index += step
     self.update_relax_text()
     self.update_atomic_model()
 
 
   def relax_backward ( self, iren, obj, event, step=1 ):
-    if self.relax_index == 0:
+    if self.frame_index == 0:
       return
-    if self.relax_index - step < 0:
-      self.relax_index = 0
+    if self.frame_index - step < 0:
+      self.frame_index = 0
     else:
-      self.relax_index -= step
+      self.frame_index -= step
     self.update_relax_text()
     self.update_atomic_model()
 
@@ -515,7 +512,7 @@ class Atomic ( XtraCrysPy ):
     from fury.utils import vertices_from_actor,update_actor
 
     ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc,
-                        self.bond_type, self.relax_index,
+                        self.bond_type, self.frame_index,
                         self.constrain_atoms)
 
     verts = vertices_from_actor(self.atoms)
@@ -586,7 +583,7 @@ class Atomic ( XtraCrysPy ):
     import numpy as np
 
     ainfo,binfo,linfo = self.model.lattice_atoms_bonds(*self.nsc,
-                        self.bond_type, self.relax_index,
+                        self.bond_type, self.frame_index,
                         self.constrain_atoms)
  
     self.aposs = ainfo[0]
