@@ -122,8 +122,6 @@ class Model:
     elif self.lunit == 'angstrom':
       from .conversion import ANG_BOHR
       self.lattice *= ANG_BOHR
-      for k in self.bonds.keys():
-        self.bonds[k] *= ANG_BOHR
 
     if self.aunit in ['scaled', 'crystal']:
       pass
@@ -136,6 +134,10 @@ class Model:
       linv = np.linalg.inv(self.lattice)
       for i,p in enumerate(self.atoms):
         self.atoms[i] = p @ linv
+
+    if 'angstrom' in [self.lunit, self.aunit]:
+      for k in self.bonds.keys():
+        self.bonds[k] *= ANG_BOHR
 
     for s in self.species:
       if not s in self.colors:
