@@ -66,7 +66,11 @@ class Reciprocal ( XtraCrysPy ):
       if len(radii.shape) != 1 or radii.shape[0] != points.shape[0]:
         raise ValueError('Argument radii should be either single valued or have one radius for each point.')
 
-    p_actors = actor.sphere(points, colors, radii)
+    try:
+      p_actors = actor.sphere(points, colors, radii, use_primitive=False)
+    except:
+      print('WARNING: DEPRECATED FURY VERSION: Use master branch of github.com/fury-gl/fury')
+      p_actors = actor.sphere(points, colors, radii)
 
     self.scene.add(p_actors)
     self.point_actors.append(p_actors)

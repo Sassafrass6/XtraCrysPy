@@ -2,8 +2,10 @@ from XtraCrysPy import Atomic,Model
 import numpy as np
 
 # Define atomic parameters explicitly
-struct = {'lattice':5.4*np.array([[-1,0,1],[0,1,1],[-1,1,0]]),
-          'species':['Si','Ge'],
+struct = {'species':['Si','Ge'],
+          'lunit':'bohr',
+          'lattice':5.4*np.array([[-1,0,1],[0,1,1],[-1,1,0]]),
+          'aunit':'crystal',
           'abc':np.array([[0.,0,0],[.25,.25,.25]]),
           'colors':{'Si':[1,0,0], 'Ge':[0,0,1]},
           'radii':{'Si':1.2, 'Ge':1.2},

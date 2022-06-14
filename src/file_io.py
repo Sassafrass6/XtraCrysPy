@@ -62,7 +62,7 @@ def struct_from_outputfile_QE ( fname:str ):
 
 def read_relaxed_coordinates_QE ( fname:str ):
   '''
-    Reads relaxed atomic positions from a QE .out file. If vcrelax is set True, the crystal coordinates are also read.
+    Reads relaxed atomic positions from a QE .out file. If CELL_PARAMETERS is present, the crystal coordinates are also read.
 
     Arguments:
       fname (str): File name (including path) for the .out file
@@ -400,6 +400,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     struct['lattice'] *= celldm[0]
   elif struct['lunit'] != 'bohr':
     print('WARNING: Unit {} may behave strangely'.format(struct['lunit']))
+  struct['lunit'] = 'bohr'
 
   if struct['aunit'] in ['bohr', 'angstrom', 'alat']:
     if struct['aunit'] == 'angstrom':
@@ -407,6 +408,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     elif struct['aunit'] == 'alat':
       struct['abc'] = struct['abc'] @ struct['lattice']
     struct['abc'] = struct['abc'] @ np.linalg.inv(struct['lattice'])
+  struct['aunit'] = 'crystal'
 
   return struct
 

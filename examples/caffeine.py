@@ -3,7 +3,7 @@ import numpy as np
 
 if '__main__' == __name__:
 
-  # Cell parameters
+  # Cell parameters (Angstrom)
   cubic_vecs = np.array([[7.33,0,0],[0.,6.36,0],[0,0,1.80]])
 
   # Atomic basis (crystal coordinates)
@@ -16,7 +16,8 @@ if '__main__' == __name__:
   bonds = 1.5
 
   # Visual information: species, lattice, atoms, bonds, units (lattice is specified in angstrom)
-  a_info = {'species':labels, 'lattice':cubic_vecs, 'abc':atoms, 'bonds':bonds, 'units':'angstrom'}
+  a_info = {'species':labels, 'lattice':cubic_vecs, 'abc':atoms,
+            'bonds':bonds, 'lunit':'angstrom', 'aunit':'crystal'}
 
   model = Model.Model(params=a_info)
   xcp = Atomic.Atomic(model=model, boundary=False)

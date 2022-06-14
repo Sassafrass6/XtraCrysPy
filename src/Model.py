@@ -14,7 +14,11 @@ class Model:
 
     self.relax = relax
     self.species = None
+    self.lunit = 'angstrom'
+    self.aunit = 'angstrom'
     if fname is not None:
+      self.lunit = 'bohr'
+      self.aunit = 'crystal'
       if relax:
         if isinstance(fname, str):
           from .file_io import read_relaxed_coordinates
@@ -32,18 +36,23 @@ class Model:
       raise ValueError('Relax mode supported for QE output files, and LAMMPS trajectory files.')
 
     try:
-      self.units = 'bohr'
       self.bond_type = None
       self.atoms = params['abc']
       if 'lattice' in params:
         self.lattice = params['lattice']
       else:
         from numpy import eye
+        self.lunit = 'bohr'
         self.lattice = eye(3, dtype=float)
       if 'species' in params:
         self.species = params['species']
     except:
       raise Exception('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
+
+    if 'lunit' in params:
+      self.lunit = params['lunit']
+    if 'aunit' in params:
+      self.aunit = params['aunit']
 
     ati = 0 if not self.relax else 1
     if self.species is None:
@@ -61,9 +70,6 @@ class Model:
       for i in range(3):
         self.rlattice[i,:] = np.cross(self.lattice[i-2], self.lattice[i-1])
       self.rlattice *= 2 * np.pi / self.volume
-
-    if 'units' in params:
-      self.units = params['units']
 
     self.bonds = {}
     self.bond_thickness = 1
@@ -111,15 +117,25 @@ class Model:
         for k,v in params['radii'].items():
           self.radii[k] = v
 
-    if 'units' in params:
-      unit = params['units']
-      if unit == 'bohr':
-        pass
-      elif unit == 'angstrom':
-        from .conversion import ANG_BOHR as conv
-        self.lattice *= conv
-        for k in self.bonds.keys():
-          self.bonds[k] *= conv
+    if self.lunit == 'bohr':
+      pass
+    elif self.lunit == 'angstrom':
+      from .conversion import ANG_BOHR
+      self.lattice *= ANG_BOHR
+      for k in self.bonds.keys():
+        self.bonds[k] *= ANG_BOHR
+
+    if self.aunit in ['scaled', 'crystal']:
+      pass
+    else:
+      if self.aunit == 'angstrom':
+        from .conversion import ANG_BOHR
+        self.atoms *= ANG_BOHR
+      elif self.aunit != 'bohr':
+        raise Exception(f'Unit {self.aunit} is unsupported.')
+      linv = np.linalg.inv(self.lattice)
+      for i,p in enumerate(self.atoms):
+        self.atoms[i] = p @ linv
 
     for s in self.species:
       if not s in self.colors:

@@ -599,9 +599,14 @@ class Atomic ( XtraCrysPy ):
       phi = 12; theta = 10
 
     if self.natoms > 0:
-      self.atoms = actor.sphere(ainfo[0], ainfo[1], phi=phi,
+      try:
+        self.atoms = actor.sphere(ainfo[0], ainfo[1], phi=phi,
                                 theta=theta, radii=ainfo[2],
                                 use_primitive=False)
+      except:
+        print('WARNING: DEPRECATED FURY VERSION: Use master branch of github.com/fury-gl/fury')
+        self.atoms = actor.sphere(ainfo[0], ainfo[1], phi=phi,
+                                  theta=theta, radii=ainfo[2])
       self.scene.add(self.atoms)
       self.atoms.AddObserver('LeftButtonPressEvent', self.pick_atom, 1)
 
