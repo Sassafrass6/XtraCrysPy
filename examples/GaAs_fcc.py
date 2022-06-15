@@ -11,6 +11,7 @@ struct = {'species':['Ga','As'],
           'radii':{'Ga':1.2, 'As':1.2},
           'bonds':{'Ga_As':6}}
 
-xcp = Atomic.Atomic(params=struct, nsc=(2,2,2), bond_type='Primary', background=(.5,.5,.5), sel_type='Distance')
+xcp = Atomic.Atomic(params=struct, nsc=(2,2,2), bond_type='Primary',
+                    background=(.5,.5,.5), sel_type='Distance')
 xcp.start_crystal_view()
 
