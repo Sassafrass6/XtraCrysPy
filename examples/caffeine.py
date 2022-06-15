@@ -12,8 +12,8 @@ if '__main__' == __name__:
   # Label for each atom and colors
   labels = ['O']*2 + ['N']*4 + ['C']*8 + ['H']*10
 
-  # Bond distance in Angstrom
-  bonds = 1.5
+  # Specify bond types, in Angstrom
+  bonds = {'C':1.5, 'C_H':1.2, 'C_N':1.5, 'C_O':1.3}
 
   # Visual information: species, lattice, atoms, bonds, units (lattice is specified in angstrom)
   a_info = {'species':labels, 'lattice':cubic_vecs, 'abc':atoms,
