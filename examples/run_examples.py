@@ -30,11 +30,11 @@ if __name__ == '__main__':
               'example_cp2k.py',
               'example_charge_density.py',
               'example_BZ.py',
-              'example_fermi_surface1.py',
-              'example_fermi_surface2.py',
-              'example_fermi_surface_clip.py',
-              'example_colored_fermi_surface.py',
-              'example_textured_fermi_surface_clip.py']:
+              'example_isosurface1.py',
+              'example_isosurface2.py',
+              'example_isosurface_clip.py',
+              'example_colored_isosurface.py',
+              'example_textured_isosurface_clip.py']:
       examples.append(e)
 
   for e in examples:

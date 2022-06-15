@@ -84,8 +84,8 @@ Reciprocal Space:
 - python example_BZ.py
 
 Fermi Surfaces:
-- python example_fermi_surface1.py
-- python example_fermi_surface2.py
-- python example_fermi_surface_clip.py
-- python example_colored_fermi_surface.py
-- python example_textured_fermi_surface_clip.py
+- python example_isosurface1.py
+- python example_isosurface2.py
+- python example_isosurface_clip.py
+- python example_colored_isosurface.py
+- python example_textured_isosurface_clip.py
