@@ -135,7 +135,7 @@ class Model:
       for i,p in enumerate(self.atoms):
         self.atoms[i] = p @ linv
 
-    if 'angstrom' in [self.lunit, self.aunit]:
+    if self.lunit != 'bohr':
       for k in self.bonds.keys():
         self.bonds[k] *= ANG_BOHR
 
