@@ -42,7 +42,6 @@ class Model:
         self.lattice = params['lattice']
       else:
         from numpy import eye
-        self.lunit = 'bohr'
         self.lattice = eye(3, dtype=float)
       if 'species' in params:
         self.species = params['species']
