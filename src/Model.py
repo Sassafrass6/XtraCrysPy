@@ -8,6 +8,7 @@ class Model:
     Arguments:
     '''
     from .defaults import atom_defaults
+    from .conversion import ANG_BOHR
 
     if params is None:
       params = {}
@@ -15,6 +16,7 @@ class Model:
     self.species = None
     self.lunit = 'angstrom'
     self.aunit = 'angstrom'
+    self.bunit = 'angstrom'
     self.relax = multi_frame
     if fname is not None:
       self.lunit = 'bohr'
@@ -52,6 +54,8 @@ class Model:
       self.lunit = params['lunit']
     if 'aunit' in params:
       self.aunit = params['aunit']
+    if 'bunit' in params:
+      self.bunit = params['bunit']
 
     ati = 0 if not self.relax else 1
     if self.species is None:
@@ -119,14 +123,12 @@ class Model:
     if self.lunit == 'bohr':
       pass
     elif self.lunit == 'angstrom':
-      from .conversion import ANG_BOHR
       self.lattice *= ANG_BOHR
 
     if self.aunit in ['scaled', 'crystal']:
       pass
     else:
       if self.aunit == 'angstrom':
-        from .conversion import ANG_BOHR
         self.atoms *= ANG_BOHR
       elif self.aunit != 'bohr':
         raise Exception(f'Unit {self.aunit} is unsupported.')
@@ -134,7 +136,7 @@ class Model:
       for i,p in enumerate(self.atoms):
         self.atoms[i] = p @ linv
 
-    if self.lunit != 'bohr':
+    if self.bunit == 'angstrom':
       for k in self.bonds.keys():
         self.bonds[k] *= ANG_BOHR
 

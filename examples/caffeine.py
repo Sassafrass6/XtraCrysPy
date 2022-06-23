@@ -16,8 +16,9 @@ if '__main__' == __name__:
   bonds = {'C':1.5, 'C_H':1.2, 'C_N':1.5, 'C_O':1.3}
 
   # Visual information: species, lattice, atoms, bonds, units (lattice is specified in angstrom)
-  a_info = {'species':labels, 'lattice':cubic_vecs, 'abc':atoms,
-            'bonds':bonds, 'lunit':'angstrom', 'aunit':'crystal'}
+  a_info = {'species':labels, 'lattice':cubic_vecs,
+            'abc':atoms, 'bonds':bonds,
+            'lunit':'angstrom', 'aunit':'crystal', 'bunit':'angstrom'}
 
   model = Model.Model(params=a_info)
   xcp = Atomic.Atomic(model=model, boundary=False)

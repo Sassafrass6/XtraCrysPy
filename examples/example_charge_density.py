@@ -4,7 +4,7 @@ from XtraCrysPy.file_io import read_XSF
 if '__main__' == __name__:
 
   a_info = {'colors':{'Si':(0,.2,1)},
-            'bonds':{'distance':6.5, 'thickness':0.5}}
+            'bonds':{'distance':3.3, 'thickness':0.5}}
 
   fname = 'data_files/Si.scf.in'
   xcp = Atomic(model=fname, params=a_info, nsc=(3,3,2))

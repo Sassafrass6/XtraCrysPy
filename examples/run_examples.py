@@ -22,6 +22,7 @@ if __name__ == '__main__':
     for e in ['GaAs_fcc.py',
               'caffeine.py',
               'SnTe_2D.py',
+              'CNO3.py',
               'example_qe_in.py',
               'example_poscar.py',
               'example_cif.py',
