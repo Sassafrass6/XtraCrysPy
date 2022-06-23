@@ -133,6 +133,8 @@ def read_relaxed_coordinates_QE ( fname:str ):
       print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
       raise e
 
+  struct['lunit'] = 'bohr'
+  struct['aunit'] = 'crystal'
   struct['lattice'] = np.array([struct['lattice']] + cell_params)
   struct['abc'] = np.array([struct['abc']] + abc)
 
