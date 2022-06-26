@@ -39,12 +39,14 @@ class Model:
 
     try:
       self.bond_type = None
-      self.atoms = params['abc']
+      if 'abc' in params:
+        self.atoms = params['abc']
+      else:
+        self.atoms = np.array([], dtype=float)
       if 'lattice' in params:
         self.lattice = params['lattice']
       else:
-        from numpy import eye
-        self.lattice = eye(3, dtype=float)
+        self.lattice = np.eye(3, dtype=float)
       if 'species' in params:
         self.species = params['species']
     except:
@@ -152,7 +154,10 @@ class Model:
         else:
           self.radii[s] = 1
 
-    self.primary_radius = np.min([r for k,r in self.radii.items()])
+    if len(self.radii.keys()) > 0:
+      self.primary_radius = np.min([r for k,r in self.radii.items()])
+    else:
+      self.primary_radius = 1
 
 
   def constrain_atoms_to_unit_cell ( self, lattice, atoms ):
@@ -256,9 +261,10 @@ class Model:
     acols = np.array(acols)
     radii = np.array(radii)
 
-    for i,n in enumerate(nsc):
-      atoms[:,i] /= n
-    atoms = atoms @ lattice
+    if atoms.shape[0] != 0:
+      for i,n in enumerate(nsc):
+        atoms[:,i] /= n
+      atoms = atoms @ lattice
 
     bonds = []
     bdirs = []

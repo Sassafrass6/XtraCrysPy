@@ -472,4 +472,6 @@ class XtraCrysPy:
       self.axes_marker.SetViewport(0,0,.2,.2)
       self.axes_marker.SetEnabled(1)
 
+    self.camera_default_position()
+    self.smanager.render()
     self.smanager.start()

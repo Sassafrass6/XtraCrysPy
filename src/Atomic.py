@@ -49,8 +49,10 @@ class Atomic ( XtraCrysPy ):
           self.toggle_frame()
       model = Model(params, fname=None, multi_frame=multi_frame)
     else:
-      raise Exception('Must specify model or params arguments')
+      model = Model(params)
 
+    self.atoms = None
+    self.frame = None
     self.model = model
     self.frame_index = 0
     self.relax = model.relax
@@ -542,7 +544,8 @@ class Atomic ( XtraCrysPy ):
     from fury.utils import update_actor
 
     self.scene.rm(self.frame)
-    self.scene.rm(self.atoms)
+    if self.atoms is not None:
+      self.scene.rm(self.atoms)
     for b in self.bonds:
       self.scene.rm(b)
 
@@ -558,17 +561,18 @@ class Atomic ( XtraCrysPy ):
     for b in self.sel_bnds:
       self.scene.rm(b)
 
-    self.sel_forward = True
-    sel_inds = self.sel_inds.copy()
-    colors = colors_from_actor(self.atoms, 'colors')
-    nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
+    if self.atoms is not None:
 
-    self.sel_inds = []
-    self.sel_cols = []
-    self.sel_bnds = []
-    for ind in sel_inds:
-      self.selection_logic(colors, ind, nvert)
+      self.sel_forward = True
+      sel_inds = self.sel_inds.copy()
+      colors = colors_from_actor(self.atoms, 'colors')
+      nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
 
+      self.sel_inds = []
+      self.sel_cols = []
+      self.sel_bnds = []
+      for ind in sel_inds:
+        self.selection_logic(colors, ind, nvert)
 
 
   def update_atomic_model ( self ):
