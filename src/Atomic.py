@@ -9,7 +9,7 @@ class Atomic ( XtraCrysPy ):
                  background=(0,0,0), perspective=False, model=None,
                  params={}, multi_frame=False, nsc=(1,1,1),
                  bond_type='Stick', sel_type='Chain', unit='angstrom',
-		 runit='degree',
+		 runit='degree', constrain_atoms=False,
                  image_prefix='XCP_Image', resolution=4 ):
     super().__init__(size, axes, boundary, background,
                      perspective, image_prefix, resolution)
@@ -19,7 +19,7 @@ class Atomic ( XtraCrysPy ):
     self.sel_forward = True
     self.sel_type = sel_type
     self.bond_type = bond_type
-    self.constrain_atoms = False
+    self.constrain_atoms = constrain_atoms
 
     self.sel_inds = []
     self.sel_cols = []
@@ -195,15 +195,20 @@ class Atomic ( XtraCrysPy ):
   def key_press_callback ( self, obj, event ):
 
     key = obj.GetKeySym().lower()
+    shift = obj.GetShiftKey()
     control = obj.GetControlKey()
 
-    if key in ['less', 'greater']:
+    if not shift and key == 'c':
+      self.toggle_constrain()
+
+    elif key in ['less', 'greater']:
       if self.relax:
         step = 1 if not control else int(np.round(self.nrelax/20))
         if key == 'less':
           self.relax_backward(None, obj, event, step=step)
         else:
           self.relax_forward(None, obj, event, step=step)
+
     else:
       super().key_press_callback(obj, event)
 
@@ -223,11 +228,12 @@ class Atomic ( XtraCrysPy ):
     self.sel_type = self.sel_type_menu.selected[0] 
     for _ in range(len(self.sel_bnds)):
       self.pop_sbond()
-    colors = colors_from_actor(self.atoms)
-    nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
-    for i in self.sel_inds.copy():
-      self.pop_atom(colors, i, nvert)
-    update_actor(self.atoms)
+    if self.atoms is not None:
+      colors = colors_from_actor(self.atoms)
+      nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
+      for i in self.sel_inds.copy():
+        self.pop_atom(colors, i, nvert)
+      update_actor(self.atoms)
 
 
   def clear_selection_text ( self ):
@@ -296,6 +302,16 @@ class Atomic ( XtraCrysPy ):
       self.relax_panel.set_visibility(self.ui_visible)
 
     self.smanager.render()
+
+
+  def toggle_constrain ( self ):
+    option = self.constrain_checkbox.options['Constrain']
+    option.checked = not option.checked
+    if option.checked:
+      option.select()
+    else:
+      option.deselect()
+    self.constrain_checkbox._handle_option_change(option)
 
 
   def toggle_sel_menu ( self, iren, caller, event ):

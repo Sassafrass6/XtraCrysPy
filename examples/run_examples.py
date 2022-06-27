@@ -27,6 +27,7 @@ if __name__ == '__main__':
               'example_poscar.py',
               'example_cif.py',
               'example_relax.py',
+              'example_motion.py',
               'example_lammps_md.py',
               'example_cp2k.py',
               'example_charge_density.py',

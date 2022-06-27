@@ -12,6 +12,7 @@ if '__main__' == __name__:
     print('  \'u\' : Toggle UI visibility')
     print('  \'a\' : Toggle Axis visibility')
     print('  \'b\' : Toggle Boundary visiblity')
+    print('  \'c\' : Toggle constraint of atoms within cell')
     print('  \'>\' : Step forward in relax or MD')
     print('  \'<\' : Step backward in relax or MD')
     print('  CTRL + (\'>\' or \'<\') : Step 5% through the relaxation or MD steps')

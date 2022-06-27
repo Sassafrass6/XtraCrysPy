@@ -39,6 +39,7 @@ INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contai
 - 'u' : Toggle UI visibility
 - 'a' : Toggle Axis visibility
 - 'b' : Toggle Boundary visiblity
+- 'c' : Toggle constraint of atoms within cell
 - '>' : Step forward in relax or MD
 - '<' : Step backward in relax or MD
 - CTRL + ('>' or '<') : Step 5% through the relaxation or MD steps
