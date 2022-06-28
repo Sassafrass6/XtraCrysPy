@@ -201,10 +201,10 @@ class Atomic ( XtraCrysPy ):
     if not shift and key == 'c':
       self.toggle_constrain()
 
-    elif key in ['less', 'greater']:
+    elif key in ['less', 'greater', 'comma', 'period']:
       if self.relax:
         step = 1 if not control else int(np.round(self.nrelax/20))
-        if key == 'less':
+        if key in ['less', 'comma']:
           self.relax_backward(None, obj, event, step=step)
         else:
           self.relax_forward(None, obj, event, step=step)
