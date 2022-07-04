@@ -60,6 +60,8 @@ Available in the examples directory
 From scratch:
 - python caffeine.py
 - python silicon_fcc.py
+- python example_motion.py
+- python example_textured_isosurface.py
 
 From inputfile (with main.py script):
 - python main.py <input_file>
@@ -84,7 +86,7 @@ Charge Density:
 Reciprocal Space:
 - python example_BZ.py
 
-Fermi Surfaces:
+Isosurfaces:
 - python example_isosurface1.py
 - python example_isosurface2.py
 - python example_isosurface_clip.py
