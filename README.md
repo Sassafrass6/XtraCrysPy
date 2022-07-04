@@ -9,7 +9,7 @@
 - Plot molecular systems with minimal setup
 - Plot systems from DFT or MD input/output files
 - Interact with the system to caluclate distances, angles, or receive atomic information
-- Display relaxation or MD steps from QE relax output or LAMMPS trajectory files. (CP2K xyz coming soon)
+- Display relaxation or MD steps from QE relax output, raw coordinates, LAMMPS trajectory files, or CP2K (xyz)
 - Display reciprocal space features
 - Plot real space iso-surfaces (charge density, etc)
 - Plot reciprocal iso-surfaces (Fermi surface, spin-texture, etc)
@@ -32,6 +32,9 @@
 ## Installation:  
 INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contains a bug causing misaligned cylinder orientation.
 (only use --user if you do not have permission to install python packages)
+### Install with pip:
+-  pip install xtracryspy
+### Install from source:
 -  python setup.py install
 -  python setup.py install --user
 
