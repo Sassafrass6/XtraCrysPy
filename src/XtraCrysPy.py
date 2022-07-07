@@ -240,7 +240,7 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), arrow_scale=0.25, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True, nsc=(1,1,1) ):
+  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), arrow_scale=0.25, arrow_anchor='mid', arrow_spacing=0.01, disp_all=False, clip_planes=None, clip_boundary=True, nsc=(1,1,1) ):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
@@ -253,6 +253,7 @@ class XtraCrysPy:
         colors (ndarray or list): Colors for the surface. Can specify for each isovalue and for each voxel, or just choose single colors. Accepted dimensions are (A,), (N,A), (X,Y,Z,A), or (N,X,Y,Z,A), where X,Y,Z are determined by data dimensions, N is the number of isovalues provided, and A is either 3 or 4 for RGB or RGBA colors respectively
         arrow_colors (ndarray or list): Colors for the arrows, same specifications as the surface colors
         arrow_anchor (str): Anchor position for arrows. Options are 'mid', 'tip', and 'tail'
+        arrow_spacing (float): Tolerance for cleaning how many arrows can appear in a certain region. Increase this value to recuce the arrow density.
         disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
         clip_boundary (bool): Setting False disables clipping of the isosurface within the first BZ.
@@ -413,7 +414,14 @@ class XtraCrysPy:
       nsurf = len(self.surfaces)
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
-      self.surfaces.append(iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i], arrow_scale=arrow_scale, arrow_anchor=arrow_anchor))
+      iso = iso_surface(data, grid_spacing, iv, origin, colors[i],
+                        bound_planes=bound_planes,
+                        skew=lattice, arrows=arrows,
+                        arrow_colors=arrow_colors[i],
+                        arrow_scale=arrow_scale,
+                        arrow_anchor=arrow_anchor,
+                        arrow_spacing=arrow_spacing)
+      self.surfaces.append(iso)
 
     if len(self.surfaces) > nsurf:
       if not disp_all:

@@ -637,7 +637,7 @@ class Atomic ( XtraCrysPy ):
     self.update_boundary(*linfo)
 
 
-  def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.25, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True):
+  def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.25, arrow_anchor='mid', arrow_spacing=0.01, disp_all=False, clip_planes=None, clip_boundary=True):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
@@ -650,6 +650,7 @@ class Atomic ( XtraCrysPy ):
         arrow_colors (ndarray or list): Colors for the arrows, same specifications as the surface colors
         arrow_scale (float): Scale for the displayed arrows
         arrow_anchor (str): Anchor position for arrows. Options are 'mid', 'tip', and 'tail'
+        arrow_spacing (float): Tolerance for cleaning how many arrows can appear in a certain region. Increase this value to recuce the arrow density.
         disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
         clip_boundary (bool): Setting True disables clipping of the isosurface within the first BZ.
@@ -658,5 +659,5 @@ class Atomic ( XtraCrysPy ):
     origin = np.array(origin, dtype=float)
     origin -= np.array([((nsc[i]+1)%4)/4 for i in range(3)])
     origin += .5/np.array(data.shape)/nsc*[3-nsc[i]%2 for i in range(3)]
-    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, arrow_scale, arrow_anchor, disp_all, clip_planes, clip_boundary, nsc)
+    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, arrow_scale, arrow_anchor, arrow_spacing, disp_all, clip_planes, clip_boundary, nsc)
 
