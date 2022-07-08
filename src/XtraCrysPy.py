@@ -84,6 +84,8 @@ class XtraCrysPy:
       elif key == 'c':
         self.camera_default_position()
         self.smanager.render()
+      elif key == 'o':
+        self.report_camera_orientation()
 
     if key == 'u':
       self.toggle_ui()
@@ -142,6 +144,14 @@ class XtraCrysPy:
 
   def camera_engaged ( self, iren, caller, event ):
     self.save_image(self.fprefix)
+
+
+  def report_camera_orientation ( self ):
+    cam = self.scene.GetActiveCamera()
+    pos,foc,up = cam.GetPosition(),cam.GetFocalPoint(),cam.GetViewUp()
+    print('Camera position: [{:.4f}, {:.4f}, {:.4f}]'.format(*pos))
+    print('Camera focal point: [{:.4f}, {:.4f}, {:.4f}]'.format(*foc))
+    print('Camera up: [{:.4f}, {:.4f}, {:.4f}]'.format(*up))
 
 
   def save_image ( self, fprefix ):
@@ -458,16 +468,17 @@ class XtraCrysPy:
             self.scene.add(ar)
 
 
-  def start_crystal_view ( self ):
+  def start_crystal_view ( self, camera_pos=None, camera_focal=None, camera_up=None ):
     '''
       Begin the render sequence and allow interaction
     '''
     from fury import pick
 
     cam = self.scene.GetActiveCamera()
-    self.cam_defaults = (cam.GetPosition(),
-                         cam.GetFocalPoint(),
-                         cam.GetViewUp())
+    pos = cam.GetPosition() if camera_pos is None else camera_pos
+    foc = cam.GetFocalPoint() if camera_focal is None else camera_focal
+    up = cam.GetViewUp() if camera_up is None else camera_up
+    self.cam_defaults = (pos, foc, up)
 
     self.picker = pick.PickingManager()
     self.smanager.iren.AddObserver('WindowResizeEvent', self.update_buttons)

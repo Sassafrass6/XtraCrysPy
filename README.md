@@ -46,6 +46,7 @@ INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contai
 - '>' : Step forward in relax or MD
 - '<' : Step backward in relax or MD
 - CTRL + ('>' or '<') : Step 5% through the relaxation or MD steps
+- SHIFT + 'o' : Report the camera position and orientation
 - SHIFT + 'c' : Reset camera to default position
 - SHIFT + 's' : Take snapshot
 - CTRL + 'w' : Exit
