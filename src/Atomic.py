@@ -354,6 +354,7 @@ class Atomic ( XtraCrysPy ):
 
 
   def push_sbond ( self ):
+    from .cylinder import cylinder
     from fury import actor
 
     if self.sel_forward:
@@ -368,7 +369,7 @@ class Atomic ( XtraCrysPy ):
     brad = self.model.bond_radius(dist, ai1, ai2, self.bond_type)
     if self.bond_type != 'Sphere':
       brad *= 0.51
-      tbond = actor.cylinder([cent], [conn], [self.scolor/255],
+      tbond = cylinder([cent], [conn], [self.scolor/255],
                              radius=brad, heights=dist, resolution=20)
     else:
       ends = [[self.aposs[ai2], self.aposs[ai1]]]
@@ -599,6 +600,7 @@ class Atomic ( XtraCrysPy ):
 
 
   def render_atomic_model ( self ):
+    from .cylinder import cylinder
     from fury import actor
     import numpy as np
 
@@ -621,7 +623,6 @@ class Atomic ( XtraCrysPy ):
                                 theta=theta, radii=ainfo[2],
                                 use_primitive=False)
       except:
-        print('WARNING: DEPRECATED FURY VERSION: Use master branch of github.com/fury-gl/fury')
         self.atoms = actor.sphere(ainfo[0], ainfo[1], phi=phi,
                                   theta=theta, radii=ainfo[2])
       self.scene.add(self.atoms)
@@ -629,7 +630,7 @@ class Atomic ( XtraCrysPy ):
 
     self.bonds = []
     for i in range(binfo[0].shape[0]):
-      tbond = actor.cylinder(binfo[0][i], binfo[1][i], binfo[2][i],
+      tbond = cylinder(binfo[0][i], binfo[1][i], binfo[2][i],
               radius=binfo[3][i], heights=binfo[4][i], resolution=20)
       self.scene.add(tbond)
       self.bonds.append(tbond)

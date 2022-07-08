@@ -26,11 +26,10 @@
 ## Requirements:
 - python 3.8
 - numpy 1.19
-- [fury 0.8](https://github.com/fury-gl/fury) (Use the latest GitHub commit. The latest release contains a bug with cylinder orientation used for drawing bonds.)
+- [fury 0.8](https://github.com/fury-gl/fury)
 - [ase](https://wiki.fysik.dtu.dk/ase/)
 
 ## Installation:  
-INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contains a bug causing misaligned cylinder orientation.
 (only use --user if you do not have permission to install python packages)
 ### Install with pip:
 -  pip install xtracryspy

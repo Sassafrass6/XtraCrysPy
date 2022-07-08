@@ -69,7 +69,6 @@ class Reciprocal ( XtraCrysPy ):
     try:
       p_actors = actor.sphere(points, colors, radii, use_primitive=False)
     except:
-      print('WARNING: DEPRECATED FURY VERSION: Use master branch of github.com/fury-gl/fury')
       p_actors = actor.sphere(points, colors, radii)
 
     self.scene.add(p_actors)
