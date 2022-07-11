@@ -45,7 +45,7 @@ class Atomic ( XtraCrysPy ):
         raise TypeError(s)
     elif params:
       if 'lattice' not in params:
-        if self.frame_checkbox.options['Boundary'].checked:
+        if self.boundary:
           self.toggle_frame()
       model = Model(params, fname=None, multi_frame=multi_frame)
     else:
@@ -86,9 +86,9 @@ class Atomic ( XtraCrysPy ):
               ('right',read_viz_icons(fname='circle-right.png'))]
 
     self.ncell_button = ui.Button2D(icon_fnames=icons[2:0:-1],
-                                    size=(40,40))
+                                    size=(50,50))
     self.sel_type_button = ui.Button2D(icon_fnames=icons[2:0:-1],
-                                       size=(40,40))
+                                       size=(50,50))
     self.ncell_button.on_left_mouse_button_clicked = self.toggle_ncell_menu
     self.sel_type_button.on_left_mouse_button_clicked = self.toggle_sel_menu
 
@@ -111,20 +111,9 @@ class Atomic ( XtraCrysPy ):
     self.sel_menu_vis = False
     self.sel_type_menu.set_visibility(False)
 
-    checkbox = ['Constrain']
-    initial = checkbox if self.constrain_atoms else []
-    self.constrain_checkbox = ui.Checkbox(checkbox, initial,
-                              font_size=24, font_family='Arial',
-                              position=(10,size[1]-65))
-    self.scene.add(self.constrain_checkbox)
-    self.constrain_checkbox.on_change = self.update_constrain
-    for label in self.constrain_checkbox.labels:
-      tactor = self.constrain_checkbox.options[label].text.actor
-      tactor.GetTextProperty().SetColor(self.font_color)
-
     self.ncell_panel_vis = False
     self.ncell_panel = ui.Panel2D(size=(180,140), color=(.1,.1,.1), opacity=.9)
-    self.ncell_panel.center = (260, size[1]-80)
+    self.ncell_panel.center = [260, size[1]-80]
 
     nsc = self.nsc
     nmax = [max(n, 4) for n in nsc]
@@ -155,10 +144,10 @@ class Atomic ( XtraCrysPy ):
     self.ncell_panel.set_visibility(False)
     self.scene.add(self.ncell_panel)
 
-    self.sel_panel = ui.Panel2D((110,40), (60, size[1]-110), opacity=0)
-    self.sel_panel.add_element(self.ncell_button, (50,0))
+    self.sel_panel = ui.Panel2D((110,50), (10, size[1]-70), opacity=0)
+    self.sel_panel.add_element(self.ncell_button, (60,0))
     self.sel_panel.add_element(self.sel_type_button, (0,0))
-    self.sel_panel.add_element(self.sel_type_menu, (-50,-230))
+    self.sel_panel.add_element(self.sel_type_menu, (0,-230))
     self.scene.add(self.sel_panel)
 
     self.sel_text_vis = False
@@ -178,8 +167,8 @@ class Atomic ( XtraCrysPy ):
       right_button = ui.Button2D(icon_fnames=[icons[2]], size=(50,50))
       right_button.on_left_mouse_button_clicked = self.relax_forward
 
-      self.relax_panel = ui.Panel2D((110,100),
-                         (size[0]-120,size[1]-60), (0,0,0), opacity=0)
+      self.relax_panel = ui.Panel2D((110,50),
+                         (size[0]-120,size[1]-70), (0,0,0), opacity=0)
       self.relax_panel.add_element(left_button, (0,0))
       self.relax_panel.add_element(right_button, (60,0))
 
@@ -200,6 +189,10 @@ class Atomic ( XtraCrysPy ):
 
     if not shift and key == 'c':
       self.toggle_constrain()
+    if not shift and key == 's':
+      self.toggle_sel_menu(None,None,None)
+    if not shift and key == 'n':
+      self.toggle_ncell_menu(None,None,None)
 
     elif key in ['less', 'greater', 'comma', 'period']:
       if self.relax:
@@ -217,8 +210,7 @@ class Atomic ( XtraCrysPy ):
     super().update_buttons(caller, event)
     x,y = self.scene.GetSize()
     self.sel_tpanel.center = (x-160, 50)
-    self.sel_panel.position = (60, y-110)
-    self.constrain_checkbox.position = (10, y-65)
+    self.sel_panel.position = (10, y-70)
     if self.relax:
       self.relax_panel.position = (x-120, y-60)
 
@@ -253,7 +245,7 @@ class Atomic ( XtraCrysPy ):
     self.sel_tpanel.set_visibility(True)
 
 
-  def update_constrain ( self, checkboxes ):
+  def toggle_constrain ( self ):
     self.constrain_atoms = not self.constrain_atoms
     self.redraw_atomic_model()
 
@@ -296,22 +288,11 @@ class Atomic ( XtraCrysPy ):
 
     self.ncell_button.set_visibility(self.ui_visible)
     self.sel_type_button.set_visibility(self.ui_visible)
-    self.constrain_checkbox.set_visibility(self.ui_visible)
 
     if self.relax:
       self.relax_panel.set_visibility(self.ui_visible)
 
     self.smanager.render()
-
-
-  def toggle_constrain ( self ):
-    option = self.constrain_checkbox.options['Constrain']
-    option.checked = not option.checked
-    if option.checked:
-      option.select()
-    else:
-      option.deselect()
-    self.constrain_checkbox._handle_option_change(option)
 
 
   def toggle_sel_menu ( self, iren, caller, event ):
@@ -523,7 +504,7 @@ class Atomic ( XtraCrysPy ):
     from fury.actor import streamtube
     self.bound_planes = planes
     self.frame = streamtube(lines, colors=(1,1,1), linewidth=0.1)
-    if 'Boundary' in self.frame_checkbox.checked_labels:
+    if self.boundary:
       self.scene.add(self.frame)
 
 

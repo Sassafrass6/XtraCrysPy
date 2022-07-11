@@ -42,6 +42,8 @@
 - 'a' : Toggle Axis visibility
 - 'b' : Toggle Boundary visiblity
 - 'c' : Toggle constraint of atoms within cell
+- 's' : Togle the selection type panel visibility
+- 'n' : Toggle the cell repition panel visibility
 - '>' : Step forward in relax or MD
 - '<' : Step backward in relax or MD
 - CTRL + ('>' or '<') : Step 5% through the relaxation or MD steps
@@ -61,6 +63,7 @@
 Available in the examples directory
 
 From scratch:
+- python CNO3.py
 - python caffeine.py
 - python silicon_fcc.py
 - python example_motion.py
@@ -94,4 +97,5 @@ Isosurfaces:
 - python example_isosurface2.py
 - python example_isosurface_clip.py
 - python example_colored_isosurface.py
+- python example_textured_isosurface.py
 - python example_textured_isosurface_clip.py

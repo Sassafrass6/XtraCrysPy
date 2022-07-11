@@ -32,24 +32,10 @@ class XtraCrysPy:
     if not perspective:
       self.scene.projection('parallel')
 
-    checkbox = ['Boundary']
-    initial = checkbox if boundary else []
-    self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
-    self.scene.add(self.frame_checkbox)
-    self.frame_checkbox.on_change = self.draw_frame
-    for label in self.frame_checkbox.labels:
-      tactor = self.frame_checkbox.options[label].text.actor
-      tactor.GetTextProperty().SetColor(self.font_color)
-
     self.fprefix = image_prefix
     self.image_res = resolution
-    cam_icon = ('camera',read_viz_icons(fname='camera.png'))
-    self.cam_panel = ui.Panel2D((40,40), (5, size[1]-108), opacity=0)
-    self.cam_button = ui.Button2D(icon_fnames=[cam_icon], size=(40,40))
-    self.cam_button.on_left_mouse_button_clicked = self.camera_engaged
-    self.cam_panel.add_element(self.cam_button, (0,0))
-    self.scene.add(self.cam_panel)
 
+    self.boundary = boundary
     self.bound_points = None
 
     self.surfaces = None
@@ -142,10 +128,6 @@ class XtraCrysPy:
     self.scene.ResetCamera()
 
 
-  def camera_engaged ( self, iren, caller, event ):
-    self.save_image(self.fprefix)
-
-
   def report_camera_orientation ( self ):
     cam = self.scene.GetActiveCamera()
     pos,foc,up = cam.GetPosition(),cam.GetFocalPoint(),cam.GetViewUp()
@@ -186,8 +168,6 @@ class XtraCrysPy:
   def toggle_ui ( self ):
 
     vis = self.ui_visible = not self.ui_visible
-    self.cam_panel.set_visibility(self.ui_visible)
-    self.frame_checkbox.set_visibility(self.ui_visible)
 
     if self.surface_slider is not None and not self.disp_all_iso:
       self.surface_slider.set_visibility(vis)
@@ -204,24 +184,13 @@ class XtraCrysPy:
 
 
   def toggle_frame ( self ):
-    option = self.frame_checkbox.options['Boundary']
-    option.checked = not option.checked
-    if option.checked:
-      option.select()
-    else:
-      option.deselect()
-    self.frame_checkbox._handle_option_change(option)
+    self.boundary = not self.boundary
     if self.frame is not None:
-      self.draw_frame(self.frame_checkbox)
-      self.smanager.render()
-
-
-  def draw_frame ( self, checkboxes ):
-    if self.frame is not None:
-      if 'Boundary' in checkboxes.checked_labels:
+      if self.boundary:
         self.scene.add(self.frame)
       else:
         self.scene.rm(self.frame)
+      self.smanager.render()
 
 
   def iso_slider_handle_color (self, i_ren, _obj, _slider):
@@ -231,8 +200,6 @@ class XtraCrysPy:
 
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()
-    self.cam_panel.position = (5, y-108)
-    self.frame_checkbox.position = (10, y-35)
     if self.surface_slider is not None:
       self.surface_slider.center = (x/2, y-50)
 
