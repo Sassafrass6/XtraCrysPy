@@ -30,12 +30,12 @@
 - [ase](https://wiki.fysik.dtu.dk/ase/)
 
 ## Installation:  
-(only use --user if you do not have permission to install python packages)
 ### Install with pip:
 -  pip install xtracryspy
 ### Install from source:
 -  python setup.py install
 -  python setup.py install --user
+(only use --user if you do not have permission to install python packages)
 
 ## Control Inputs:
 - 'u' : Toggle UI visibility
