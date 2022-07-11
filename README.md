@@ -29,7 +29,10 @@
 - [fury 0.8](https://github.com/fury-gl/fury)
 - [ase](https://wiki.fysik.dtu.dk/ase/)
 
-## Installation:  
+## Installation:
+
+The [Anaconda](https://www.anaconda.com/) Python distribution is recommended.
+
 ### Install with pip:
 -  pip install xtracryspy
 ### Install from source:
