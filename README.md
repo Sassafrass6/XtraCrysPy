@@ -35,6 +35,7 @@
 ### Install from source:
 -  python setup.py install
 -  python setup.py install --user
+
 (only use --user if you do not have permission to install python packages)
 
 ## Control Inputs:
