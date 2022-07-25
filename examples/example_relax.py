@@ -7,7 +7,8 @@ if '__main__' == __name__:
                       'P':(1,0,0)},
             'bonds':3.3}
   # Relaxation
-  xcp = Atomic(model='data_files/CaAlP.relax.out', 
-               params=a_info, multi_frame=True, sel_type='Chain')
+  fname = 'data_files/CaAlP.relax.out'
+  xcp = Atomic(model=fname, params=a_info, multi_frame=True,
+               constrain_atoms=True, sel_type='Chain')
   xcp.start_crystal_view()
 

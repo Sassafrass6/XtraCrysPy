@@ -34,8 +34,6 @@ class Model:
         if infer_file_type(fname) == 'lammps':
           self.relax = True
         params.update(struct_from_inputfile(fname))
-    elif self.relax:
-      raise ValueError('Relax mode supported for QE output files, and LAMMPS trajectory files.')
 
     try:
       self.bond_type = None
@@ -51,6 +49,9 @@ class Model:
         self.species = params['species']
     except:
       raise Exception('Manual structures require \'lattice\', \'species\', and atomic positions \'abc\'')
+
+    if self.relax and len(self.lattice.shape) == 2:
+      self.lattice = np.array([self.lattice])
 
     if 'lunit' in params:
       self.lunit = params['lunit']
@@ -210,7 +211,8 @@ class Model:
 
     lattice = self.lattice
     if self.relax:
-      lattice = lattice[(0 if lattice.shape[0]==1 else frame_index)]
+      ind = frame_index if lattice.shape[0]==self.atoms.shape[0] else 0
+      lattice = lattice[ind]
     lattice = lattice.copy()
 
     if constrain_atoms:

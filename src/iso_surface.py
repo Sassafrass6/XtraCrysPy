@@ -17,6 +17,7 @@ FloatArray = ccvtk.vtkFloatArray
 ArrowSource = fsvtk.vtkArrowSource
 LookupTable = ccvtk.vtkLookupTable
 ClipPolyData = fcvtk.vtkClipPolyData
+CleanPolyData = fcvtk.vtkCleanPolyData
 ContourFilter = fcvtk.vtkContourFilter
 MultiThreshold = fgvtk.vtkMultiThreshold
 TransformFilter = fgvtk.vtkTransformFilter
@@ -26,7 +27,7 @@ DataSetSurfaceFilter = fgmvtk.vtkDataSetSurfaceFilter
 TransformPolyDataFilter = fgvtk.vtkTransformPolyDataFilter
 WindowedSincPolyDataFilter = fcvtk.vtkWindowedSincPolyDataFilter
 
-def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None, arrow_colors=None, arrow_scale=0.025, arrow_anchor='mid'):
+def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None, arrows=None, arrow_colors=None, arrow_scale=0.025, arrow_anchor='mid', arrow_spacing=0.01):
 
     if data.ndim != 3:
         raise ValueError('Only 3D arrays are currently supported.')
@@ -147,8 +148,13 @@ def iso_surface(data, dx, iso_val, origin, colors, bound_planes=None, skew=None,
         tarrow.SetInputConnection(arrow.GetOutputPort())
         tarrow.SetTransform(transform)
 
+      cleaner = CleanPolyData()
+      cleaner.SetInputConnection(iso_transformed.GetOutputPort())
+      cleaner.SetTolerance(arrow_spacing)
+      cleaner.Update()
+
       arrow_glyph = Glyph3D()
-      arrow_glyph.SetInputData(iso_transformed.GetOutput())
+      arrow_glyph.SetInputData(cleaner.GetOutput())
       arrow_glyph.OrientOn()
       arrow_glyph.SetSourceConnection(tarrow.GetOutputPort())
       arrow_glyph.SetScaleModeToScaleByScalar()

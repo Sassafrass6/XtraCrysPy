@@ -592,7 +592,7 @@ def infer_file_type ( fname:str ):
     return 'qe'
 
   extension = extension[-1].lower()
-  if extension in ['in', 'out']:
+  if extension in ['in', 'out', 'pwi', 'pwo']:
     return 'qe' + extension
   elif extension == 'poscar':
     return 'poscar'
@@ -612,8 +612,8 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
     ftype = infer_file_type(fname)
 
   try:
-    if ftype in ['qe', 'qein', 'qeout']:
-      if ftype == 'qeout':
+    if 'qe' in ftype:
+      if 'o' in ftype:
         return struct_from_outputfile_QE(fname)
       else:
         return struct_from_inputfile_QE(fname)

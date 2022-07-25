@@ -9,7 +9,7 @@ class Atomic ( XtraCrysPy ):
                  background=(0,0,0), perspective=False, model=None,
                  params={}, multi_frame=False, nsc=(1,1,1),
                  bond_type='Stick', sel_type='Chain', unit='angstrom',
-		 runit='degree',
+		 runit='degree', constrain_atoms=False,
                  image_prefix='XCP_Image', resolution=4 ):
     super().__init__(size, axes, boundary, background,
                      perspective, image_prefix, resolution)
@@ -19,7 +19,7 @@ class Atomic ( XtraCrysPy ):
     self.sel_forward = True
     self.sel_type = sel_type
     self.bond_type = bond_type
-    self.constrain_atoms = False
+    self.constrain_atoms = constrain_atoms
 
     self.sel_inds = []
     self.sel_cols = []
@@ -45,7 +45,7 @@ class Atomic ( XtraCrysPy ):
         raise TypeError(s)
     elif params:
       if 'lattice' not in params:
-        if self.frame_checkbox.options['Boundary'].checked:
+        if self.boundary:
           self.toggle_frame()
       model = Model(params, fname=None, multi_frame=multi_frame)
     else:
@@ -86,9 +86,9 @@ class Atomic ( XtraCrysPy ):
               ('right',read_viz_icons(fname='circle-right.png'))]
 
     self.ncell_button = ui.Button2D(icon_fnames=icons[2:0:-1],
-                                    size=(40,40))
+                                    size=(50,50))
     self.sel_type_button = ui.Button2D(icon_fnames=icons[2:0:-1],
-                                       size=(40,40))
+                                       size=(50,50))
     self.ncell_button.on_left_mouse_button_clicked = self.toggle_ncell_menu
     self.sel_type_button.on_left_mouse_button_clicked = self.toggle_sel_menu
 
@@ -111,20 +111,9 @@ class Atomic ( XtraCrysPy ):
     self.sel_menu_vis = False
     self.sel_type_menu.set_visibility(False)
 
-    checkbox = ['Constrain']
-    initial = checkbox if self.constrain_atoms else []
-    self.constrain_checkbox = ui.Checkbox(checkbox, initial,
-                              font_size=24, font_family='Arial',
-                              position=(10,size[1]-65))
-    self.scene.add(self.constrain_checkbox)
-    self.constrain_checkbox.on_change = self.update_constrain
-    for label in self.constrain_checkbox.labels:
-      tactor = self.constrain_checkbox.options[label].text.actor
-      tactor.GetTextProperty().SetColor(self.font_color)
-
     self.ncell_panel_vis = False
     self.ncell_panel = ui.Panel2D(size=(180,140), color=(.1,.1,.1), opacity=.9)
-    self.ncell_panel.center = (260, size[1]-80)
+    self.ncell_panel.center = [260, size[1]-80]
 
     nsc = self.nsc
     nmax = [max(n, 4) for n in nsc]
@@ -155,10 +144,10 @@ class Atomic ( XtraCrysPy ):
     self.ncell_panel.set_visibility(False)
     self.scene.add(self.ncell_panel)
 
-    self.sel_panel = ui.Panel2D((110,40), (60, size[1]-110), opacity=0)
-    self.sel_panel.add_element(self.ncell_button, (50,0))
+    self.sel_panel = ui.Panel2D((110,50), (10, size[1]-70), opacity=0)
+    self.sel_panel.add_element(self.ncell_button, (60,0))
     self.sel_panel.add_element(self.sel_type_button, (0,0))
-    self.sel_panel.add_element(self.sel_type_menu, (-50,-230))
+    self.sel_panel.add_element(self.sel_type_menu, (0,-230))
     self.scene.add(self.sel_panel)
 
     self.sel_text_vis = False
@@ -178,8 +167,8 @@ class Atomic ( XtraCrysPy ):
       right_button = ui.Button2D(icon_fnames=[icons[2]], size=(50,50))
       right_button.on_left_mouse_button_clicked = self.relax_forward
 
-      self.relax_panel = ui.Panel2D((110,100),
-                         (size[0]-120,size[1]-60), (0,0,0), opacity=0)
+      self.relax_panel = ui.Panel2D((110,50),
+                         (size[0]-120,size[1]-70), (0,0,0), opacity=0)
       self.relax_panel.add_element(left_button, (0,0))
       self.relax_panel.add_element(right_button, (60,0))
 
@@ -195,15 +184,24 @@ class Atomic ( XtraCrysPy ):
   def key_press_callback ( self, obj, event ):
 
     key = obj.GetKeySym().lower()
+    shift = obj.GetShiftKey()
     control = obj.GetControlKey()
 
-    if key in ['less', 'greater']:
+    if not shift and key == 'c':
+      self.toggle_constrain()
+    if not shift and key == 's':
+      self.toggle_sel_menu(None,None,None)
+    if not shift and key == 'n':
+      self.toggle_ncell_menu(None,None,None)
+
+    elif key in ['less', 'greater', 'comma', 'period']:
       if self.relax:
         step = 1 if not control else int(np.round(self.nrelax/20))
-        if key == 'less':
+        if key in ['less', 'comma']:
           self.relax_backward(None, obj, event, step=step)
         else:
           self.relax_forward(None, obj, event, step=step)
+
     else:
       super().key_press_callback(obj, event)
 
@@ -212,8 +210,7 @@ class Atomic ( XtraCrysPy ):
     super().update_buttons(caller, event)
     x,y = self.scene.GetSize()
     self.sel_tpanel.center = (x-160, 50)
-    self.sel_panel.position = (60, y-110)
-    self.constrain_checkbox.position = (10, y-65)
+    self.sel_panel.position = (10, y-70)
     if self.relax:
       self.relax_panel.position = (x-120, y-60)
 
@@ -223,11 +220,12 @@ class Atomic ( XtraCrysPy ):
     self.sel_type = self.sel_type_menu.selected[0] 
     for _ in range(len(self.sel_bnds)):
       self.pop_sbond()
-    colors = colors_from_actor(self.atoms)
-    nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
-    for i in self.sel_inds.copy():
-      self.pop_atom(colors, i, nvert)
-    update_actor(self.atoms)
+    if self.atoms is not None:
+      colors = colors_from_actor(self.atoms)
+      nvert = int(vertices_from_actor(self.atoms).shape[0]/self.natoms)
+      for i in self.sel_inds.copy():
+        self.pop_atom(colors, i, nvert)
+      update_actor(self.atoms)
 
 
   def clear_selection_text ( self ):
@@ -247,7 +245,7 @@ class Atomic ( XtraCrysPy ):
     self.sel_tpanel.set_visibility(True)
 
 
-  def update_constrain ( self, checkboxes ):
+  def toggle_constrain ( self ):
     self.constrain_atoms = not self.constrain_atoms
     self.redraw_atomic_model()
 
@@ -290,7 +288,6 @@ class Atomic ( XtraCrysPy ):
 
     self.ncell_button.set_visibility(self.ui_visible)
     self.sel_type_button.set_visibility(self.ui_visible)
-    self.constrain_checkbox.set_visibility(self.ui_visible)
 
     if self.relax:
       self.relax_panel.set_visibility(self.ui_visible)
@@ -338,6 +335,7 @@ class Atomic ( XtraCrysPy ):
 
 
   def push_sbond ( self ):
+    from .cylinder import cylinder
     from fury import actor
 
     if self.sel_forward:
@@ -352,7 +350,7 @@ class Atomic ( XtraCrysPy ):
     brad = self.model.bond_radius(dist, ai1, ai2, self.bond_type)
     if self.bond_type != 'Sphere':
       brad *= 0.51
-      tbond = actor.cylinder([cent], [conn], [self.scolor/255],
+      tbond = cylinder([cent], [conn], [self.scolor/255],
                              radius=brad, heights=dist, resolution=20)
     else:
       ends = [[self.aposs[ai2], self.aposs[ai1]]]
@@ -506,7 +504,7 @@ class Atomic ( XtraCrysPy ):
     from fury.actor import streamtube
     self.bound_planes = planes
     self.frame = streamtube(lines, colors=(1,1,1), linewidth=0.1)
-    if 'Boundary' in self.frame_checkbox.checked_labels:
+    if self.boundary:
       self.scene.add(self.frame)
 
 
@@ -583,6 +581,7 @@ class Atomic ( XtraCrysPy ):
 
 
   def render_atomic_model ( self ):
+    from .cylinder import cylinder
     from fury import actor
     import numpy as np
 
@@ -605,7 +604,6 @@ class Atomic ( XtraCrysPy ):
                                 theta=theta, radii=ainfo[2],
                                 use_primitive=False)
       except:
-        print('WARNING: DEPRECATED FURY VERSION: Use master branch of github.com/fury-gl/fury')
         self.atoms = actor.sphere(ainfo[0], ainfo[1], phi=phi,
                                   theta=theta, radii=ainfo[2])
       self.scene.add(self.atoms)
@@ -613,7 +611,7 @@ class Atomic ( XtraCrysPy ):
 
     self.bonds = []
     for i in range(binfo[0].shape[0]):
-      tbond = actor.cylinder(binfo[0][i], binfo[1][i], binfo[2][i],
+      tbond = cylinder(binfo[0][i], binfo[1][i], binfo[2][i],
               radius=binfo[3][i], heights=binfo[4][i], resolution=20)
       self.scene.add(tbond)
       self.bonds.append(tbond)
@@ -621,7 +619,7 @@ class Atomic ( XtraCrysPy ):
     self.update_boundary(*linfo)
 
 
-  def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.25, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True):
+  def render_iso_surface ( self, data, origin=(0,0,0), arrows=None, iso_vals=0, colors=(255,110,0), arrow_colors=(255,100,0), arrow_scale=0.25, arrow_anchor='mid', arrow_spacing=0.01, disp_all=False, clip_planes=None, clip_boundary=True):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
@@ -634,6 +632,7 @@ class Atomic ( XtraCrysPy ):
         arrow_colors (ndarray or list): Colors for the arrows, same specifications as the surface colors
         arrow_scale (float): Scale for the displayed arrows
         arrow_anchor (str): Anchor position for arrows. Options are 'mid', 'tip', and 'tail'
+        arrow_spacing (float): Tolerance for cleaning how many arrows can appear in a certain region. Increase this value to recuce the arrow density.
         disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
         clip_boundary (bool): Setting True disables clipping of the isosurface within the first BZ.
@@ -642,5 +641,5 @@ class Atomic ( XtraCrysPy ):
     origin = np.array(origin, dtype=float)
     origin -= np.array([((nsc[i]+1)%4)/4 for i in range(3)])
     origin += .5/np.array(data.shape)/nsc*[3-nsc[i]%2 for i in range(3)]
-    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, arrow_scale, arrow_anchor, disp_all, clip_planes, clip_boundary, nsc)
+    super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, arrow_scale, arrow_anchor, arrow_spacing, disp_all, clip_planes, clip_boundary, nsc)
 

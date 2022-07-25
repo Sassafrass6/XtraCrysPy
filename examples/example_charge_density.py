@@ -13,5 +13,14 @@ if '__main__' == __name__:
   data = read_XSF(density_file)
 
   xcp.render_iso_surface(data[0], iso_vals=.000075, colors=[.9,.2,0,.8])
-  xcp.start_crystal_view()
+
+  # The camera's position and orientation is set manually.
+  #  These coordinates can be obtained any time by pressing 'o'+SHIFT
+  cam_pos = [56.0194, -56.0907, 18.4797]
+  cam_foc = [-12.9433, 12.9455, 15.5912]
+  cam_up = [0.5538, 0.5783, 0.5990]
+
+  xcp.start_crystal_view(camera_pos=cam_pos,
+                         camera_focal=cam_foc,
+                         camera_up=cam_up)
 

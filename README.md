@@ -9,7 +9,7 @@
 - Plot molecular systems with minimal setup
 - Plot systems from DFT or MD input/output files
 - Interact with the system to caluclate distances, angles, or receive atomic information
-- Display relaxation or MD steps from QE relax output or LAMMPS trajectory files. (CP2K xyz coming soon)
+- Display relaxation or MD steps from QE relax output, raw coordinates, LAMMPS trajectory files, or CP2K (xyz)
 - Display reciprocal space features
 - Plot real space iso-surfaces (charge density, etc)
 - Plot reciprocal iso-surfaces (Fermi surface, spin-texture, etc)
@@ -26,22 +26,32 @@
 ## Requirements:
 - python 3.8
 - numpy 1.19
-- [fury 0.8](https://github.com/fury-gl/fury) (Use the latest GitHub commit. The latest release contains a bug with cylinder orientation used for drawing bonds.)
+- [fury 0.8](https://github.com/fury-gl/fury)
 - [ase](https://wiki.fysik.dtu.dk/ase/)
 
-## Installation:  
-INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contains a bug causing misaligned cylinder orientation.
-(only use --user if you do not have permission to install python packages)
+## Installation:
+
+The [Anaconda](https://www.anaconda.com/) Python distribution is recommended.
+
+### Install with pip:
+-  pip install xtracryspy
+### Install from source:
 -  python setup.py install
 -  python setup.py install --user
+
+(only use --user if you do not have permission to install python packages)
 
 ## Control Inputs:
 - 'u' : Toggle UI visibility
 - 'a' : Toggle Axis visibility
 - 'b' : Toggle Boundary visiblity
+- 'c' : Toggle constraint of atoms within cell
+- 's' : Togle the selection type panel visibility
+- 'n' : Toggle the cell repition panel visibility
 - '>' : Step forward in relax or MD
 - '<' : Step backward in relax or MD
 - CTRL + ('>' or '<') : Step 5% through the relaxation or MD steps
+- SHIFT + 'o' : Report the camera position and orientation
 - SHIFT + 'c' : Reset camera to default position
 - SHIFT + 's' : Take snapshot
 - CTRL + 'w' : Exit
@@ -57,8 +67,11 @@ INSTALLATION NOTE: Use FURY master branch from GitHub. The latest release contai
 Available in the examples directory
 
 From scratch:
+- python CNO3.py
 - python caffeine.py
 - python silicon_fcc.py
+- python example_motion.py
+- python example_textured_isosurface.py
 
 From inputfile (with main.py script):
 - python main.py <input_file>
@@ -83,9 +96,10 @@ Charge Density:
 Reciprocal Space:
 - python example_BZ.py
 
-Fermi Surfaces:
+Isosurfaces:
 - python example_isosurface1.py
 - python example_isosurface2.py
 - python example_isosurface_clip.py
 - python example_colored_isosurface.py
+- python example_textured_isosurface.py
 - python example_textured_isosurface_clip.py

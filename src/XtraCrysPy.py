@@ -32,24 +32,10 @@ class XtraCrysPy:
     if not perspective:
       self.scene.projection('parallel')
 
-    checkbox = ['Boundary']
-    initial = checkbox if boundary else []
-    self.frame_checkbox = ui.Checkbox(checkbox, initial, font_size=24, font_family='Arial', position=(10,self.wsize[1]-35))
-    self.scene.add(self.frame_checkbox)
-    self.frame_checkbox.on_change = self.draw_frame
-    for label in self.frame_checkbox.labels:
-      tactor = self.frame_checkbox.options[label].text.actor
-      tactor.GetTextProperty().SetColor(self.font_color)
-
     self.fprefix = image_prefix
     self.image_res = resolution
-    cam_icon = ('camera',read_viz_icons(fname='camera.png'))
-    self.cam_panel = ui.Panel2D((40,40), (5, size[1]-108), opacity=0)
-    self.cam_button = ui.Button2D(icon_fnames=[cam_icon], size=(40,40))
-    self.cam_button.on_left_mouse_button_clicked = self.camera_engaged
-    self.cam_panel.add_element(self.cam_button, (0,0))
-    self.scene.add(self.cam_panel)
 
+    self.boundary = boundary
     self.bound_points = None
 
     self.surfaces = None
@@ -84,6 +70,8 @@ class XtraCrysPy:
       elif key == 'c':
         self.camera_default_position()
         self.smanager.render()
+      elif key == 'o':
+        self.report_camera_orientation()
 
     if key == 'u':
       self.toggle_ui()
@@ -140,8 +128,12 @@ class XtraCrysPy:
     self.scene.ResetCamera()
 
 
-  def camera_engaged ( self, iren, caller, event ):
-    self.save_image(self.fprefix)
+  def report_camera_orientation ( self ):
+    cam = self.scene.GetActiveCamera()
+    pos,foc,up = cam.GetPosition(),cam.GetFocalPoint(),cam.GetViewUp()
+    print('Camera position: [{:.4f}, {:.4f}, {:.4f}]'.format(*pos))
+    print('Camera focal point: [{:.4f}, {:.4f}, {:.4f}]'.format(*foc))
+    print('Camera up: [{:.4f}, {:.4f}, {:.4f}]'.format(*up))
 
 
   def save_image ( self, fprefix ):
@@ -176,8 +168,6 @@ class XtraCrysPy:
   def toggle_ui ( self ):
 
     vis = self.ui_visible = not self.ui_visible
-    self.cam_panel.set_visibility(self.ui_visible)
-    self.frame_checkbox.set_visibility(self.ui_visible)
 
     if self.surface_slider is not None and not self.disp_all_iso:
       self.surface_slider.set_visibility(vis)
@@ -194,24 +184,13 @@ class XtraCrysPy:
 
 
   def toggle_frame ( self ):
-    option = self.frame_checkbox.options['Boundary']
-    option.checked = not option.checked
-    if option.checked:
-      option.select()
-    else:
-      option.deselect()
-    self.frame_checkbox._handle_option_change(option)
+    self.boundary = not self.boundary
     if self.frame is not None:
-      self.draw_frame(self.frame_checkbox)
-      self.smanager.render()
-
-
-  def draw_frame ( self, checkboxes ):
-    if self.frame is not None:
-      if 'Boundary' in checkboxes.checked_labels:
+      if self.boundary:
         self.scene.add(self.frame)
       else:
         self.scene.rm(self.frame)
+      self.smanager.render()
 
 
   def iso_slider_handle_color (self, i_ren, _obj, _slider):
@@ -221,8 +200,6 @@ class XtraCrysPy:
 
   def update_buttons ( self, caller, event ):
     x,y = self.scene.GetSize()
-    self.cam_panel.position = (5, y-108)
-    self.frame_checkbox.position = (10, y-35)
     if self.surface_slider is not None:
       self.surface_slider.center = (x/2, y-50)
 
@@ -240,7 +217,7 @@ class XtraCrysPy:
       self.surface_index = sind
 
 
-  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), arrow_scale=0.25, arrow_anchor='mid', disp_all=False, clip_planes=None, clip_boundary=True, nsc=(1,1,1) ):
+  def render_iso_surface ( self, lattice, origin, data, arrows, iso_vals=0, colors=(255,110,0,255), arrow_colors=(255,100,0,255), arrow_scale=0.25, arrow_anchor='mid', arrow_spacing=0.01, disp_all=False, clip_planes=None, clip_boundary=True, nsc=(1,1,1) ):
     '''
       Draw an isosurface from volumetric data. Data may be colored with the colors argument, either as a single color or with a color for each voxel. Arrows can be displayed by providing arrows with one normal for each data point. The arrows can be independently colored with arrow_colors. Additionally, the data can be clipped by specifying plane points and normals in the clip_planes argument. clip_planes must be of dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
       Arguments:
@@ -253,6 +230,7 @@ class XtraCrysPy:
         colors (ndarray or list): Colors for the surface. Can specify for each isovalue and for each voxel, or just choose single colors. Accepted dimensions are (A,), (N,A), (X,Y,Z,A), or (N,X,Y,Z,A), where X,Y,Z are determined by data dimensions, N is the number of isovalues provided, and A is either 3 or 4 for RGB or RGBA colors respectively
         arrow_colors (ndarray or list): Colors for the arrows, same specifications as the surface colors
         arrow_anchor (str): Anchor position for arrows. Options are 'mid', 'tip', and 'tail'
+        arrow_spacing (float): Tolerance for cleaning how many arrows can appear in a certain region. Increase this value to recuce the arrow density.
         disp_all (bool): True draws all surfaces at once, False adds a slider for choosing displayed surface.
         clip_planes (ndarray or list): Specify plane points and normals for cutting the isosurface and arrows. Dimension (2,N,3) where N is an arbitrary number of planes to clip on. The first dimension specifies points on index 0 and normals on index 1.
         clip_boundary (bool): Setting False disables clipping of the isosurface within the first BZ.
@@ -413,7 +391,14 @@ class XtraCrysPy:
       nsurf = len(self.surfaces)
     grid_spacing = [(nsc[i]+1)/s for i,s in enumerate(data.shape)]
     for i,iv in enumerate(iso_vals):
-      self.surfaces.append(iso_surface(data, grid_spacing, iv, origin, colors[i], bound_planes=bound_planes, skew=lattice, arrows=arrows, arrow_colors=arrow_colors[i], arrow_scale=arrow_scale, arrow_anchor=arrow_anchor))
+      iso = iso_surface(data, grid_spacing, iv, origin, colors[i],
+                        bound_planes=bound_planes,
+                        skew=lattice, arrows=arrows,
+                        arrow_colors=arrow_colors[i],
+                        arrow_scale=arrow_scale,
+                        arrow_anchor=arrow_anchor,
+                        arrow_spacing=arrow_spacing)
+      self.surfaces.append(iso)
 
     if len(self.surfaces) > nsurf:
       if not disp_all:
@@ -450,16 +435,27 @@ class XtraCrysPy:
             self.scene.add(ar)
 
 
-  def start_crystal_view ( self ):
+  def start_crystal_view ( self, camera_pos=None, camera_focal=None, camera_up=None ):
     '''
       Begin the render sequence and allow interaction
+
+      Arguments:
+        camera_pos (list): 3-vector position to place the camera.
+                           None defaults to position central to the
+                           rendered objects in the xy plane.
+        camera_focal (list): 3-vector positions of the cameras focal
+                             point. None defaults to the center of the
+                             rendered objects.
+        camera_up (list): 3-vector for the cameras "up" orientation.
+                          None defaults to unit vector y [0,1,0].
     '''
     from fury import pick
 
     cam = self.scene.GetActiveCamera()
-    self.cam_defaults = (cam.GetPosition(),
-                         cam.GetFocalPoint(),
-                         cam.GetViewUp())
+    pos = cam.GetPosition() if camera_pos is None else camera_pos
+    foc = cam.GetFocalPoint() if camera_focal is None else camera_focal
+    up = cam.GetViewUp() if camera_up is None else camera_up
+    self.cam_defaults = (pos, foc, up)
 
     self.picker = pick.PickingManager()
     self.smanager.iren.AddObserver('WindowResizeEvent', self.update_buttons)
