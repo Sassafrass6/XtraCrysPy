@@ -363,7 +363,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   for i in range(struct['nat']):
     ls = fstr[il+i].split()
     spec.append(ls[0])
-    abc[i,:] = np.array([float(v) for v in ls[1:]])
+    abc[i,:] = np.array([float(v) for v in ls[1:4]])
 
   struct['abc'] = abc
   struct['species'] = spec
