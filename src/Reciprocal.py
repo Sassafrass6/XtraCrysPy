@@ -1,5 +1,6 @@
 from .XtraCrysPy import XtraCrysPy
 from .Model import Model
+from fury import actor
 import numpy as np
 
 class Reciprocal ( XtraCrysPy ):
@@ -39,6 +40,13 @@ class Reciprocal ( XtraCrysPy ):
       else:
         raise ValueError('Argument \'model\' must be a Model object or a dictionary.')
 
+      self.show_k_axes = True
+      zeros = np.zeros((3,3), dtype=float)
+      self.k_axes = actor.arrow(zeros, self.rlattice, zeros,
+                                tip_radius=.005, tip_length=0.025,
+                                shaft_radius=0.002, repeat_primitive=False)
+      self.scene.add(self.k_axes)
+
       self.shift_step = 0.01
       self.bravais_boundaries(render=boundary)
       cam = self.scene.GetActiveCamera()
@@ -46,6 +54,29 @@ class Reciprocal ( XtraCrysPy ):
       self.cam_defaults = (cam.GetPosition(),
                            cam.GetFocalPoint(),
                            cam.GetViewUp())
+
+
+  def toggle_k_axes ( self ):
+    self.show_k_axes = not self.show_k_axes
+    if self.k_axes is not None:
+      if self.show_k_axes:
+        self.scene.add(self.k_axes)
+      else:
+        self.scene.rm(self.k_axes)
+      self.smanager.render()
+
+
+  def key_press_callback ( self, obj, event ):
+
+    key = obj.GetKeySym().lower()
+    shift = obj.GetShiftKey()
+    control = obj.GetControlKey()
+
+    if key == 'k':
+      self.toggle_k_axes()
+
+    else:
+      super().key_press_callback(obj, event)
 
 
   def display_points ( self, points, colors=(1,1,1), radii=0.04 ):

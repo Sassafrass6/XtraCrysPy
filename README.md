@@ -46,6 +46,7 @@ The [Anaconda](https://www.anaconda.com/) Python distribution is recommended.
 - 'a' : Toggle Axis visibility
 - 'b' : Toggle Boundary visiblity
 - 'c' : Toggle constraint of atoms within cell
+- 'k' : Toggle the reciprocal lattice vector visibility
 - 's' : Togle the selection type panel visibility
 - 'n' : Toggle the cell repition panel visibility
 - '>' : Step forward in relax or MD
