@@ -40,20 +40,13 @@ class Reciprocal ( XtraCrysPy ):
       else:
         raise ValueError('Argument \'model\' must be a Model object or a dictionary.')
 
-      self.show_k_axes = True
-      zeros = np.zeros((3,3), dtype=float)
-      self.k_axes = actor.arrow(zeros, self.rlattice, zeros,
-                                tip_radius=.005, tip_length=0.025,
-                                shaft_radius=0.002, repeat_primitive=False)
-      self.scene.add(self.k_axes)
-
       self.shift_step = 0.01
       self.bravais_boundaries(render=boundary)
-      cam = self.scene.GetActiveCamera()
-      self.smanager.render()
-      self.cam_defaults = (cam.GetPosition(),
-                           cam.GetFocalPoint(),
-                           cam.GetViewUp())
+
+      self.show_k_axes = False
+      self.k_axes = actor.arrow(np.zeros((3,3)), self.rlattice, self.font_color,
+                                tip_radius=.005, tip_length=0.025,
+                                shaft_radius=0.002, repeat_primitive=False)
 
 
   def toggle_k_axes ( self ):
@@ -202,3 +195,22 @@ class Reciprocal ( XtraCrysPy ):
     origin -= 1 - 1/np.array(data.shape)
     super().render_iso_surface(self.rlattice, origin, data, arrows, iso_vals, colors, arrow_colors, arrow_scale, arrow_anchor, arrow_spacing, disp_all, clip_planes, clip_boundary)
 
+
+  def start_crystal_view ( self, camera_pos=None, camera_focal=None, camera_up=None ):
+    '''
+      Begin the render sequence and allow interaction
+
+      Arguments:
+        camera_pos (list): 3-vector position to place the camera.
+                           None defaults to position central to the
+                           rendered objects in the xy plane.
+        camera_focal (list): 3-vector positions of the cameras focal
+                             point. None defaults to the center of the
+                             rendered objects.
+        camera_up (list): 3-vector for the cameras "up" orientation.
+                          None defaults to unit vector y [0,1,0].
+    '''
+    super().start_crystal_view(camera_pos, camera_focal, camera_up)
+    super().camera_default_position()
+    self.toggle_k_axes()
+    self.smanager.start()

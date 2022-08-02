@@ -643,3 +643,22 @@ class Atomic ( XtraCrysPy ):
     origin += .5/np.array(data.shape)/nsc*[3-nsc[i]%2 for i in range(3)]
     super().render_iso_surface(self.model.lattice, origin, data, arrows, iso_vals, colors, arrow_colors, arrow_scale, arrow_anchor, arrow_spacing, disp_all, clip_planes, clip_boundary, nsc)
 
+
+  def start_crystal_view ( self, camera_pos=None, camera_focal=None, camera_up=None ):
+    '''
+      Begin the render sequence and allow interaction
+
+      Arguments:
+        camera_pos (list): 3-vector position to place the camera.
+                           None defaults to position central to the
+                           rendered objects in the xy plane.
+        camera_focal (list): 3-vector positions of the cameras focal
+                             point. None defaults to the center of the
+                             rendered objects.
+        camera_up (list): 3-vector for the cameras "up" orientation.
+                          None defaults to unit vector y [0,1,0].
+    '''
+    super().start_crystal_view(camera_pos, camera_focal, camera_up)
+    super().camera_default_position()
+    self.smanager.render()
+    self.smanager.start()
