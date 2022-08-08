@@ -592,11 +592,13 @@ class Atomic ( XtraCrysPy ):
     self.aposs = ainfo[0]
     self.natoms = ainfo[0].shape[0]
 
-    phi = theta = 16
+    phi = theta = 30
     if self.natoms > 4000:
       phi = 8; theta = 6
     elif self.natoms > 2000:
       phi = 12; theta = 10
+    elif self.natoms > 100:
+      phi = theta = 16
 
     if self.natoms > 0:
       try:
