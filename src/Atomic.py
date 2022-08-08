@@ -297,16 +297,18 @@ class Atomic ( XtraCrysPy ):
 
   def toggle_sel_menu ( self, iren, caller, event ):
     self.sel_menu_vis = not self.sel_menu_vis
-    self.sel_type_menu.set_visibility(self.sel_menu_vis)
     self.sel_type_button.next_icon()
-    self.smanager.render()
+    if self.ui_visible:
+      self.sel_type_menu.set_visibility(self.sel_menu_vis)
+      self.smanager.render()
 
 
   def toggle_ncell_menu ( self, iren, caller, event ):
     self.ncell_panel_vis = not self.ncell_panel_vis
-    self.ncell_panel.set_visibility(self.ncell_panel_vis)
     self.ncell_button.next_icon()
-    self.smanager.render()
+    if self.ui_visible:
+      self.ncell_panel.set_visibility(self.ncell_panel_vis)
+      self.smanager.render()
 
 
   def angle ( self, ai0, ai1, ai2 ):
