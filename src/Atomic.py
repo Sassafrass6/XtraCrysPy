@@ -328,7 +328,7 @@ class Atomic ( XtraCrysPy ):
 
   def set_atom_color ( self, mem, index, nvert, col ):
     for i in range(index*nvert, (index+1)*nvert):
-      mem[i] = np.array(col)
+      mem[i,:3] = np.array(col[:3])
 
 
   def pop_sbond ( self, ind=-1 ):
