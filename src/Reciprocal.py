@@ -44,9 +44,14 @@ class Reciprocal ( XtraCrysPy ):
       self.bravais_boundaries(render=boundary)
 
       self.show_k_axes = False
-      self.k_axes = actor.arrow(np.zeros((3,3)), self.rlattice, self.font_color,
-                                tip_radius=.005, tip_length=0.025,
-                                shaft_radius=0.002, repeat_primitive=False)
+      try:
+        self.k_axes = actor.arrow(np.zeros((3,3)), self.rlattice, self.font_color,
+                                  tip_radius=.005, tip_length=0.025,
+                                  shaft_radius=0.002, repeat_primitive=False)
+      except:
+        self.k_axes = actor.arrow(np.zeros((3,3)), self.rlattice, self.font_color,
+                                  tip_radius=.005, tip_length=0.025,
+                                  shaft_radius=0.002)
 
 
   def toggle_k_axes ( self ):
