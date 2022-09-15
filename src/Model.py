@@ -274,7 +274,7 @@ class Model:
     brads = []
     bheight = []
     natsc = atoms.shape[0]
-    skey = lambda v1,v2 : v1 + '_' + v2
+    skey = lambda v1,v2 : f'{v1}_{v2}'
     if bond_type == 'Sphere':
       dist_min = 1e5
       for i1 in range(natsc-1):
