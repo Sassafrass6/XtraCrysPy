@@ -415,14 +415,14 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   return struct
 
 
-def struct_from_inputfile_ASE ( fname:str ):
+def struct_from_inputfile_ASE ( fname:str, format=None ):
   '''
   '''
   from .conversion import ANG_BOHR
   import ase.io as aio
   import numpy as np
 
-  atoms = aio.read(fname)
+  atoms = aio.read(fname, format=format)
   syms = atoms.symbols
   la = len(syms)
 
@@ -608,21 +608,25 @@ def struct_from_inputfile ( fname:str, ftype='automatic' ):
   '''
   '''
 
+  ase_type = None
   if ftype == 'automatic':
     ftype = infer_file_type(fname)
+  else:
+    ase_type = ftype
 
   try:
-    if 'qe' in ftype:
-      if 'o' in ftype:
-        return struct_from_outputfile_QE(fname)
-      else:
-        return struct_from_inputfile_QE(fname)
-    elif ftype == 'cp2k':
-      return struct_from_inputfile_CP2K(fname)
-    elif ftype == 'lammps':
-      return md_coordinates_LAMMPS(fname)
-    else:
-      return struct_from_inputfile_ASE(fname)
+    try:
+      return struct_from_inputfile_ASE(fname, format=ase_type)
+    except Exception as e:
+      if 'qe' in ftype:
+        if 'o' in ftype:
+          return struct_from_outputfile_QE(fname)
+        else:
+          return struct_from_inputfile_QE(fname)
+      elif ftype == 'cp2k':
+        return struct_from_inputfile_CP2K(fname)
+      elif ftype == 'lammps':
+        return md_coordinates_LAMMPS(fname)
 
   except Exception as e:
     print('Failed to read file {}'.format(fname))

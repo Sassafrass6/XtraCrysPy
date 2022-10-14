@@ -21,6 +21,6 @@ if '__main__' == __name__:
             'bonds':bonds,
             'aunit':'angstrom'}
 
-  xcp = Atomic.Atomic(params=a_info)
+  xcp = Atomic.Atomic(params=a_info, atom_res=(6,10))
   xcp.start_crystal_view()
 

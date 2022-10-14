@@ -9,8 +9,8 @@ class Atomic ( XtraCrysPy ):
                  background=(0,0,0), perspective=False, model=None,
                  params={}, multi_frame=False, nsc=(1,1,1),
                  bond_type='Stick', sel_type='Chain', unit='angstrom',
-		 runit='degree', constrain_atoms=False,
-                 image_prefix='XCP_Image', resolution=4 ):
+		 runit='degree', constrain_atoms=False, atom_res=(0,0),
+                 image_prefix='XCP_Image', resolution=4, md_perc=0.2):
     super().__init__(size, axes, boundary, background,
                      perspective, image_prefix, resolution)
     from .Model import Model
@@ -55,6 +55,8 @@ class Atomic ( XtraCrysPy ):
     self.frame = None
     self.model = model
     self.frame_index = 0
+    self.md_perc = md_perc
+    self.atom_res = atom_res
     self.relax = model.relax
     self.nrelax = self.model.atoms.shape[0]
     self.relax_boundary = self.model.lattice.shape[0] > 1
@@ -196,7 +198,7 @@ class Atomic ( XtraCrysPy ):
 
     elif key in ['less', 'greater', 'comma', 'period']:
       if self.relax:
-        step = 1 if not control else int(np.round(self.nrelax/20))
+        step = 1 if not control else max(1,int(np.round(self.nrelax*self.md_perc)))
         if key in ['less', 'comma']:
           self.relax_backward(None, obj, event, step=step)
         else:
@@ -595,12 +597,14 @@ class Atomic ( XtraCrysPy ):
     self.natoms = ainfo[0].shape[0]
 
     phi = theta = 30
-    if self.natoms > 4000:
-      phi = 8; theta = 6
+    if 0 not in self.atom_res:
+      theta,phi = self.atom_res
+    elif self.natoms > 4000:
+      theta,phi = 6,8
     elif self.natoms > 2000:
-      phi = 12; theta = 10
+      theta,phi = 10,12
     elif self.natoms > 100:
-      phi = theta = 16
+      phi = theta = 20
 
     if self.natoms > 0:
       try:
