@@ -1,5 +1,6 @@
 from fury.utils import colors_from_actor, update_actor
 from fury.utils import vertices_from_actor
+from .elements import atomic_weight
 from .Atomic import Atomic
 import numpy as np
 
@@ -12,18 +13,24 @@ class MolDyn ( Atomic ):
                  params={}, multi_frame=False, nsc=(1,1,1),
                  bond_type='Stick', sel_type='Chain', unit='angstrom',
 		 runit='degree', constrain_atoms=False, atom_res=(0,0),
-                 image_prefix='XCP_Image', resolution=4, dt=0.1):
+                 image_prefix='XCP_Image', resolution=4, ncallback=35, dt=.1):
     super().__init__(size, axes, boundary, background,
                      perspective, model, params, multi_frame, nsc, bond_type, sel_type, unit, runit, constrain_atoms, atom_res, image_prefix, resolution, 0)
 
     self.fn = 0
     self.dt = dt
+    self.masses = []
+    for i,s in enumerate(self.model.species):
+      if s in atomic_weight:
+        self.masses.append(atomic_weight[s])
+      else:
+        self.masses.append(100)
     self.velocities = np.zeros((self.model.atoms.shape[0],3), dtype=float)
     self.st = time()
-    self.smanager.add_timer_callback(True, 30, self.frame_timer)
+    self.smanager.add_timer_callback(True, ncallback, self.frame_timer)
 
 
-  def lj_forces ( self, sigma=0.8, epsilon=.05 ):
+  def lj_forces ( self, sigma=.75, epsilon=.1 ):
     atoms = self.model.atoms
     species = self.model.species
 
@@ -45,8 +52,8 @@ class MolDyn ( Atomic ):
     forces = self.lj_forces()
     atoms = self.model.atoms
     for i in range(atoms.shape[0]):
-      self.velocities[i] += forces[i] * self.dt
-      atoms[i] += self.velocities[i] * self.dt
+      self.velocities[i] += forces[i] * self.dt / self.masses[i]
+      atoms[i] += self.velocities[i] * self.dt / self.masses[i]
     self.update_atomic_positions()
 
   def frame_timer ( self, obj, event ):

@@ -8,12 +8,12 @@ positions[2] = np.array([.8,.8,.8])
 
 # Color one red and the other blue
 params = {'abc':positions,
-          'species':['s1', 's2', 's3'],
+          'species':['Cs', 'Cs', 'Cs'],
           'radii':{'s1':0.5,'s2':0.5,'s3':0.5},
           'colors':{'s1':(1,0,0),
                     's2':(0,1,0),
                     's3':(0,0,1)}}
 
 # Render the multi-frame visualization
-xcp = MolDyn(params=params)
+xcp = MolDyn(params=params, dt=1, ncallback=10)
 xcp.start_crystal_view()
