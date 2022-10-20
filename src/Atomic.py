@@ -51,6 +51,7 @@ class Atomic ( XtraCrysPy ):
     else:
       model = Model(params)
 
+    self.anim = False
     self.atoms = None
     self.frame = None
     self.model = model
@@ -182,6 +183,35 @@ class Atomic ( XtraCrysPy ):
       self.relax_panel.add_element(self.relax_text, (55,-10))
       self.scene.add(self.relax_panel)
 
+
+  def animate ( self, fdt=30, spf=1, restart_delay=10, pc_bonds=False ):
+
+    self.anim = True
+    self.anim_spf = spf
+    self.anim_bonds = None
+    self.anim_rcount = 0
+    self.anim_rdelay = restart_delay
+    self.smanager.add_timer_callback(True, fdt, self._animate)
+
+
+  def _animate ( self, obj, event ):
+    if self.frame_index == self.nrelax-1:
+      if self.anim_rdelay < 0:
+        return
+      elif self.anim_rdelay == 0:
+        self.frame_index = 0
+        self.update_relax_text()
+        self.update_atomic_model()
+      else:
+        if self.anim_rcount < self.anim_rdelay:
+          self.anim_rcount += 1
+        else:
+          self.anim_rcount = 0
+          self.frame_index = 0
+          self.update_relax_text()
+          self.update_atomic_model()
+    else:
+      self.relax_forward(None, obj, event, step=self.anim_spf)
 
   def key_press_callback ( self, obj, event ):
 
@@ -431,7 +461,8 @@ class Atomic ( XtraCrysPy ):
         spec = self.model.species[indmod]
         message = 'Atom {} ({}): {}'.format(indmod, index, spec)
         self.update_selection_text(message)
-        print(message)
+        if not self.anim:
+          print(message)
 
       elif self.sel_type == 'Distance':
         if len(self.sel_inds) == 0:
@@ -442,9 +473,10 @@ class Atomic ( XtraCrysPy ):
             dist = self.distance(*self.sel_inds)
             message = '{:.4f} {}\n'.format(dist, self.units)
             self.update_selection_text(message)
-            dtext = 'Distance between atoms {} and {}:'
-            print(dtext.format(*self.sel_inds))
-            print('\t{}'.format(message))
+            if not self.anim:
+              dtext = 'Distance between atoms {} and {}:'
+              print(dtext.format(*self.sel_inds))
+              print('\t{}'.format(message))
 
       elif self.sel_type == 'Angle':
         if len(self.sel_inds) == 0:
@@ -456,9 +488,10 @@ class Atomic ( XtraCrysPy ):
               angle = self.angle(*self.sel_inds)
               message = '{:.4f} {}\n'.format(angle, self.runits)
               self.update_selection_text(message)
-              dtext = 'Angle between atoms {}, {}, and {}:'
-              print(dtext.format(*self.sel_inds))
-              print('\t{}'.format(message))
+              if not self.anim:
+                dtext = 'Angle between atoms {}, {}, and {}:'
+                print(dtext.format(*self.sel_inds))
+                print('\t{}'.format(message))
 
       elif self.sel_type == 'Chain':
         selected = self.push_atom(colors, index, nvert)

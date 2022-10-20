@@ -19,4 +19,7 @@ params = {'abc':positions,
 
 # Render the multi-frame visualization
 xcp = Atomic(params=params, multi_frame=True)
+
+# Animate with frame duration 30ms, 1 step per frame, and a restart delay of 20 frames.
+xcp.animate(fdt=30, spf=1, restart_delay=20)
 xcp.start_crystal_view()
