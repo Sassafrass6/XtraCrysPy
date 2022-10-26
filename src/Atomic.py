@@ -51,7 +51,6 @@ class Atomic ( XtraCrysPy ):
     else:
       model = Model(params)
 
-    self.anim = False
     self.atoms = None
     self.frame = None
     self.model = model
@@ -61,6 +60,9 @@ class Atomic ( XtraCrysPy ):
     self.relax = model.relax
     self.nrelax = self.model.atoms.shape[0]
     self.relax_boundary = self.model.lattice.shape[0] > 1
+
+    self.anim = False
+    self.anim_running = False
 
     self.shift_step = 0.25
     self.units = unit.lower()
@@ -185,16 +187,39 @@ class Atomic ( XtraCrysPy ):
 
 
   def animate ( self, fdt=30, spf=1, restart_delay=10, pc_bonds=False ):
+    '''
+      Animate a sequence of atomic frames with a timestep of fdt per frame.
+      The number of frames to advance per time step is selected with spf,
+       and the animation restartes automatically restart_delay frames after
+       the animation finishes. restart_delay=-1 prevents the animation from
+       restarting.
+
+      Arguments:
+        fdt (float): The framerate in milliseconds
+        spf (int): The number of frames to advance per time step
+        restart_delay (int): The number of frames to wait before restarting. -1 prevents restart
+        pc_bonds (bool): NOT IMPLEMENTED: Pre-compute bonds
+    '''
+
+    if self.model.bonds:
+      print('WARNING: Animating many atoms with bonds enabled may suffer performance issues.')
+      print('\tIncreasing fdt beyond the bond computation time can restore some responsiveness.')
+      print('\tPre-computing bonds will become available in future versions.')
 
     self.anim = True
     self.anim_spf = spf
     self.anim_bonds = None
     self.anim_rcount = 0
+    self.anim_running = True
     self.anim_rdelay = restart_delay
     self.smanager.add_timer_callback(True, fdt, self._animate)
 
 
   def _animate ( self, obj, event ):
+
+    if not self.anim_running:
+      return
+
     if self.frame_index == self.nrelax-1:
       if self.anim_rdelay < 0:
         return
@@ -213,6 +238,7 @@ class Atomic ( XtraCrysPy ):
     else:
       self.relax_forward(None, obj, event, step=self.anim_spf)
 
+
   def key_press_callback ( self, obj, event ):
 
     key = obj.GetKeySym().lower()
@@ -225,6 +251,9 @@ class Atomic ( XtraCrysPy ):
       self.toggle_sel_menu(None,None,None)
     if not shift and key == 'n':
       self.toggle_ncell_menu(None,None,None)
+
+    elif key == 'space':
+      self.anim_running = not self.anim_running
 
     elif key in ['less', 'greater', 'comma', 'period']:
       if self.relax:
