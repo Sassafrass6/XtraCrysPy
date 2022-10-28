@@ -10,7 +10,7 @@
 - Plot systems from DFT or MD input/output files
 - Interact with the system to caluclate distances, angles, or receive atomic information
 - Display relaxation or MD steps from QE relax output, raw coordinates, LAMMPS trajectory files, or CP2K (xyz)
-- Animate trajectories, with control over fps, steps per frame, and precomputing bonds.
+- Animate trajectories, with control over frames per second and steps per frame.
 - Display reciprocal space features
 - Plot real space iso-surfaces (charge density, etc)
 - Plot reciprocal iso-surfaces (Fermi surface, spin-texture, etc)
