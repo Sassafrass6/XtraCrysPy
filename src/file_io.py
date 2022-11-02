@@ -72,6 +72,7 @@ def read_relaxed_coordinates_QE ( fname:str ):
     Returns:
       (dict): Dictionary with one or two entries - 'apos' for atomic positions and 'coord' for crystal coordinates.
   '''
+  from .conversion import ANG_BOHR
   from os.path import isfile,join
   from os import getcwd
   import numpy as np
@@ -100,12 +101,18 @@ def read_relaxed_coordinates_QE ( fname:str ):
           eL += 1
         if eL >= nL:
           break
+
         if 'ATOMIC_POSITIONS' in lines[eL]:
           unit = lines[eL].split()[1].strip('(){{}}')
           if len(unit) > 1:
             struct['aunit'] = unit
           eL,apos = read_apos(eL+1)
+          if 'angstrom' in unit:
+            apos = ANG_BOHR * (apos @ np.linalg.inv(struct['lattice']))
+          elif 'bohr' in unit:
+            apos = apos @ np.linalg.inv(struct['lattice'])
           abc.append(apos)
+
         elif 'CELL_PARAMETERS' in lines[eL]:
           coord = []
           unit = lines[eL].split()[1].strip('(){{}}')
