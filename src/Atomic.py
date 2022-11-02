@@ -61,6 +61,9 @@ class Atomic ( XtraCrysPy ):
     self.nrelax = self.model.atoms.shape[0]
     self.relax_boundary = self.model.lattice.shape[0] > 1
 
+    self.anim = False
+    self.anim_running = False
+
     self.shift_step = 0.25
     self.units = unit.lower()
     self.runits = runit.lower()
@@ -183,6 +186,59 @@ class Atomic ( XtraCrysPy ):
       self.scene.add(self.relax_panel)
 
 
+  def animate ( self, fdt=30, spf=1, restart_delay=10, pc_bonds=False ):
+    '''
+      Animate a sequence of atomic frames with a timestep of fdt per frame.
+      The number of frames to advance per time step is selected with spf,
+       and the animation restartes automatically restart_delay frames after
+       the animation finishes. restart_delay=-1 prevents the animation from
+       restarting.
+
+      Arguments:
+        fdt (float): The framerate in milliseconds
+        spf (int): The number of frames to advance per time step
+        restart_delay (int): The number of frames to wait before restarting. -1 prevents restart
+        pc_bonds (bool): NOT IMPLEMENTED: Pre-compute bonds
+    '''
+
+    if self.model.bonds:
+      print('WARNING: Animating many atoms with bonds enabled may suffer performance issues.')
+      print('\tIncreasing fdt beyond the bond computation time can restore some responsiveness.')
+      print('\tPre-computing bonds will become available in future versions.')
+
+    self.anim = True
+    self.anim_spf = spf
+    self.anim_bonds = None
+    self.anim_rcount = 0
+    self.anim_running = True
+    self.anim_rdelay = restart_delay
+    self.smanager.add_timer_callback(True, fdt, self._animate)
+
+
+  def _animate ( self, obj, event ):
+
+    if not self.anim_running:
+      return
+
+    if self.frame_index == self.nrelax-1:
+      if self.anim_rdelay < 0:
+        return
+      elif self.anim_rdelay == 0:
+        self.frame_index = 0
+        self.update_relax_text()
+        self.update_atomic_model()
+      else:
+        if self.anim_rcount < self.anim_rdelay:
+          self.anim_rcount += 1
+        else:
+          self.anim_rcount = 0
+          self.frame_index = 0
+          self.update_relax_text()
+          self.update_atomic_model()
+    else:
+      self.relax_forward(None, obj, event, step=self.anim_spf)
+
+
   def key_press_callback ( self, obj, event ):
 
     key = obj.GetKeySym().lower()
@@ -195,6 +251,9 @@ class Atomic ( XtraCrysPy ):
       self.toggle_sel_menu(None,None,None)
     if not shift and key == 'n':
       self.toggle_ncell_menu(None,None,None)
+
+    elif key == 'space':
+      self.anim_running = not self.anim_running
 
     elif key in ['less', 'greater', 'comma', 'period']:
       if self.relax:
@@ -431,7 +490,8 @@ class Atomic ( XtraCrysPy ):
         spec = self.model.species[indmod]
         message = 'Atom {} ({}): {}'.format(indmod, index, spec)
         self.update_selection_text(message)
-        print(message)
+        if not self.anim:
+          print(message)
 
       elif self.sel_type == 'Distance':
         if len(self.sel_inds) == 0:
@@ -442,9 +502,10 @@ class Atomic ( XtraCrysPy ):
             dist = self.distance(*self.sel_inds)
             message = '{:.4f} {}\n'.format(dist, self.units)
             self.update_selection_text(message)
-            dtext = 'Distance between atoms {} and {}:'
-            print(dtext.format(*self.sel_inds))
-            print('\t{}'.format(message))
+            if not self.anim:
+              dtext = 'Distance between atoms {} and {}:'
+              print(dtext.format(*self.sel_inds))
+              print('\t{}'.format(message))
 
       elif self.sel_type == 'Angle':
         if len(self.sel_inds) == 0:
@@ -456,9 +517,10 @@ class Atomic ( XtraCrysPy ):
               angle = self.angle(*self.sel_inds)
               message = '{:.4f} {}\n'.format(angle, self.runits)
               self.update_selection_text(message)
-              dtext = 'Angle between atoms {}, {}, and {}:'
-              print(dtext.format(*self.sel_inds))
-              print('\t{}'.format(message))
+              if not self.anim:
+                dtext = 'Angle between atoms {}, {}, and {}:'
+                print(dtext.format(*self.sel_inds))
+                print('\t{}'.format(message))
 
       elif self.sel_type == 'Chain':
         selected = self.push_atom(colors, index, nvert)
