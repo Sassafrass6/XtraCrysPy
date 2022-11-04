@@ -1,0 +1,63 @@
+Examples demonstrating the various features of XtraCrysPy, described below, are included in this directory. The examples can be run in succession with the run_examples.py script.
+
+main.py:
+  Base script for quickly displaying structures from inputfile.
+  Supply the filename as an argument (e.g. python main.py inputfile.pwi)
+
+CNO3.py:
+  CNO3 molecule, specified directly from atomic coordinates.
+  Several options are employed to control the visualization properties
+
+caffeine.py:
+  Caffeine molecule, with options passed to XCP
+
+GaAs_fcc.py:
+  Gallium arsenide from raw coordinates, with XCP options
+
+example_poscar.py:
+  Visualize a structure from some VASP inputfile
+
+example_qe_in.py:
+  Display crystal from QE inputfile
+
+example_cif.py:
+  Visualize structure from CIF file
+
+example_cp2k.py:
+  Structure displayed from CP2K inputfile
+
+SnTe_2D.py:
+  2D crystal visualization from QE inputfile
+
+example_lammps_md.py:
+  Animate steps of a LAMMPS MD trajectory
+
+example_relax.py:
+  Display relaxation steps from QE output
+
+example_BZ.py:
+  Setup a reciprocal space visualization
+
+example_charge_density.py:
+  Silicon charge density (isosurface) displayed on top of the atomic model
+
+example_isosurface1.py:
+  Fermi surfaces for various chemical potentials in elemental Aluminum
+
+example_isosurface2.py:
+  Reciprocal space electronic isosurfaces in chiral elemental Tellurium
+
+example_isosurface_clip.py:
+  Isosurfaces of example_isosurface2, with 4/6 clipped on two planes.
+
+example_textured_isosurface.py
+  Display an isosurface with a superimposed texture
+
+example_textured_isosurface_clip.py:
+  Textured reciprocal space isosurface, clipped along a plane
+
+example_colored_isosurface.py:
+  Isosurface colored by voxel
+
+run_examples.py:
+  Run all examples, or pass files to run in succesion as arguments
