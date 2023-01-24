@@ -6,7 +6,7 @@ defs = os.path.join('src')
 long_description = open('./README.md', 'r').read()
 
 setup(name='XtraCrysPy',
-      version='1.0.2',
+      version='1.0.4',
       description='A Python tool for visualizing atomic systems and properties of condensed matter.',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -17,5 +17,5 @@ setup(name='XtraCrysPy',
       packages=['XtraCrysPy'],
       package_dir={'XtraCrysPy':'src'},
       install_requires=['ase', 'fury', 'numpy'],
-      python_requires='>=3.8'
+      python_requires='>=3.7'
 )

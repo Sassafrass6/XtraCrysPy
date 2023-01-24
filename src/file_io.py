@@ -90,10 +90,20 @@ def read_relaxed_coordinates_QE ( fname:str ):
 
     try:
       def read_apos ( sind ):
+        unit = lines[sind].split()[1].strip('(){{}}')
         apos = []
+        sind += 1
         while lines[sind] != '\n' and not 'End final coordinates' in lines[sind]:
           apos.append([float(v) for v in lines[sind].split()[1:4]])
           sind += 1
+        apos = np.array(apos)
+
+        if len(unit) > 1:
+          struct['aunit'] = unit
+        if 'angstrom' in unit:
+          apos = ANG_BOHR * (apos @ np.linalg.inv(struct['lattice']))
+        elif 'bohr' in unit:
+          apos = apos @ np.linalg.inv(struct['lattice'])
         return sind, apos
 
       while eL < nL:
@@ -103,15 +113,9 @@ def read_relaxed_coordinates_QE ( fname:str ):
           break
 
         if 'ATOMIC_POSITIONS' in lines[eL]:
-          unit = lines[eL].split()[1].strip('(){{}}')
-          if len(unit) > 1:
-            struct['aunit'] = unit
-          eL,apos = read_apos(eL+1)
-          if 'angstrom' in unit:
-            apos = ANG_BOHR * (apos @ np.linalg.inv(struct['lattice']))
-          elif 'bohr' in unit:
-            apos = apos @ np.linalg.inv(struct['lattice'])
+          sind,apos = read_apos(eL)
           abc.append(apos)
+          eL = sind
 
         elif 'CELL_PARAMETERS' in lines[eL]:
           coord = []
@@ -133,7 +137,7 @@ def read_relaxed_coordinates_QE ( fname:str ):
 
           while 'ATOMIC_POSITIONS' not in lines[eL]:
             eL += 1
-          eL,apos = read_apos(eL+1)
+          eL,apos = read_apos(eL)
           abc.append(apos)
 
     except Exception as e:
