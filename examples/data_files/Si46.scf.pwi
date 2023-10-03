@@ -10,7 +10,7 @@
  &system
   ibrav = 0
   nat = 184
-  ntyp = 3
+  ntyp = 1
   ecutwfc = 50.0
   ecutrho = 250.0
   occupations = 'smearing'

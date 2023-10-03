@@ -2,7 +2,7 @@ import numpy as np
 
 class Model:
 
-  def __init__ ( self, params=None, fname=None, multi_frame=False ):
+  def __init__ ( self, params=None, fname=None, multi_frame=False, ftype=None, index=None ):
     '''
 
     Arguments:
@@ -22,18 +22,19 @@ class Model:
       self.lunit = 'bohr'
       self.aunit = 'crystal'
       if self.relax:
-        if isinstance(fname, str):
-          from .file_io import read_relaxed_coordinates
-          params.update(read_relaxed_coordinates(fname))
-        else:
+        if isinstance(fname, list):
           from .file_io import struct_from_file_sequence
-          params.update(struct_from_file_sequence(fname))
+          params.update(struct_from_file_sequence(fname, ftype=ftype))
+        else:
+          from .file_io import struct_from_inputfile
+          if ftype is None or ftype == 'espresso-in':
+            ftype = 'espresso-out'
+          params.update(struct_from_inputfile(fname, ftype=ftype, index=slice(0,-1)))
       else:
         from .file_io import struct_from_inputfile
-        from .file_io import infer_file_type
-        if infer_file_type(fname) == 'lammps':
+        if ftype == 'lammps-traj':
           self.relax = True
-        params.update(struct_from_inputfile(fname))
+        params.update(struct_from_inputfile(fname, ftype=ftype, index=index))
 
     try:
       self.bond_type = None

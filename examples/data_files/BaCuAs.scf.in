@@ -28,7 +28,7 @@ ATOMIC_SPECIES
  Ba 137.327 Ba.pbe-spn-kjpaw_psl.1.0.0.UPF
  As 74.922 As.pbe-n-kjpaw_psl.1.0.0.UPF
 
-CELL_PARAMETERS angstrom
+CELL_PARAMETERS bohr
  39.9223542 0.0 0.0
  0.0 39.9223542 0.0
  0.0 0.0 39.9223542

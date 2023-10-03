@@ -7,7 +7,7 @@ class Atomic ( XtraCrysPy ):
 
   def __init__ ( self, size=(1024, 1024), axes=True, boundary=True,
                  background=(0,0,0), perspective=False, model=None,
-                 params={}, multi_frame=False, nsc=(1,1,1),
+                 params={}, ftype=None, multi_frame=False, nsc=(1,1,1),
                  bond_type='Stick', sel_type='Chain', unit='angstrom',
 		 runit='degree', constrain_atoms=False, atom_res=(0,0),
                  image_prefix='XCP_Image', resolution=4, md_perc=0.2):
@@ -33,13 +33,13 @@ class Atomic ( XtraCrysPy ):
         from os.path import isfile
         if not isfile(model):
           raise FileNotFoundError('File {} not found'.format(model))
-        model = Model(params, fname=model, multi_frame=multi_frame)
+        model = Model(params, fname=model, ftype=ftype, multi_frame=multi_frame)
       elif isinstance(model, (list, tuple)):
         from os.path import isfile
         for mfn in model:
           if not isfile(mfn):
             raise FileNotFoundError('File {} not found'.format(mfn))
-        model = Model(params, fname=model, multi_frame=True)
+        model = Model(params, fname=model, ftype=ftype, multi_frame=True)
       else:
         s = 'Argument \'model\' must be a file name, a list of file names, or a Model object.'
         raise TypeError(s)

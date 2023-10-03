@@ -17,5 +17,6 @@ setup(name='XtraCrysPy',
       packages=['XtraCrysPy'],
       package_dir={'XtraCrysPy':'src'},
       install_requires=['ase', 'fury', 'numpy'],
+      entry_points={'console_scripts':['xcp = XtraCrysPy.interface:xcp_main']},
       python_requires='>=3.7'
 )

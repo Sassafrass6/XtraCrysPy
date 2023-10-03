@@ -192,24 +192,6 @@ def read_relaxed_coordinates_CP2K_XYZ ( fname:str ):
   return struct
 
 
-def read_relaxed_coordinates ( fname:str, ftype='automatic' ):
-  '''
-    Assumed that the file type is a QE relax output file
-  '''
-
-  if ftype == 'automatic':
-    ftype = infer_file_type(fname)
-
-  if 'qe' in ftype:
-    return read_relaxed_coordinates_QE(fname)
-  elif 'lammps' in ftype:
-    return md_coordinates_LAMMPS(fname)
-  elif 'xyz' in ftype:
-    return read_relaxed_coordinates_CP2K_XYZ(fname)
-  else:
-    raise ValueError('Cannot read relax file type {}'.format(ftype))
-
-
 def md_coordinates_LAMMPS ( fname:str ):
   '''
   '''
@@ -426,14 +408,10 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
   return struct
 
 
-def struct_from_inputfile_ASE ( fname:str, format=None ):
-  '''
-  '''
+def struct_from_atoms_ASE ( atoms ):
   from .conversion import ANG_BOHR
-  import ase.io as aio
   import numpy as np
 
-  atoms = aio.read(fname, format=format)
   syms = atoms.symbols
   la = len(syms)
 
@@ -467,20 +445,46 @@ def struct_from_inputfile_ASE ( fname:str, format=None ):
       spec += num * [sym]
 
   if np.all(atoms.cell == 0.0):
-    msg = 'Cannot read atomic system from file: fname\n'
-    msg += 'Set \'relax=True\' if this is an MD/relaxation animation.'
+    msg = 'ASE failed to read atomic information.'
     raise Exception(msg)
 
   lat = np.empty((3,3), dtype=float)
   for i,v in enumerate(atoms.cell):
     lat[i,:] = v[:]
 
-  struct = {}
-  struct['lattice'] = lat * ANG_BOHR
-  struct['species'] = spec
-  struct['abc'] = (atoms.positions.copy()) @ np.linalg.inv(lat)
+  abc = atoms.positions.copy() @ np.linalg.inv(lat)
+  lat *= ANG_BOHR
 
-  return struct
+  return lat, spec, abc
+
+
+def struct_from_inputfile_ASE ( fname:str, format=None, index=None ):
+  '''
+  '''
+  import ase.io as aio
+  import numpy as np
+
+  atoms = aio.read(fname, format=format, index=index)
+
+  if isinstance(atoms, list):
+    if len(atoms) == 0:
+      raise Exception(f'No structures were read from file {fname}.')
+
+    species = None
+    lattice,positions = [],[]
+    for a in atoms:
+      lat,spec,abc = struct_from_atoms_ASE(a)
+      if species is None:
+        species = spec
+      lattice.append(lat)
+      positions.append(abc)
+
+    return {'lattice':np.array(lattice), 'species':species, 'abc':np.array(positions)}
+
+  else:
+    lat,spec,abc = struct_from_atoms_ASE(atoms)
+
+    return {'lattice':lat, 'species':spec, 'abc':abc}
 
 
 def struct_from_inputfile_CP2K ( fname:str ):
@@ -595,49 +599,24 @@ def struct_from_inputfile_CP2K ( fname:str ):
   return struct
 
 
-def infer_file_type ( fname:str ):
-
-  extension = fname.split('.')
-  if len(extension) <= 1:
-    print('Cannot infer file type without an extension. Assuming qe')
-    return 'qe'
-
-  extension = extension[-1].lower()
-  if extension in ['in', 'out', 'pwi', 'pwo']:
-    return 'qe' + extension
-  elif extension == 'poscar':
-    return 'poscar'
-  elif extension in ['lmp', 'lmps'] or 'lammps' in extension:
-    return 'lammps'
-  elif extension in ['inp', 'cp2k', 'popt']:
-    return 'cp2k'
-
-  return extension
-
-
-def struct_from_inputfile ( fname:str, ftype='automatic' ):
+def struct_from_inputfile ( fname:str, ftype=None, index=None ):
   '''
   '''
-
-  ase_type = None
-  if ftype == 'automatic':
-    ftype = infer_file_type(fname)
-  else:
-    ase_type = ftype
 
   try:
-    try:
-      return struct_from_inputfile_ASE(fname, format=ase_type)
-    except Exception as e:
-      if 'qe' in ftype:
-        if 'o' in ftype:
-          return struct_from_outputfile_QE(fname)
-        else:
-          return struct_from_inputfile_QE(fname)
-      elif ftype == 'cp2k':
-        return struct_from_inputfile_CP2K(fname)
-      elif ftype == 'lammps':
-        return md_coordinates_LAMMPS(fname)
+    if ftype == 'cp2k-in':
+      return struct_from_inputfile_CP2K(fname)
+
+    elif ftype == 'lammps-traj':
+      return md_coordinates_LAMMPS(fname)
+
+    else:
+      try:
+        return struct_from_inputfile_ASE(fname, format=ftype, index=index)
+      except Exception as e:
+        print(e)
+        print('Attempting read with internal QE parser.\n')
+        return struct_from_inputfile_QE(fname)
 
   except Exception as e:
     print('Failed to read file {}'.format(fname))

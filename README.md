@@ -42,6 +42,11 @@ The [Anaconda](https://www.anaconda.com/) Python distribution is recommended.
 
 (only use --user if you do not have permission to install python packages)
 
+## Display atomic models directly from the command line:
+- xcp --help
+- xcp <arguments>
+- xcp -fn <input_file> -ff <file_format> -bl <bond_distance>
+
 ## Control Inputs:
 - 'u' : Toggle UI visibility
 - 'a' : Toggle Axis visibility
