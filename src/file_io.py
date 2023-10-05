@@ -347,7 +347,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
       kl = il
     il += 1
   unit = fstr[il].split()
-  struct['aunit'] = unit[1].strip('(){{}}') if len(unit) > 1 else 'alat'
+  struct['aunit'] = unit[1].strip('(){{}}').lower() if len(unit) > 1 else 'alat'
 
   il = scan_blank_lines(il)
 
@@ -381,7 +381,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
 
   if cl < nf:
     unit = fstr[cl].split()
-    struct['lunit'] = unit[1].strip('(){{}}') if len(unit) > 1 else 'alat'
+    struct['lunit'] = unit[1].strip('(){{}}').lower() if len(unit) > 1 else 'alat'
     cl = scan_blank_lines(cl)
     struct['lattice'] = np.array([np.array([float(v) for v in fstr[cl+c].split()]) for c in range(3)])
 
