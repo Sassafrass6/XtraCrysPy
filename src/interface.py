@@ -22,9 +22,13 @@ def parse_arguments ( ):
 def process_arguments ( args ):
 
   # Parse MultiFrame boolean argument
-  if type(args.multiframe) == str and args.multiframe[0].isdigit():
-    args.multiframe = int(args.multiframe)
-    args.multiframe = bool(args.multiframe)
+  if type(args.multiframe) == str:
+    if args.multiframe[0].isdigit():
+      args.multiframe = int(args.multiframe)
+      args.multiframe = bool(args.multiframe)
+    else:
+      args.multiframe = args.multiframe.lower()
+      args.multiframe = True if args.multiframe[0]=='t' else False
 
   # Parse Background Color
   if type(args.background) == str:
@@ -49,5 +53,5 @@ def xcp_main ( ):
     params['bonds'] = args.bondlength
 
   from .Atomic import Atomic
-  xcp = Atomic(model=args.filename, background=args.background, params=params)
+  xcp = Atomic(model=args.filename, background=args.background, multi_frame=args.multiframe, params=params)
   xcp.start_crystal_view()
