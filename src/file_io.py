@@ -31,7 +31,7 @@ def struct_from_outputfile_QE ( fname:str ):
       celldm[3:] = [float(v) for i,v in enumerate(lines[eL+1].split()) if i%2==1]
 
       if ibrav != 0:
-        from .lattice_format import lattice_format_QE
+        from lattice_format import lattice_format_QE
         struct['lattice'] = lattice_format_QE(ibrav, celldm)
       else:
         while 'crystal axes' not in lines[eL]:
@@ -60,7 +60,7 @@ def struct_from_outputfile_QE ( fname:str ):
   return struct
 
 
-def read_relaxed_coordinates_QE ( fname:str ):
+def read_relaxed_coordinates_QE ( fname:str, vcrelax:bool=True, read_all:bool=True ):
   '''
     Reads relaxed atomic positions from a QE .out file. If CELL_PARAMETERS is present, the crystal coordinates are also read.
 
@@ -72,7 +72,7 @@ def read_relaxed_coordinates_QE ( fname:str ):
     Returns:
       (dict): Dictionary with one or two entries - 'apos' for atomic positions and 'coord' for crystal coordinates.
   '''
-  from .conversion import ANG_BOHR
+  from conversion import ANG_BOHR
   from os.path import isfile,join
   from os import getcwd
   import numpy as np
@@ -143,6 +143,12 @@ def read_relaxed_coordinates_QE ( fname:str ):
     except Exception as e:
       print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
       raise e
+
+  if not read_all:
+    # Keep only last set of coords
+    abc = abc[-1]
+  elif ( not read_all ) and vcrelax:
+    cell_params = cell_params[-1]
 
   struct['lunit'] = 'bohr'
   struct['aunit'] = 'crystal'
@@ -242,7 +248,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     Returns:
       (dict): Structure dictionary
   '''
-  from .conversion import ANG_BOHR
+  from conversion import ANG_BOHR
   from os.path import isfile
   import numpy as np
   import re
@@ -386,7 +392,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
     struct['lattice'] = np.array([np.array([float(v) for v in fstr[cl+c].split()]) for c in range(3)])
 
   if 'lattice' not in struct:
-    from .lattice_format import lattice_format_QE
+    from lattice_format import lattice_format_QE
     struct['lattice'] = lattice_format_QE(struct['ibrav'], struct['celldm'])
 
   if struct['lunit'] == 'angstrom':
@@ -409,7 +415,7 @@ def struct_from_inputfile_QE ( fname:str ) -> dict:
 
 
 def struct_from_atoms_ASE ( atoms ):
-  from .conversion import ANG_BOHR
+  from conversion import ANG_BOHR
   import numpy as np
 
   syms = atoms.symbols
