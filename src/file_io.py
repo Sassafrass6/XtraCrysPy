@@ -60,13 +60,12 @@ def struct_from_outputfile_QE ( fname:str ):
   return struct
 
 
-def read_relaxed_coordinates_QE ( fname:str ):
+def read_relaxed_coordinates_QE ( fname:str, read_all:bool=True ):
   '''
     Reads relaxed atomic positions from a QE .out file. If CELL_PARAMETERS is present, the crystal coordinates are also read.
 
     Arguments:
       fname (str): File name (including path) for the .out file
-      vcrelax (bool): True reads crystal coordinates in addition to atomic positions
       read_all (bool): True forces all relax steps to be read. If EoF is encountered before 'final coordinates' the last coordinates to appear in the file are retunred. If no coordinates are found, an empty dictionary is returned.
 
     Returns:
@@ -117,10 +116,9 @@ def read_relaxed_coordinates_QE ( fname:str ):
           abc.append(apos)
           eL = sind
 
-        elif 'CELL_PARAMETERS' in lines[eL]:
+        elif ('CELL_PARAMETERS' in lines[eL]):
           coord = []
           unit = lines[eL].split()[1].strip('(){{}}')
-
           alat = 1
           if 'alat' in unit or len(unit) == 0:
             struct['lunit'] = 'alat'
@@ -144,10 +142,23 @@ def read_relaxed_coordinates_QE ( fname:str ):
       print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
       raise e
 
+  # If it's a vc-relax keep only the last vectors+positions
+  # If it's a relax, keep only the last positions, cell vectors from header
+  # else, pass the initial + full relaxation trajectory
+  if len(cell_params)>0 and ( not read_all ):
+    cell_params = np.array(cell_params[-1])
+    abc = abc[-1]
+  elif ( not read_all ):
+    cell_params = struct['lattice']
+    abc = abc[-1]
+  else:
+    cell_params = np.array([struct['lattice']] + cell_params)
+    abc = np.array([struct['abc']] + abc)
+
   struct['lunit'] = 'bohr'
   struct['aunit'] = 'crystal'
-  struct['lattice'] = np.array([struct['lattice']] + cell_params)
-  struct['abc'] = np.array([struct['abc']] + abc)
+  struct['lattice'] = cell_params
+  struct['abc'] = abc
 
   return struct
 
