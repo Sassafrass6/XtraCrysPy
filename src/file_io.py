@@ -614,9 +614,13 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
   '''
   '''
 
+  print(fname, ftype)
   try:
     if ftype == 'cp2k-in':
       return struct_from_inputfile_CP2K(fname)
+
+    elif ftype == 'cp2k-xyz':
+      return read_relaxed_coordinates_CP2K_XYZ(fname)
 
     elif ftype == 'lammps-traj':
       return md_coordinates_LAMMPS(fname)

@@ -53,5 +53,5 @@ def xcp_main ( ):
     params['bonds'] = args.bondlength
 
   from .Atomic import Atomic
-  xcp = Atomic(model=args.filename, background=args.background, multi_frame=args.multiframe, params=params)
+  xcp = Atomic(model=args.filename, ftype=args.fileformat, background=args.background, multi_frame=args.multiframe, params=params)
   xcp.start_crystal_view()
