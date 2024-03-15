@@ -21,7 +21,7 @@
 - CIF
 - XSF
 - CP2K
-- BXSF (coming soon)
+- BXSF
 - Any ASE supported format
 
 ## Requirements:
