@@ -610,6 +610,56 @@ def struct_from_inputfile_CP2K ( fname:str ):
   return struct
 
 
+def dftbxyz(fname:str, ftype=None,index=None):
+    import numpy as np
+    import re
+    lat = np.zeros(3)
+    struct = {}
+    with open(fname,'r') as fin:
+        num_atoms = float(fin.readline())
+        lattmp = fin.readline().split()
+        for i in range(len(lat)):
+            lat[i]  = float(lattmp[i])
+        if index==None:
+            pos_mat = np.zeros([num_atoms,3])
+            species = []
+            for i in range(len(num_atoms)):
+                line = fin.readline().split()
+                species.append(line[0])
+                for j in range(len(3)):
+                    pos_mat[i,j] = float(line[j+1])
+            struct['abc'] = pos_mat
+            struct['species'] = species
+            return struct
+        else:
+            startloc = (num_atoms + 2)*index
+
+def dftbgen(fname:str,ftype=None,index=None):
+    import numpy as np
+    import re
+    lat = np.zeros(3)
+    struct = {}
+    spec_struct = {}
+    with open(fname,'r') as fin:
+        line = fin.readline().split()
+        num_atoms = int(line[0])
+        print(num_atoms)
+        lattype = line[1]
+        line = fin.readline().split()
+        pos_mat = np.zeros([num_atoms,3])
+        spec_mat = []
+        for i in range(len(line)):
+            spec_struct[i+1] = line[i] 
+        for i in range(num_atoms):
+            line = fin.readline().split()
+            spec_mat.append(spec_struct[int(line[1])])
+            for j in range(3):
+                pos_mat[i,j] = float(line[2+j])
+
+    struct['species'] = spec_mat
+    struct['abc'] = pos_mat
+    return struct
+
 def struct_from_inputfile ( fname:str, ftype=None, index=None ):
   '''
   '''
@@ -624,6 +674,12 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
 
     elif ftype == 'lammps-traj':
       return md_coordinates_LAMMPS(fname)
+    elif ftype == "dftbxyz":
+        return dftbxyx(fname)
+    elif ftype == "gen":
+        print("hello")
+        return dftbgen(fname)
+    
 
     else:
       try:
