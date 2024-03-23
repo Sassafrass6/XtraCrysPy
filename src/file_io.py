@@ -643,7 +643,6 @@ def dftbgen(fname:str,ftype=None,index=None):
     with open(fname,'r') as fin:
         line = fin.readline().split()
         num_atoms = int(line[0])
-        print(num_atoms)
         lattype = line[1]
         line = fin.readline().split()
         pos_mat = np.zeros([num_atoms,3])
@@ -665,6 +664,7 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
   '''
 
   print(fname, ftype)
+  print("Hello")
   try:
     if ftype == 'cp2k-in':
       return struct_from_inputfile_CP2K(fname)
@@ -677,7 +677,6 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
     elif ftype == "dftbxyz":
         return dftbxyx(fname)
     elif ftype == "gen":
-        print("hello")
         return dftbgen(fname)
     
 
