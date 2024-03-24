@@ -9,7 +9,7 @@ def parse_arguments ( ):
   fn_group = parser.add_mutually_exclusive_group()
   fn_group.add_argument('-fn', '--filename', help='Path to file containing the atomic system')
 
-  parser.add_argument('-ff', '--fileformat', help='Format of the provided filename (ASE standard)')
+  parser.add_argument('-ff', '--fileformat',default=None, help='Format of the provided filename (ASE standard)')
 
   parser.add_argument('-mf', '--multiframe', default=False, help='Multiple frames should be read from the provided filename')
 

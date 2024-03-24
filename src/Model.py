@@ -18,6 +18,7 @@ class Model:
     self.aunit = 'angstrom'
     self.bunit = 'angstrom'
     self.relax = multi_frame
+    print(ftype)
     if fname is not None:
       self.lunit = 'bohr'
       self.aunit = 'crystal'
@@ -35,11 +36,14 @@ class Model:
         from .file_io import struct_from_inputfile
         self.relax = True
         params.update(struct_from_inputfile(fname, ftype=ftype, index=index))
-      elif fname.split('.')[1] == "gen":
+      elif ftype == "gen":
         from .file_io import struct_from_inputfile
         params.update(struct_from_inputfile(fname,ftype="gen",index=index))
       else:
-        params.update(struct_from_inputfile(fname,ftype,index)
+        from .file_io import struct_from_inputfile
+        if ftype == 'lammps-trj':
+            self.relax = True
+        params.update(struct_from_inputfile(fname,ftype=ftype,index=index))
 
     try:
       self.bond_type = None

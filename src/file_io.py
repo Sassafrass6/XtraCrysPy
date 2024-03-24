@@ -663,8 +663,6 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
   '''
   '''
 
-  print(fname, ftype)
-  print("Hello")
   try:
     if ftype == 'cp2k-in':
       return struct_from_inputfile_CP2K(fname)
