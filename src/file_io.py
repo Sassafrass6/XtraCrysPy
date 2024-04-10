@@ -614,7 +614,6 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
   '''
   '''
 
-  print(fname, ftype)
   try:
     if ftype == 'cp2k-in':
       return struct_from_inputfile_CP2K(fname)
@@ -629,9 +628,11 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
       try:
         return struct_from_inputfile_ASE(fname, format=ftype, index=index)
       except Exception as e:
-        print(e)
         print('Attempting read with internal QE parser.\n')
-        return struct_from_inputfile_QE(fname)
+        if ftype == 'espresso-out':
+          return read_relaxed_coordinates_QE(fname)
+        else:
+          return struct_from_inputfile_QE(fname)
 
   except Exception as e:
     print('Failed to read file {}'.format(fname))
