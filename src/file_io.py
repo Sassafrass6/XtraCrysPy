@@ -60,12 +60,13 @@ def struct_from_outputfile_QE ( fname:str ):
   return struct
 
 
-def read_relaxed_coordinates_QE ( fname:str, read_all:bool=True ):
+def read_relaxed_coordinates_QE ( fname:str ):
   '''
     Reads relaxed atomic positions from a QE .out file. If CELL_PARAMETERS is present, the crystal coordinates are also read.
 
     Arguments:
       fname (str): File name (including path) for the .out file
+      vcrelax (bool): True reads crystal coordinates in addition to atomic positions
       read_all (bool): True forces all relax steps to be read. If EoF is encountered before 'final coordinates' the last coordinates to appear in the file are retunred. If no coordinates are found, an empty dictionary is returned.
 
     Returns:
@@ -116,9 +117,10 @@ def read_relaxed_coordinates_QE ( fname:str, read_all:bool=True ):
           abc.append(apos)
           eL = sind
 
-        elif ('CELL_PARAMETERS' in lines[eL]):
+        elif 'CELL_PARAMETERS' in lines[eL]:
           coord = []
           unit = lines[eL].split()[1].strip('(){{}}')
+
           alat = 1
           if 'alat' in unit or len(unit) == 0:
             struct['lunit'] = 'alat'
@@ -142,23 +144,10 @@ def read_relaxed_coordinates_QE ( fname:str, read_all:bool=True ):
       print('WARNING: No atomic positions or cell coordinates were found.', flush=True)
       raise e
 
-  # If it's a vc-relax keep only the last vectors+positions
-  # If it's a relax, keep only the last positions, cell vectors from header
-  # else, pass the initial + full relaxation trajectory
-  if len(cell_params)>0 and ( not read_all ):
-    cell_params = np.array(cell_params[-1])
-    abc = abc[-1]
-  elif ( not read_all ):
-    cell_params = struct['lattice']
-    abc = abc[-1]
-  else:
-    cell_params = np.array([struct['lattice']] + cell_params)
-    abc = np.array([struct['abc']] + abc)
-
   struct['lunit'] = 'bohr'
   struct['aunit'] = 'crystal'
-  struct['lattice'] = cell_params
-  struct['abc'] = abc
+  struct['lattice'] = np.array([struct['lattice']] + cell_params)
+  struct['abc'] = np.array([struct['abc']] + abc)
 
   return struct
 
@@ -610,6 +599,37 @@ def struct_from_inputfile_CP2K ( fname:str ):
   return struct
 
 
+
+def dftbgen(fname:str,index=None):
+    import numpy as np
+    import re
+    lat = np.zeros(3)
+    struct = {}
+    spec_struct = {}
+    with open(fname,'r') as fin:
+        line = fin.readline().split()
+        num_atoms = int(line[0])
+        lattype = line[1]
+        line = fin.readline().split()
+        pos_mat = np.zeros([num_atoms,3])
+        spec_mat = []
+        for i in range(len(line)):
+            spec_struct[i+1] = line[i]
+        for i in range(num_atoms):
+            line = fin.readline().split()
+            spec_mat.append(spec_struct[int(line[1])])
+            for j in range(3):
+                pos_mat[i,j] = float(line[2+j])
+
+    struct['species'] = spec_mat
+    struct['abc'] = pos_mat
+    return struct
+
+
+
+
+
+
 def struct_from_inputfile ( fname:str, ftype=None, index=None ):
   '''
   '''
@@ -618,11 +638,10 @@ def struct_from_inputfile ( fname:str, ftype=None, index=None ):
     if ftype == 'cp2k-in':
       return struct_from_inputfile_CP2K(fname)
 
-    elif ftype == 'cp2k-xyz':
-      return read_relaxed_coordinates_CP2K_XYZ(fname)
-
     elif ftype == 'lammps-traj':
       return md_coordinates_LAMMPS(fname)
+    elif ftype == "gen":
+      return dftbgen(fname)
 
     else:
       try:

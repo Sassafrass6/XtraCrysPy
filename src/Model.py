@@ -21,6 +21,7 @@ class Model:
     if fname is not None:
       self.lunit = 'bohr'
       self.aunit = 'crystal'
+      print(self.relax)
       if self.relax:
         if isinstance(fname, list):
           from .file_io import struct_from_file_sequence
@@ -30,6 +31,9 @@ class Model:
           if ftype is None or ftype == 'espresso-in':
             ftype = 'espresso-out'
           params.update(struct_from_inputfile(fname, ftype=ftype, index=slice(0,-1)))
+      elif ftype == "gen":
+        from .file_io import struct_from_inputfile
+        params.update(struct_from_inputfile(fname,ftype="gen",index=index))
       else:
         from .file_io import struct_from_inputfile
         if ftype == 'lammps-traj':
