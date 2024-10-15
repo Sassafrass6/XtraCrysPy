@@ -27,7 +27,7 @@ class Model:
           params.update(struct_from_file_sequence(fname, ftype=ftype))
         else:
           from .file_io import struct_from_inputfile
-          if ftype is None or ftype == 'espresso-in':
+          if ftype == 'espresso-in':
             ftype = 'espresso-out'
           params.update(struct_from_inputfile(fname, ftype=ftype, index=slice(0,-1)))
       else:
